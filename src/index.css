@@ -1,0 +1,127 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;1,400&display=swap');
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #0a0a0a;
+  --bg-card: #141414;
+  --bg-elevated: #1c1c1c;
+  --accent: #c9956c;
+  --accent-soft: rgba(201, 149, 108, 0.15);
+  --accent-border: rgba(201, 149, 108, 0.3);
+  --text-primary: #f0ebe4;
+  --text-secondary: #8a8278;
+  --text-muted: #4a4642;
+  --border: rgba(255,255,255,0.06);
+  --border-hover: rgba(255,255,255,0.12);
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+input, select, textarea {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  padding: 14px 16px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+input:focus, select:focus {
+  border-color: var(--accent-border);
+}
+
+input::placeholder {
+  color: var(--text-muted);
+}
+
+select option {
+  background: var(--bg-elevated);
+}
+
+button {
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  border: none;
+  outline: none;
+}
+
+.react-datepicker {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border) !important;
+  font-family: 'Inter', sans-serif !important;
+  border-radius: var(--radius) !important;
+}
+
+.react-datepicker__header {
+  background: var(--bg-card) !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+
+.react-datepicker__current-month,
+.react-datepicker__day-name {
+  color: var(--text-secondary) !important;
+}
+
+.react-datepicker__day {
+  color: var(--text-primary) !important;
+  border-radius: 8px !important;
+}
+
+.react-datepicker__day:hover {
+  background: var(--accent-soft) !important;
+  color: var(--accent) !important;
+}
+
+.react-datepicker__day--selected {
+  background: var(--accent) !important;
+  color: #0a0a0a !important;
+  font-weight: 600 !important;
+}
+
+.react-datepicker__day--disabled {
+  color: var(--text-muted) !important;
+}
+
+.react-datepicker__navigation-icon::before {
+  border-color: var(--text-secondary) !important;
+}
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeSlideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
