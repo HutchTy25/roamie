@@ -72,7 +72,7 @@ CRITICAL RULES:
 Return exactly 3 destinations ranked best to good. Be realistic with costs.`
 
     try {
-      const res = await fetch('http://10.0.0.125:3001/api/messages', {
+      const res = await fetch('https://roamie-61ib.onrender.com/api/messages', {
         method: 'POST',
         headers: { 
   'Content-Type': 'application/json',
