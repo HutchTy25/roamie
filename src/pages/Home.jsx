@@ -1,80 +1,220 @@
 import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 
 export default function Home() {
   const navigate = useNavigate()
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    setTimeout(() => setVisible(true), 100)
+  }, [])
+
+  const accent = '#FF6B35'
 
   return (
     <div style={{
       minHeight: '100vh',
+      background: '#0a0a0a',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '2rem',
-      textAlign: 'center',
-      background: 'radial-gradient(ellipse at 50% 0%, rgba(201,149,108,0.08) 0%, transparent 70%)'
+      padding: '2rem 1.5rem',
+      position: 'relative',
+      overflow: 'hidden',
     }}>
 
-      <div style={{ marginBottom: '1rem', fontSize: '13px', letterSpacing: '0.15em', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-        Introducing Roamie
+      <style>{`
+        @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
+        .start-btn:hover { opacity: 0.88; transform: scale(1.02); }
+        .start-btn:active { transform: scale(0.98); }
+        .feature-pill { transition: border-color 0.2s; }
+        .feature-pill:hover { border-color: rgba(255,107,53,0.4) !important; }
+      `}</style>
+
+      {/* Ambient glow */}
+      <div style={{
+        position: 'absolute',
+        top: '-20%',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: '600px',
+        height: '400px',
+        background: 'radial-gradient(ellipse, rgba(255,107,53,0.07) 0%, transparent 70%)',
+        pointerEvents: 'none',
+      }} />
+
+      {/* Floating dots decoration */}
+      <div style={{ position: 'absolute', top: '15%', left: '8%', width: '4px', height: '4px', borderRadius: '50%', background: accent, opacity: 0.3, animation: 'pulse 3s infinite' }} />
+      <div style={{ position: 'absolute', top: '25%', right: '10%', width: '3px', height: '3px', borderRadius: '50%', background: '#9c7ec4', opacity: 0.3, animation: 'pulse 3s infinite 1s' }} />
+      <div style={{ position: 'absolute', bottom: '30%', left: '12%', width: '3px', height: '3px', borderRadius: '50%', background: accent, opacity: 0.2, animation: 'pulse 3s infinite 2s' }} />
+
+      {/* Badge */}
+      <div style={{
+        opacity: visible ? 1 : 0,
+        animation: visible ? 'fadeUp 0.6s ease forwards' : 'none',
+        marginBottom: '1.5rem',
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        background: 'rgba(255,107,53,0.1)',
+        border: '1px solid rgba(255,107,53,0.25)',
+        borderRadius: '100px',
+        padding: '6px 14px',
+      }}>
+        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: accent, animation: 'pulse 2s infinite' }} />
+        <span style={{ fontSize: '12px', color: accent, letterSpacing: '0.08em', fontWeight: '500' }}>Built for long distance couples</span>
       </div>
 
-      <h1 style={{
-        fontFamily: "'Playfair Display', serif",
-        fontSize: 'clamp(2.5rem, 8vw, 4.5rem)',
-        fontWeight: '400',
-        lineHeight: '1.1',
-        marginBottom: '1.5rem',
-        color: 'var(--text-primary)'
+      {/* Main headline */}
+      <div style={{
+        opacity: visible ? 1 : 0,
+        animation: visible ? 'fadeUp 0.6s ease 0.1s forwards' : 'none',
+        textAlign: 'center',
+        marginBottom: '1.25rem',
+        maxWidth: '520px',
       }}>
-        Plan your next trip,<br />
-        <em style={{ color: 'var(--accent)' }}>together.</em>
-      </h1>
+        <h1 style={{
+          fontFamily: "'Playfair Display', serif",
+          fontSize: 'clamp(2.8rem, 9vw, 4.2rem)',
+          fontWeight: '400',
+          lineHeight: '1.05',
+          margin: 0,
+          color: '#f0ebe4',
+        }}>
+          Stop arguing<br />about where<br />
+          <em style={{ color: accent }}>to go next.</em>
+        </h1>
+      </div>
 
-      <p style={{
-        fontSize: '17px',
-        color: 'var(--text-secondary)',
-        maxWidth: '420px',
-        lineHeight: '1.7',
-        marginBottom: '3rem'
+      {/* Subheading */}
+      <div style={{
+        opacity: visible ? 1 : 0,
+        animation: visible ? 'fadeUp 0.6s ease 0.2s forwards' : 'none',
+        textAlign: 'center',
+        marginBottom: '2rem',
+        maxWidth: '380px',
       }}>
-        Two people. Two budgets. Two cities. One perfect trip. Roamie finds what works for both of you.
-      </p>
+        <p style={{
+          fontSize: '16px',
+          color: '#8a8278',
+          lineHeight: '1.7',
+          margin: 0,
+        }}>
+          Put in both your budgets, your cities, your vibe — Roamie finds trips that actually work for both of you. 🤝
+        </p>
+      </div>
 
-      <button
-        onClick={() => navigate('/quiz')}
-        style={{
-          background: 'var(--accent)',
-          color: '#0a0a0a',
-          fontSize: '15px',
-          fontWeight: '600',
-          padding: '16px 40px',
-          borderRadius: '100px',
-          letterSpacing: '0.02em',
-          transition: 'opacity 0.2s, transform 0.2s',
-        }}
-        onMouseEnter={e => e.target.style.opacity = '0.85'}
-        onMouseLeave={e => e.target.style.opacity = '1'}
-      >
-        Start planning
-     </button>
+      {/* Feature pills */}
+      <div style={{
+        opacity: visible ? 1 : 0,
+        animation: visible ? 'fadeUp 0.6s ease 0.3s forwards' : 'none',
+        display: 'flex',
+        gap: '8px',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
+        marginBottom: '2.5rem',
+      }}>
+        {[
+          { icon: '💸', text: 'Two budgets, one plan' },
+          { icon: '🌍', text: '30+ currencies' },
+          { icon: '✈️', text: 'LDR routing' },
+        ].map(p => (
+          <div key={p.text} className="feature-pill" style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '100px',
+            padding: '7px 14px',
+            fontSize: '13px',
+            color: '#8a8278',
+          }}>
+            <span style={{ fontSize: '14px' }}>{p.icon}</span>
+            {p.text}
+          </div>
+        ))}
+      </div>
 
-      <button
-        onClick={() => navigate('/')}
-        style={{
-          background: 'none',
-          border: 'none',
-          color: 'var(--text-muted)',
-          fontSize: '13px',
-          marginTop: '1rem',
-          cursor: 'pointer',
-        }}
-      >
-        ← back
-      </button>
+      {/* CTA Button */}
+      <div style={{
+        opacity: visible ? 1 : 0,
+        animation: visible ? 'fadeUp 0.6s ease 0.4s forwards' : 'none',
+        width: '100%',
+        maxWidth: '320px',
+        marginBottom: '1rem',
+      }}>
+        <button
+          className="start-btn"
+          onClick={() => navigate('/quiz')}
+          style={{
+            width: '100%',
+            padding: '18px',
+            background: accent,
+            color: '#0a0a0a',
+            fontSize: '16px',
+            fontWeight: '700',
+            borderRadius: '100px',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            letterSpacing: '0.02em',
+          }}
+        >
+          Plan our next trip ✦
+        </button>
+      </div>
 
-      <div style={{ marginTop: '4rem', color: 'var(--text-muted)', fontSize: '13px' }}>
-        Fill it out together on your next call
+{/* Trust line */}
+      <div style={{
+        opacity: visible ? 1 : 0,
+        animation: visible ? 'fadeUp 0.6s ease 0.5s forwards' : 'none',
+        fontSize: '12px',
+        color: '#4a4642',
+        marginBottom: '1rem',
+      }}>
+        Free to use · No sign up required · Takes 2 minutes
+      </div>
+
+      {/* Bottom tagline */}
+      <div style={{
+        opacity: visible ? 1 : 0,
+        animation: visible ? 'fadeUp 0.6s ease 0.6s forwards' : 'none',
+        fontSize: '13px',
+        color: '#4a4642',
+        textAlign: 'center',
+        marginBottom: '2rem',
+      }}>
+        Fill it out together on your next FaceTime 🤙
+      </div>
+
+      {/* Social proof — Reddit review */}
+      <div style={{
+        opacity: visible ? 1 : 0,
+        animation: visible ? 'fadeUp 0.6s ease 0.7s forwards' : 'none',
+        maxWidth: '360px',
+        background: '#141414',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: '16px',
+        padding: '1.25rem',
+        marginBottom: '2rem',
+      }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '50%',
+            background: 'rgba(255,107,53,0.15)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '14px', flexShrink: 0,
+          }}>👤</div>
+          <div>
+            <div style={{ fontSize: '13px', color: '#f0ebe4', lineHeight: '1.6', marginBottom: '8px' }}>
+              "Having both people input their stuff upfront could definitely cut through decision paralysis. Interface feels pretty clean for a V1"
+            </div>
+            <div style={{ fontSize: '11px', color: '#4a4642' }}>r/SaaS · real user review</div>
+          </div>
+        </div>
       </div>
 
     </div>

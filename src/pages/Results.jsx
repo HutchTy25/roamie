@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 export default function Results() {
   const location = useLocation()
@@ -8,78 +8,127 @@ export default function Results() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
-  const [activeTab, setActiveTab] = useState(0)
+  const [activeCard, setActiveCard] = useState(0)
+  const [expanded, setExpanded] = useState(false)
+  const startX = useRef(null)
+
+  const accent = '#FF6B35'
+  const purple = '#9c7ec4'
 
   const CURR_SYMBOLS = {
-  USD: '$', GBP: '£', EUR: '€', CAD: 'C$', AUD: 'A$',
-  NZD: 'NZ$', JPY: '¥', CNY: '¥', KRW: '₩', PHP: '₱',
-  IDR: 'Rp', MYR: 'RM', THB: '฿', VND: '₫', SGD: 'S$',
-  INR: '₹', PKR: '₨', BDT: '৳', NGN: '₦', GHS: 'GH₵',
-  KES: 'KSh', ZAR: 'R', EGP: 'E£', AED: 'AED', SAR: '﷼',
-  BRL: 'R$', MXN: 'MX$', COP: 'COL$', ARS: 'AR$', CLP: 'CL$',
-}
+    USD: '$', GBP: '£', EUR: '€', CAD: 'C$', AUD: 'A$',
+    NZD: 'NZ$', JPY: '¥', CNY: '¥', KRW: '₩', PHP: '₱',
+    IDR: 'Rp', MYR: 'RM', THB: '฿', VND: '₫', SGD: 'S$',
+    INR: '₹', PKR: '₨', BDT: '৳', NGN: '₦', GHS: 'GH₵',
+    KES: 'KSh', ZAR: 'R', EGP: 'E£', AED: 'AED', SAR: '﷼',
+    BRL: 'R$', MXN: 'MX$', COP: 'COL$', ARS: 'AR$', CLP: 'CL$',
+  }
+
+  const CARD_GRADIENTS = [
+    'linear-gradient(135deg, #1a0a05 0%, #2d1408 100%)',
+    'linear-gradient(135deg, #05101a 0%, #082038 100%)',
+    'linear-gradient(135deg, #0a0514 0%, #1a0a2d 100%)',
+    'linear-gradient(135deg, #0a1405 0%, #1a2d08 100%)',
+  ]
+
   useEffect(() => {
-    console.log('Data received:', data)
     if (!data) { navigate('/'); return }
     fetchRecommendations()
   }, [])
+
+  function handleTouchStart(e) {
+    startX.current = e.touches[0].clientX
+  }
+
+  function handleTouchEnd(e) {
+    if (!startX.current) return
+    const diff = startX.current - e.changedTouches[0].clientX
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) {
+        setActiveCard(c => Math.min(c + 1, allCardsLength - 1))
+        setExpanded(false)
+      } else {
+        setActiveCard(c => Math.max(c - 1, 0))
+        setExpanded(false)
+      }
+    }
+    startX.current = null
+  }
 
   async function fetchRecommendations() {
     const p1sym = CURR_SYMBOLS[data.p1.currency] || data.p1.currency
     const p2sym = CURR_SYMBOLS[data.p2.currency] || data.p2.currency
 
-    const prompt = `You are Roamie, a couples travel planner. Two partners want to plan a trip together. Give warm, specific, realistic recommendations based on their actual situation.
+    const prompt = `You are Roamie, a real-world couples travel planner with deep knowledge of actual flight prices, accommodation costs, and living expenses globally. Two partners need trip recommendations based on their REAL financial situation.
 
-Partner 1: Based in ${data.p1.city}, currency ${data.p1.currency} (${p1sym}), max spend ${p1sym}${data.p1.maxSpend.toLocaleString()}, travel vibes: ${data.p1.vibes.join(', ')}.
-Partner 2: Based in ${data.p2.city}, currency ${data.p2.currency} (${p2sym}), max spend ${p2sym}${data.p2.maxSpend.toLocaleString()}, travel vibes: ${data.p2.vibes.join(', ')}.
-Travel window: ${data.dates.from} to ${data.dates.to}.
-Routing: ${data.routing === 'fly_together' ? 'Partner 1 flies to Partner 2 first, then they fly to destination together' : data.routing === 'meet' ? 'Both fly to destination separately' : 'Driving preferred'}.
+PARTNER DETAILS:
+- Partner 1: Lives in ${data.p1.city} | Currency: ${data.p1.currency} (${p1sym}) | Max budget: ${p1sym}${data.p1.maxSpend.toLocaleString()} TOTAL for the entire trip
+- Partner 2: Lives in ${data.p2.city} | Currency: ${data.p2.currency} (${p2sym}) | Max budget: ${p2sym}${data.p2.maxSpend.toLocaleString()} TOTAL for the entire trip
+- Travel dates: ${data.dates.from} to ${data.dates.to}
+- Vibes both want: ${data.vibes?.join(', ') || 'open to anything'}
 
-Consider actual flight routes, realistic costs in each partner's currency, currency fairness, and seasonal weather for the travel window. Avoid recommending destinations with poor weather conditions during their travel dates (e.g. monsoon season, extreme heat, hurricane season). Be specific about why each destination works for THIS couple based on their cities, vibes, and time of year.
+REALISM REQUIREMENTS:
+- Use REAL 2024/2025 flight prices for specific routes from ${data.p1.city} and ${data.p2.city}
+- Use REAL accommodation costs for each destination
+- Account for actual trip length between ${data.dates.from} and ${data.dates.to}
+- p1_cost must be in ${data.p1.currency}
+- p2_cost must be in ${data.p2.currency}
+- flights_p1 must reflect actual economy fares FROM ${data.p1.city} TO destination
+- flights_p2 must reflect actual economy fares FROM ${data.p2.city} TO destination
+- lodging_total must be nightly rate multiplied by number of nights
+- NEVER recommend a destination where either partner exceeds their max budget
+- If budgets are tight suggest nearby budget-friendly options
 
-Respond ONLY with valid JSON, no markdown, no backticks, no explanation:
+WEATHER: Avoid monsoon season, extreme heat above 38C, or hurricane risk during ${data.dates.from} to ${data.dates.to}
+
+Respond ONLY with valid JSON no markdown no backticks no explanation:
 {
   "destinations": [
     {
       "name": "City, Country",
+      "country_emoji": "🇵🇹",
       "tagline": "One warm sentence why this is perfect for them specifically",
-      "why_it_works": "2-3 sentences explaining why this destination fits their cities, budgets, and vibes",
+      "why_it_works": "2-3 sentences explaining why this fits their exact cities budgets and vibes",
       "p1_cost": 1200,
       "p2_cost": 950,
+      "cost_breakdown": {
+        "flights_p1": 400,
+        "flights_p2": 350,
+        "lodging_per_night": 120,
+        "lodging_total": 600,
+        "food_per_day": 50,
+        "food_total": 250,
+        "activities_total": 150
+      },
+      "lodging_note": "Specific recommendation with price per night",
       "p1_days_income": 4,
       "p2_days_income": 6,
-      "fairness_note": "One honest sentence on currency fairness between the two partners",
-      "harder_partner": "p1 or p2 — whoever this trip is harder on financially",
+      "fairness_note": "One honest sentence on currency fairness",
+      "harder_partner": "p1 or p2",
       "vibe_match": ["vibe1", "vibe2"],
-      "savings_scenario": "Specific actionable sentence — if both save X per week for Y weeks this unlocks comfortably",
-      "routing_note": "One specific sentence on best way to get there given their exact cities",
-      "best_for": "anniversary or birthday or weekend or week or two weeks"
+      "savings_scenario": "If both save X per week for Y weeks this becomes comfortable",
+      "routing_note": "Specific airlines and approximate flight times from each city",
+      "best_for": "weekend or week or two weeks",
+      "season_note": "One sentence on weather for their specific travel dates"
     }
   ],
   "stretch_goal": {
     "name": "City, Country",
+    "country_emoji": "🇯🇵",
     "tagline": "Why this is the dream trip for them",
-    "what_it_takes": "Exactly what both need to save and how long it realistically takes"
+    "what_it_takes": "Exactly what both need to save weekly and how many weeks"
   },
-  "overlap_vibes": ["shared vibe1", "shared vibe2"],
-  "couple_summary": "2 warm sentences summarizing what kind of travelers they are together based on their inputs"
+  "couple_summary": "2 warm sentences about what kind of travelers they are together"
 }
-CRITICAL RULES:
-1. Never recommend a destination where either partner's cost exceeds their max spend
-2. If budgets are very low or incompatible, be honest — suggest the closest realistic option and lead with a strong savings scenario
-3. All costs must be realistic and in each partner's actual currency
-4. Rank destinations by joint affordability first, vibe match second
-Return exactly 3 destinations ranked best to good. Be realistic with costs.`
+Return exactly 3 destinations ranked by joint affordability. Be brutally realistic with costs — users will actually book these trips.`
 
     try {
       const res = await fetch('https://roamie-61ib.onrender.com/api/messages', {
         method: 'POST',
-        headers: { 
-  'Content-Type': 'application/json',
-},
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 1500,
+          max_tokens: 2000,
           messages: [{ role: 'user', content: prompt }]
         })
       })
@@ -88,6 +137,7 @@ Return exactly 3 destinations ranked best to good. Be realistic with costs.`
       const parsed = JSON.parse(text)
       setResult(parsed)
     } catch (e) {
+      console.error('Error:', e)
       setError(true)
     } finally {
       setLoading(false)
@@ -101,13 +151,14 @@ Return exactly 3 destinations ranked best to good. Be realistic with costs.`
     <div style={{
       minHeight: '100vh', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: '1.5rem',
-      background: 'radial-gradient(ellipse at 50% 0%, rgba(201,149,108,0.06) 0%, transparent 70%)'
+      background: 'radial-gradient(ellipse at 50% 0%, rgba(255,107,53,0.06) 0%, transparent 70%)'
     }}>
+      <style>{`@keyframes pulse { 0%,80%,100%{transform:translateY(0);opacity:0.4} 40%{transform:translateY(-8px);opacity:1} }`}</style>
       <div style={{ display: 'flex', gap: '8px' }}>
         {[0, 1, 2].map(i => (
           <div key={i} style={{
             width: '8px', height: '8px', borderRadius: '50%',
-            background: 'var(--accent)',
+            background: accent,
             animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite`
           }} />
         ))}
@@ -117,10 +168,9 @@ Return exactly 3 destinations ranked best to good. Be realistic with costs.`
           Finding your trips...
         </div>
         <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-          Checking budgets, currencies, and routes
+          Checking budgets, currencies, weather & routes
         </div>
       </div>
-      <style>{`@keyframes pulse { 0%,80%,100%{transform:translateY(0);opacity:0.4} 40%{transform:translateY(-8px);opacity:1} }`}</style>
     </div>
   )
 
@@ -128,166 +178,209 @@ Return exactly 3 destinations ranked best to good. Be realistic with costs.`
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '2rem' }}>
       <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem' }}>Something went wrong</div>
       <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Couldn't generate recommendations. Try again.</div>
-      <button onClick={() => navigate('/quiz')} style={{ marginTop: '1rem', padding: '12px 32px', background: 'var(--accent)', color: '#0a0a0a', borderRadius: '100px', fontSize: '14px', fontWeight: '600' }}>
+      <button onClick={() => navigate('/quiz')} style={{ marginTop: '1rem', padding: '12px 32px', background: accent, color: '#0a0a0a', borderRadius: '100px', fontSize: '14px', fontWeight: '600', border: 'none', cursor: 'pointer' }}>
         Try again
       </button>
     </div>
   )
 
-  const dest = result.destinations[activeTab]
+  const allCards = [...(result.destinations || []), { isStretch: true, ...(result.stretch_goal || {}) }]
+  const allCardsLength = allCards.length
+  const dest = allCards[activeCard] || {}
+  const isStretch = dest.isStretch || false
 
   return (
-    <div style={{ minHeight: '100vh', padding: '2rem 1.5rem', maxWidth: '520px', margin: '0 auto' }}>
+    <div style={{ minHeight: '100vh', overflowX: 'hidden' }}>
+      <style>{`
+        @keyframes fadeSlideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+      `}</style>
 
-      <style>{`@keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }`}</style>
-
-      {/* Header */}
-      <div style={{ marginBottom: '2.5rem', animation: 'fadeSlideUp 0.6s ease forwards' }}>
-  <div style={{ fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'var(--accent)', marginBottom: '1rem', fontWeight: '500' }}>
-    ✦ Your trips
-  </div>
-  <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 6vw, 2.8rem)', lineHeight: '1.1', marginBottom: '1rem' }}>
-    Here's what works<br /><em style={{ color: 'var(--accent)' }}>for both of you.</em>
-  </div>
-        <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
-          {result.couple_summary}
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '1.5rem' }}>
-        {result.destinations.map((d, i) => (
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        style={{
+          minHeight: '100vh',
+          background: CARD_GRADIENTS[activeCard % CARD_GRADIENTS.length],
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '3rem 1.5rem 2rem',
+          position: 'relative',
+          transition: 'background 0.5s ease',
+        }}
+      >
+        {/* Top bar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
           <button
-            key={i}
-            onClick={() => setActiveTab(i)}
-            style={{
-              flex: 1, padding: '10px 8px',
-              borderRadius: 'var(--radius-sm)',
-              border: `1px solid ${activeTab === i ? 'var(--accent)' : 'var(--border)'}`,
-              background: activeTab === i ? 'var(--accent-soft)' : 'var(--bg-card)',
-              color: activeTab === i ? 'var(--accent)' : 'var(--text-muted)',
-              fontSize: '12px', fontWeight: '500',
-              transition: 'all 0.2s', cursor: 'pointer',
-            }}
+            onClick={() => navigate('/quiz')}
+            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '13px', cursor: 'pointer', padding: 0 }}
           >
-            {i === 0 ? '✦ Best match' : `Option ${i + 1}`}
+            ← back
           </button>
-        ))}
-      </div>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            {allCards.map((_, i) => (
+              <div
+                key={i}
+                onClick={() => { setActiveCard(i); setExpanded(false) }}
+                style={{
+                  width: i === activeCard ? '20px' : '6px',
+                  height: '6px',
+                  borderRadius: '3px',
+                  background: i === activeCard ? accent : 'rgba(255,255,255,0.2)',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                }}
+              />
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {activeCard > 0 && (
+              <button onClick={() => { setActiveCard(c => c - 1); setExpanded(false) }} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '50%', width: '28px', height: '28px', color: 'white', cursor: 'pointer', fontSize: '12px' }}>←</button>
+            )}
+            {activeCard < allCardsLength - 1 && (
+              <button onClick={() => { setActiveCard(c => c + 1); setExpanded(false) }} style={{ background: accent, border: 'none', borderRadius: '50%', width: '28px', height: '28px', color: '#0a0a0a', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}>→</button>
+            )}
+          </div>
+        </div>
 
-      {/* Main destination card */}
-      <div key={activeTab} style={{
-        background: 'var(--bg-card)', border: '1px solid var(--border)',
-        borderRadius: 'var(--radius)', padding: '1.5rem',
-        marginBottom: '1rem', animation: 'fadeIn 0.4s ease'
-      }}>
-      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2rem, 6vw, 2.8rem)', lineHeight: '1.1', marginBottom: '8px', letterSpacing: '-0.01em' }}>
-  {dest.name}
-</div>  
-        <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '1.25rem', lineHeight: '1.6' }}>
+        {/* Card label */}
+        <div style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: isStretch ? purple : accent, marginBottom: '0.75rem', fontWeight: '500' }}>
+          {isStretch ? '✦ Stretch goal' : activeCard === 0 ? '✦ Best match' : `Option ${activeCard + 1}`}
+        </div>
+
+        {/* Destination name */}
+        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2.2rem, 8vw, 3.2rem)', lineHeight: '1.05', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
+          {dest.country_emoji} {dest.name}
+        </div>
+
+        {/* Tagline */}
+        <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '1.5rem', maxWidth: '400px' }}>
           {dest.tagline}
         </div>
 
-        {/* Cost breakdown */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '1.25rem' }}>
-          {[
-            { label: 'Partner 1', cost: dest.p1_cost, sym: p1sym, days: dest.p1_days_income, color: 'var(--accent)' },
-            { label: 'Partner 2', cost: dest.p2_cost, sym: p2sym, days: dest.p2_days_income, color: '#9c7ec4' },
-          ].map(p => (
-            <div key={p.label} style={{
-              background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)',
-              padding: '1rem', border: '1px solid var(--border)'
-            }}>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{p.label}</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: '500', color: p.color, fontFamily: "'Playfair Display', serif" }}>
-                {p.sym}{p.cost.toLocaleString()}
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>{p.days} days income</div>
+        {/* Cost pills */}
+        {!isStretch && (
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+            <div style={{ background: 'rgba(255,107,53,0.12)', border: '1px solid rgba(255,107,53,0.25)', borderRadius: '100px', padding: '8px 16px', fontSize: '13px' }}>
+              <span style={{ color: 'var(--text-muted)', marginRight: '6px' }}>P1</span>
+              <span style={{ color: accent, fontWeight: '500' }}>{p1sym}{dest.p1_cost?.toLocaleString()}</span>
+              <span style={{ color: 'var(--text-muted)', marginLeft: '4px', fontSize: '11px' }}>{dest.p1_days_income}d income</span>
             </div>
-          ))}
-        </div>
-
-        {/* Fairness bar */}
-        <div style={{ marginBottom: '1.25rem' }}>
-          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>{dest.fairness_note}</div>
-          <div style={{ height: '4px', borderRadius: '2px', background: 'var(--bg-elevated)', overflow: 'hidden' }}>
-            <div style={{
-              height: '100%', borderRadius: '2px',
-              background: 'linear-gradient(90deg, var(--accent), #9c7ec4)',
-              width: `${Math.round((dest.p1_days_income / (dest.p1_days_income + dest.p2_days_income)) * 100)}%`
-            }} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-            <span>P1 — {dest.p1_days_income}d</span>
-            <span>P2 — {dest.p2_days_income}d</span>
-          </div>
-        </div>
-
-        {/* Why it works */}
-        <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.25rem', marginBottom: '1.25rem' }}>
-          <div style={{ fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Why it works</div>
-          <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.7' }}>{dest.why_it_works}</div>
-        </div>
-
-        {/* Routing note */}
-        <div style={{
-          background: 'var(--bg-elevated)', borderRadius: 'var(--radius-sm)',
-          padding: '12px 14px', marginBottom: '1rem',
-          border: '1px solid var(--border)', fontSize: '13px', color: 'var(--text-secondary)'
-        }}>
-          ✈ {dest.routing_note}
-        </div>
-
-        {/* Savings scenario */}
-        {dest.savings_scenario && (
-          <div style={{
-            borderLeft: '2px solid var(--accent)', paddingLeft: '12px',
-            fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.6'
-          }}>
-            {dest.savings_scenario}
+            <div style={{ background: 'rgba(156,126,196,0.12)', border: '1px solid rgba(156,126,196,0.25)', borderRadius: '100px', padding: '8px 16px', fontSize: '13px' }}>
+              <span style={{ color: 'var(--text-muted)', marginRight: '6px' }}>P2</span>
+              <span style={{ color: purple, fontWeight: '500' }}>{p2sym}{dest.p2_cost?.toLocaleString()}</span>
+              <span style={{ color: 'var(--text-muted)', marginLeft: '4px', fontSize: '11px' }}>{dest.p2_days_income}d income</span>
+            </div>
           </div>
         )}
+
+        {/* Stretch goal content */}
+        {isStretch && (
+          <div style={{ background: 'rgba(156,126,196,0.1)', border: '1px solid rgba(156,126,196,0.2)', borderRadius: 'var(--radius)', padding: '1rem', marginBottom: '1.5rem' }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>{dest.what_it_takes}</div>
+          </div>
+        )}
+
+        {/* Expand button */}
+        {!isStretch && (
+          <button
+            onClick={() => setExpanded(e => !e)}
+            style={{
+              background: 'none',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '100px',
+              padding: '10px 20px',
+              color: 'var(--text-secondary)',
+              fontSize: '13px',
+              cursor: 'pointer',
+              alignSelf: 'flex-start',
+              marginBottom: '1rem',
+              transition: 'all 0.2s',
+            }}
+          >
+            {expanded ? 'Less details ↑' : 'More details ↓'}
+          </button>
+        )}
+
+        {/* Expanded details */}
+        {expanded && !isStretch && (
+          <div style={{ animation: 'fadeSlideUp 0.3s ease', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '1.25rem', paddingBottom: '2rem' }}>
+
+            {/* Cost breakdown */}
+            {dest.cost_breakdown && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', marginBottom: '1.25rem' }}>
+                {[
+                  { label: 'P1 Flight', value: dest.cost_breakdown.flights_p1, icon: '✈️' },
+                  { label: 'P2 Flight', value: dest.cost_breakdown.flights_p2, icon: '✈️' },
+                  { label: 'Lodging', value: dest.cost_breakdown.lodging_total, icon: '🏨' },
+                  { label: 'Food', value: dest.cost_breakdown.food_total, icon: '🍽️' },
+                  { label: 'Activities', value: dest.cost_breakdown.activities_total, icon: '🎯' },
+                ].map(item => (
+                  <div key={item.label} style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '10px 6px',
+                    textAlign: 'center',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                  }}>
+                    <div style={{ fontSize: '16px', marginBottom: '4px' }}>{item.icon}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px' }}>{item.label}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-primary)', fontWeight: '500' }}>${item.value}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {dest.lodging_note && (
+              <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '10px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                🏨 {dest.lodging_note}
+              </div>
+            )}
+
+            <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.7', marginBottom: '1rem' }}>
+              {dest.why_it_works}
+            </div>
+
+            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '10px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+              ✈ {dest.routing_note}
+            </div>
+
+            <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '10px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+              🌤 {dest.season_note}
+            </div>
+
+            <div style={{ borderLeft: `2px solid ${accent}`, paddingLeft: '12px', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '1rem' }}>
+              {dest.savings_scenario}
+            </div>
+
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+              {dest.fairness_note}
+            </div>
+
+            <button
+              onClick={() => navigate('/quiz')}
+              style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '100px', padding: '10px 24px', color: 'var(--text-muted)', fontSize: '13px', cursor: 'pointer' }}
+            >
+              Plan another trip
+            </button>
+          </div>
+        )}
+
+        {/* Swipe hint */}
+        {!expanded && (
+          <div style={{ marginTop: 'auto', paddingTop: '2rem', fontSize: '12px', color: 'rgba(255,255,255,0.15)', letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'center' }}>
+            swipe to explore ←→
+          </div>
+        )}
+
       </div>
 
-      {/* Stretch goal */}
-      {result.stretch_goal && (
-        <div style={{
-          background: 'var(--bg-card)', border: '1px solid var(--border)',
-          borderRadius: 'var(--radius)', padding: '1.25rem', marginBottom: '1.5rem'
-        }}>
-          <div style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-            Stretch goal
-          </div>
-          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', marginBottom: '4px' }}>
-            {result.stretch_goal.name}
-          </div>
-          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '10px' }}>
-            {result.stretch_goal.tagline}
-          </div>
-          <div style={{ borderLeft: '2px solid #9c7ec4', paddingLeft: '12px', fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.6' }}>
-            {result.stretch_goal.what_it_takes}
-          </div>
+      {/* Couple summary */}
+      {result.couple_summary && (
+        <div style={{ padding: '1.5rem', background: 'var(--bg-card)', borderTop: '1px solid var(--border)', fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.7', textAlign: 'center' }}>
+          {result.couple_summary}
         </div>
       )}
-
-      {/* Plan again */}
-      <button
-        onClick={() => navigate('/quiz')}
-        style={{
-          width: '100%', padding: '16px',
-          background: 'transparent',
-          border: '1px solid var(--border)',
-          borderRadius: '100px',
-          color: 'var(--text-secondary)',
-          fontSize: '14px', fontWeight: '500',
-          marginBottom: '3rem',
-          transition: 'all 0.2s',
-        }}
-        onMouseEnter={e => { e.target.style.borderColor = 'var(--accent)'; e.target.style.color = 'var(--accent)' }}
-        onMouseLeave={e => { e.target.style.borderColor = 'var(--border)'; e.target.style.color = 'var(--text-secondary)' }}
-      >
-        Plan another trip
-      </button>
 
     </div>
   )
