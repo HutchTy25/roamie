@@ -194,6 +194,34 @@ export default function Quiz() {
           />
         </div>
       </div>
+      {/* Routing selector */}
+      <div style={{ width: '100%', marginTop: '0.5rem', marginBottom: '1rem' }}>
+        <div style={{ fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>How are you getting there?</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {[
+            { id: 'fly_together', label: '✈️ Fly to each other first, then together', desc: 'One flies to the other, then you both fly to destination' },
+            { id: 'meet', label: '🛬 Meet at the destination', desc: 'Both fly separately to the same place' },
+            { id: 'drive', label: '🚗 Drive', desc: 'One or both partners driving' },
+          ].map(r => (
+            <div
+              key={r.id}
+              onClick={() => setData(d => ({ ...d, routing: r.id }))}
+              style={{
+                padding: '12px 14px',
+                borderRadius: 'var(--radius)',
+                border: `1px solid ${data.routing === r.id ? accentBorder : 'var(--border)'}`,
+                background: data.routing === r.id ? accentSoft : 'var(--bg-card)',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+            >
+              <div style={{ fontSize: '13px', fontWeight: '500', color: data.routing === r.id ? accent : 'var(--text-primary)', marginBottom: '2px' }}>{r.label}</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{r.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <button
         style={{ ...base.btn, ...((!data.p1.city.trim() || !data.p2.city.trim()) ? base.btnDisabled : {}) }}
         disabled={!data.p1.city.trim() || !data.p2.city.trim()}
