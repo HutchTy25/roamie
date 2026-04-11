@@ -11,6 +11,16 @@ export default function Results() {
   const [activeCard, setActiveCard] = useState(0)
   const [expanded, setExpanded] = useState(false)
   const [photos, setPhotos] = useState({})
+  const [messageIndex, setMessageIndex] = useState(0)
+
+const loadingMessages = [
+  "Checking flight routes from both cities...",
+  "Comparing currencies and budgets...",
+  "Finding hidden gems for your vibe...",
+  "Checking weather for your dates...",
+  "Calculating fairness between partners...",
+  "Almost there — building your breakdown...",
+]
   const startX = useRef(null)
 
   const accent = '#FF6B35'
@@ -45,6 +55,14 @@ export default function Results() {
     })
   }, [result])
 
+  useEffect(() => {
+  if (!loading) return
+  const interval = setInterval(() => {
+    setMessageIndex(i => (i + 1) % loadingMessages.length)
+  }, 2500)
+  return () => clearInterval(interval)
+}, [loading])
+
   function handleTouchStart(e) {
     startX.current = e.touches[0].clientX
   }
@@ -75,6 +93,7 @@ PARTNER DETAILS:
 - Partner 2: Lives in ${data.p2.city} | Currency: ${data.p2.currency} (${p2sym}) | Max budget: ${p2sym}${data.p2.maxSpend.toLocaleString()} TOTAL for the entire trip
 - Travel dates: ${data.dates.from} to ${data.dates.to}
 - Vibes both want: ${data.vibes?.join(', ') || 'open to anything'}
+- Region preference: ${data.region === 'surprise' ? 'Open to anywhere globally' : data.region.replace('_', ' ')}
 
 REALISM REQUIREMENTS:
 - Use REAL 2024/2025 flight prices for specific routes from ${data.p1.city} and ${data.p2.city}
@@ -182,13 +201,34 @@ async function fetchPhoto(cityName, index) {
   const p1sym = CURR_SYMBOLS[data?.p1?.currency] || ''
   const p2sym = CURR_SYMBOLS[data?.p2?.currency] || ''
 
-  if (loading) return (
+if (loading) return (
     <div style={{
       minHeight: '100vh', display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center', gap: '1.5rem',
-      background: 'radial-gradient(ellipse at 50% 0%, rgba(255,107,53,0.06) 0%, transparent 70%)'
+      background: 'radial-gradient(ellipse at 50% 0%, rgba(255,107,53,0.06) 0%, transparent 70%)',
+      padding: '2rem',
     }}>
-      <style>{`@keyframes pulse { 0%,80%,100%{transform:translateY(0);opacity:0.4} 40%{transform:translateY(-8px);opacity:1} }`}</style>
+      <style>{`
+        @keyframes pulse { 0%,80%,100%{transform:translateY(0);opacity:0.4} 40%{transform:translateY(-8px);opacity:1} }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+      `}</style>
+
+      <div style={{ fontSize: '2.5rem', animation: 'float 3s ease-in-out infinite' }}>✈️</div>
+
+      <div style={{ textAlign: 'center', maxWidth: '300px' }}>
+        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', marginBottom: '12px', color: 'var(--text-primary)' }}>
+          Finding your trips...
+        </div>
+        <div style={{
+          fontSize: '14px',
+          color: accent,
+          minHeight: '24px',
+          fontStyle: 'italic',
+        }}>
+          {loadingMessages[messageIndex]}
+        </div>
+      </div>
+
       <div style={{ display: 'flex', gap: '8px' }}>
         {[0, 1, 2].map(i => (
           <div key={i} style={{
@@ -198,16 +238,20 @@ async function fetchPhoto(cityName, index) {
           }} />
         ))}
       </div>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', marginBottom: '8px' }}>
-          Finding your trips...
-        </div>
-        <div style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>
-          Checking budgets, currencies, weather & routes
-        </div>
+
+      <div style={{
+        marginTop: '1rem',
+        fontSize: '12px',
+        color: 'var(--text-muted)',
+        textAlign: 'center',
+        maxWidth: '260px',
+        lineHeight: '1.6'
+      }}>
+        Checking real flight routes, currencies, and weather for your exact dates
       </div>
     </div>
   )
+
 
   if (error || !result) return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '2rem' }}>

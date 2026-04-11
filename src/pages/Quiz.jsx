@@ -50,12 +50,13 @@ export default function Quiz() {
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
   const [data, setData] = useState({
-    p1: { city: '', currency: 'USD', maxSpend: 1500 },
-    p2: { city: '', currency: 'GBP', maxSpend: 1200 },
-    vibes: [],
-    dates: { from: '', to: '' },
-  })
-
+  p1: { city: '', currency: 'USD', maxSpend: 1500 },
+  p2: { city: '', currency: 'GBP', maxSpend: 1200 },
+  vibes: [],
+  dates: { from: '', to: '' },
+  routing: 'fly_together',
+  region: 'surprise',
+})
   const accent = '#FF6B35'
   const accentSoft = 'rgba(255,107,53,0.12)'
   const accentBorder = 'rgba(255,107,53,0.35)'
@@ -172,6 +173,40 @@ export default function Quiz() {
     // Step 0 — Both cities side by side
     <div style={base.container}>
       <div style={base.progress}><div style={base.progressFill} /></div>
+      {/* Region selector */}
+<div style={{ width: '100%', marginBottom: '1.5rem' }}>
+  <div style={{ fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>Where in the world?</div>
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+    {[
+      { id: 'surprise', label: 'Surprise us', emoji: '🌍' },
+      { id: 'europe', label: 'Europe', emoji: '🏰' },
+      { id: 'se_asia', label: 'SE Asia', emoji: '🌏' },
+      { id: 'caribbean', label: 'Caribbean', emoji: '🏝️' },
+      { id: 'latin_america', label: 'Latin America', emoji: '🌎' },
+      { id: 'middle_east', label: 'Middle East', emoji: '🕌' },
+      { id: 'north_america', label: 'North America', emoji: '🗽' },
+      { id: 'africa', label: 'Africa', emoji: '🦁' },
+      { id: 'oceania', label: 'Oceania', emoji: '🦘' },
+    ].map(r => (
+      <div
+        key={r.id}
+        onClick={() => setData(d => ({ ...d, region: r.id }))}
+        style={{
+          padding: '10px 8px',
+          borderRadius: 'var(--radius)',
+          border: `1px solid ${data.region === r.id ? accentBorder : 'var(--border)'}`,
+          background: data.region === r.id ? accentSoft : 'var(--bg-card)',
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+          textAlign: 'center',
+        }}
+      >
+        <div style={{ fontSize: '20px', marginBottom: '4px' }}>{r.emoji}</div>
+        <div style={{ fontSize: '11px', fontWeight: '500', color: data.region === r.id ? accent : 'var(--text-secondary)' }}>{r.label}</div>
+      </div>
+    ))}
+  </div>
+</div>
       <div style={base.question}>Where are you both based?</div>
       <div style={base.sub}>Your home cities — we'll find what works from both</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', width: '100%', marginBottom: '1rem' }}>
