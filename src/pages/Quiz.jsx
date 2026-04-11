@@ -56,6 +56,7 @@ export default function Quiz() {
   dates: { from: '', to: '' },
   routing: 'fly_together',
   region: 'surprise',
+  accommodation: 'mid',
 })
   const accent = '#FF6B35'
   const accentSoft = 'rgba(255,107,53,0.12)'
@@ -270,6 +271,35 @@ export default function Quiz() {
     <div style={base.container}>
       <div style={base.progress}><div style={base.progressFill} /></div>
       <button style={base.back} onClick={back}>← back</button>
+      {/* Accommodation tier */}
+<div style={{ width: '100%', marginBottom: '1.5rem' }}>
+  <div style={{ fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>Accommodation style</div>
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+    {[
+      { id: 'budget', label: 'Budget', emoji: '🎒', desc: 'Hostels & budget hotels' },
+      { id: 'mid', label: 'Mid-range', emoji: '🏨', desc: '3-star & Airbnbs' },
+      { id: 'luxe', label: 'Luxe', emoji: '🥂', desc: 'Boutique & 4-5 star' },
+    ].map(t => (
+      <div
+        key={t.id}
+        onClick={() => setData(d => ({ ...d, accommodation: t.id }))}
+        style={{
+          padding: '12px 8px',
+          borderRadius: 'var(--radius)',
+          border: `1px solid ${data.accommodation === t.id ? accentBorder : 'var(--border)'}`,
+          background: data.accommodation === t.id ? accentSoft : 'var(--bg-card)',
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+          textAlign: 'center',
+        }}
+      >
+        <div style={{ fontSize: '22px', marginBottom: '4px' }}>{t.emoji}</div>
+        <div style={{ fontSize: '12px', fontWeight: '500', color: data.accommodation === t.id ? accent : 'var(--text-primary)', marginBottom: '2px' }}>{t.label}</div>
+        <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{t.desc}</div>
+      </div>
+    ))}
+  </div>
+</div>
       <div style={base.question}>What are your budgets?</div>
       <div style={base.sub}>Max each person wants to spend — this is a hard ceiling</div>
 

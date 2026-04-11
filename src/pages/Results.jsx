@@ -94,6 +94,7 @@ PARTNER DETAILS:
 - Travel dates: ${data.dates.from} to ${data.dates.to}
 - Vibes both want: ${data.vibes?.join(', ') || 'open to anything'}
 - Region preference: ${data.region === 'surprise' ? 'Open to anywhere globally' : data.region.replace('_', ' ')}
+- Accommodation preference: ${data.accommodation === 'budget' ? 'Budget — hostels and cheap hotels' : data.accommodation === 'luxe' ? 'Luxe — boutique hotels and 4-5 star properties' : 'Mid-range — 3 star hotels and private Airbnbs'}
 
 REALISM REQUIREMENTS:
 - Use REAL 2024/2025 flight prices for specific routes from ${data.p1.city} and ${data.p2.city}
@@ -338,7 +339,24 @@ if (loading) return (
         <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '1.5rem', maxWidth: '400px' }}>
           {dest.tagline}
         </div>
-
+{/* Price range preview */}
+{!isStretch && dest.p1_cost && dest.p2_cost && (
+  <div style={{
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '8px',
+    background: 'rgba(255,255,255,0.08)',
+    border: '1px solid rgba(255,255,255,0.12)',
+    borderRadius: '100px',
+    padding: '6px 14px',
+    marginBottom: '1.5rem',
+  }}>
+    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>est. per person</span>
+    <span style={{ fontSize: '13px', fontWeight: '500', color: accent }}>{p1sym}{dest.p1_cost?.toLocaleString()}</span>
+    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>—</span>
+    <span style={{ fontSize: '13px', fontWeight: '500', color: purple }}>{p2sym}{dest.p2_cost?.toLocaleString()}</span>
+  </div>
+)}
         {/* Bottom card */}
         <div style={{
           background: 'rgba(10,10,10,0.75)',
