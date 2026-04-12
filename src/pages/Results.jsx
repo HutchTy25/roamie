@@ -50,11 +50,14 @@ const loadingMessages = [
   }, [])
 
   useEffect(() => {
-    if (!result) return
-    result.destinations?.forEach((dest, i) => {
-      fetchPhoto(dest.name, i)
-    })
-  }, [result])
+  if (!result) return
+  result.destinations?.forEach((dest, i) => {
+    fetchPhoto(dest.name, i)
+  })
+  if (result.stretch_goal?.name) {
+    fetchPhoto(result.stretch_goal.name, 'stretch')
+  }
+}, [result])
 
   useEffect(() => {
   if (!result) return
@@ -185,29 +188,35 @@ Return exactly 3 destinations ranked by joint affordability. Be brutally realist
 
 function getPhotoQuery() {
   const vibes = data.vibes || []
-  if (vibes.includes('romantic')) return 'romantic cityscape sunset'
-  if (vibes.includes('beach')) return 'beach sunset aerial'
-  if (vibes.includes('nature')) return 'landscape nature scenic'
-  if (vibes.includes('foodie')) return 'restaurant food street'
-  if (vibes.includes('landmarks')) return 'landmark architecture iconic'
-  if (vibes.includes('city')) return 'cityscape skyline aerial'
-  return 'travel scenic landscape'
+  if (vibes.includes('romantic')) return 'romantic sunset golden hour couple travel'
+  if (vibes.includes('beach')) return 'tropical beach aerial turquoise water paradise'
+  if (vibes.includes('nature')) return 'dramatic landscape mountains scenic wilderness'
+  if (vibes.includes('foodie')) return 'vibrant street food market city culture'
+  if (vibes.includes('landmarks')) return 'iconic landmark architecture historic travel'
+  if (vibes.includes('city')) return 'city skyline golden hour aerial architecture'
+  if (vibes.includes('surprise')) return 'breathtaking travel destination scenic aerial'
+  return 'stunning travel destination landscape aerial'
 }
 
 async function fetchPhoto(cityName, index) {
-    try {
-      const res = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(cityName + ' ' + getPhotoQuery())}&per_page=1&orientation=portrait&content_filter=high`,
-        { headers: { Authorization: `Client-ID ${UNSPLASH_KEY}` } }
-      )
-      const json = await res.json()
-      if (json.results?.[0]?.urls?.regular) {
-        setPhotos(prev => ({ ...prev, [index]: json.results[0].urls.regular }))
-      }
-    } catch (e) {
-      console.log('Photo fetch failed:', e)
-    }
+  try {
+    const city = cityName.split(',')[0].trim()
+    const query = `${city} ${getPhotoQuery()}`
+    const res = await fetch(
+      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape&order_by=relevant&content_filter=high`,
+      { headers: { Authorization: `Client-ID ${UNSPLASH_KEY}` } }
+    )
+    const json = await res.json()
+    if (json.results?.length > 0) {
+  const best = json.results.reduce((prev, current) => 
+    (current.likes > prev.likes) ? current : prev
+  )
+  setPhotos(prev => ({ ...prev, [index]: best.urls.regular }))
+}
+  } catch (e) {
+    console.log('Photo fetch failed:', e)
   }
+}
 
   const p1sym = CURR_SYMBOLS[data?.p1?.currency] || ''
   const p2sym = CURR_SYMBOLS[data?.p2?.currency] || ''
@@ -287,226 +296,231 @@ if (loading) return (
       `}</style>
 
       <div
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
+  onTouchStart={handleTouchStart}
+  onTouchEnd={handleTouchEnd}
+  style={{
+    minHeight: '100vh',
+    background: '#0a0a0a',
+    display: 'flex',
+    flexDirection: 'column',
+    padding: '3rem 1.5rem 2rem',
+    position: 'relative',
+  }}
+>
+  {/* Top bar */}
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+    <button
+      onClick={() => navigate('/quiz')}
+      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '13px', cursor: 'pointer', padding: 0 }}
+    >
+      ← back
+    </button>
+    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+      {allCards.map((_, i) => (
+        <div
+          key={i}
+          onClick={() => { setActiveCard(i); setExpanded(false) }}
+          style={{
+            width: i === activeCard ? '20px' : '6px',
+            height: '6px',
+            borderRadius: '3px',
+            background: i === activeCard ? accent : 'rgba(255,255,255,0.2)',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+          }}
+        />
+      ))}
+    </div>
+    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+      {activeCard > 0 && (
+        <button onClick={() => { setActiveCard(c => c - 1); setExpanded(false) }} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '50%', width: '28px', height: '28px', color: 'white', cursor: 'pointer', fontSize: '12px' }}>←</button>
+      )}
+      {activeCard < allCardsLength - 1 && (
+        <button onClick={() => { setActiveCard(c => c + 1); setExpanded(false) }} style={{ background: accent, border: 'none', borderRadius: '50%', width: '28px', height: '28px', color: '#0a0a0a', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}>→</button>
+      )}
+    </div>
+  </div>
+
+  {/* Card label */}
+  <div style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: isStretch ? purple : accent, marginBottom: '0.75rem', fontWeight: '500' }}>
+    {isStretch ? '✦ Stretch goal' : activeCard === 0 ? '✦ Best match' : `Option ${activeCard + 1}`}
+  </div>
+
+  {/* Photo card at top */}
+  <div style={{
+    width: '100%',
+    height: '220px',
+    borderRadius: '20px',
+    overflow: 'hidden',
+    marginBottom: '1.25rem',
+    position: 'relative',
+    background: photos[isStretch ? 'stretch' : activeCard]
+  ? `url(${photos[isStretch ? 'stretch' : activeCard]}) center 30%/cover no-repeat`
+  : CARD_GRADIENTS[activeCard % CARD_GRADIENTS.length],
+  }}>
+    {/* Gradient overlay on photo */}
+    <div style={{
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      height: '60%',
+      background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)',
+    }} />
+    {/* Destination name on photo */}
+    <div style={{
+      position: 'absolute',
+      bottom: '1rem',
+      left: '1rem',
+      right: '1rem',
+    }}>
+      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(1.6rem, 6vw, 2.2rem)', lineHeight: '1.1', color: 'white', textShadow: '0 2px 8px rgba(0,0,0,0.5)' }}>
+        {dest.country_emoji} {dest.name}
+      </div>
+    </div>
+  </div>
+
+  {/* Tagline */}
+  <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '1.25rem', maxWidth: '400px' }}>
+    {dest.tagline}
+  </div>
+
+  {/* Bottom card */}
+  <div style={{
+    background: 'rgba(20,20,20,0.95)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    borderRadius: '20px',
+    padding: '1.25rem',
+    border: '1px solid rgba(255,255,255,0.06)',
+  }}>
+
+    {/* Cost pills */}
+    {!isStretch && (
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ background: 'rgba(255,107,53,0.15)', border: '1px solid rgba(255,107,53,0.3)', borderRadius: '100px', padding: '8px 14px', fontSize: '13px' }}>
+          <span style={{ color: 'rgba(255,255,255,0.5)', marginRight: '6px' }}>P1</span>
+          <span style={{ color: accent, fontWeight: '500' }}>{p1sym}{dest.p1_cost?.toLocaleString()}</span>
+          <span style={{ color: 'rgba(255,255,255,0.4)', marginLeft: '4px', fontSize: '11px' }}>{dest.p1_days_income}d income</span>
+        </div>
+        <div style={{ background: 'rgba(156,126,196,0.15)', border: '1px solid rgba(156,126,196,0.3)', borderRadius: '100px', padding: '8px 14px', fontSize: '13px' }}>
+          <span style={{ color: 'rgba(255,255,255,0.5)', marginRight: '6px' }}>P2</span>
+          <span style={{ color: purple, fontWeight: '500' }}>{p2sym}{dest.p2_cost?.toLocaleString()}</span>
+          <span style={{ color: 'rgba(255,255,255,0.4)', marginLeft: '4px', fontSize: '11px' }}>{dest.p2_days_income}d income</span>
+        </div>
+      </div>
+    )}
+
+    {/* Stretch goal content */}
+    {isStretch && (
+      <div style={{ background: 'rgba(156,126,196,0.1)', border: '1px solid rgba(156,126,196,0.25)', borderRadius: 'var(--radius)', padding: '1rem', marginBottom: '1rem' }}>
+        <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.6' }}>{dest.what_it_takes}</div>
+      </div>
+    )}
+
+    {/* Expand button */}
+    {!isStretch && (
+      <button
+        onClick={() => setExpanded(e => !e)}
         style={{
-          minHeight: '100vh',
-        background: photos[activeCard]
-  ? `linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.85) 60%), url(${photos[activeCard]}) center/cover no-repeat`
-  : CARD_GRADIENTS[activeCard % CARD_GRADIENTS.length],  
-          display: 'flex',
-          flexDirection: 'column',
-          padding: '3rem 1.5rem 2rem',
-          position: 'relative',
-          transition: 'background 0.5s ease',
+          background: 'none',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '100px',
+          padding: '10px 20px',
+          color: 'rgba(255,255,255,0.7)',
+          fontSize: '13px',
+          cursor: 'pointer',
+          alignSelf: 'flex-start',
+          marginBottom: expanded ? '1rem' : '0',
+          transition: 'all 0.2s',
+          display: 'block',
         }}
       >
-        {/* Top bar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <button
-            onClick={() => navigate('/quiz')}
-            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '13px', cursor: 'pointer', padding: 0 }}
-          >
-            ← back
-          </button>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            {allCards.map((_, i) => (
-              <div
-                key={i}
-                onClick={() => { setActiveCard(i); setExpanded(false) }}
-                style={{
-                  width: i === activeCard ? '20px' : '6px',
-                  height: '6px',
-                  borderRadius: '3px',
-                  background: i === activeCard ? accent : 'rgba(255,255,255,0.2)',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                }}
-              />
+        {expanded ? 'Less details ↑' : 'More details ↓'}
+      </button>
+    )}
+
+    {/* Expanded details */}
+    {expanded && !isStretch && (
+      <div style={{ animation: 'fadeSlideUp 0.3s ease', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.25rem', marginTop: '1rem' }}>
+
+        {dest.cost_breakdown && (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px', marginBottom: '1.25rem' }}>
+            {[
+              { label: 'P1 Flight', value: dest.cost_breakdown.flights_p1, icon: '✈️' },
+              { label: 'P2 Flight', value: dest.cost_breakdown.flights_p2, icon: '✈️' },
+              { label: 'Lodging', value: dest.cost_breakdown.lodging_total, icon: '🏨' },
+              { label: 'Food', value: dest.cost_breakdown.food_total, icon: '🍽️' },
+              { label: 'Activities', value: dest.cost_breakdown.activities_total, icon: '🎯' },
+            ].map(item => (
+              <div key={item.label} style={{
+                background: 'rgba(255,255,255,0.06)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '8px 4px',
+                textAlign: 'center',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}>
+                <div style={{ fontSize: '14px', marginBottom: '3px' }}>{item.icon}</div>
+                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '2px' }}>{item.label}</div>
+                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)', fontWeight: '500' }}>${item.value}</div>
+              </div>
             ))}
           </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {activeCard > 0 && (
-              <button onClick={() => { setActiveCard(c => c - 1); setExpanded(false) }} style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '50%', width: '28px', height: '28px', color: 'white', cursor: 'pointer', fontSize: '12px' }}>←</button>
-            )}
-            {activeCard < allCardsLength - 1 && (
-              <button onClick={() => { setActiveCard(c => c + 1); setExpanded(false) }} style={{ background: accent, border: 'none', borderRadius: '50%', width: '28px', height: '28px', color: '#0a0a0a', cursor: 'pointer', fontSize: '12px', fontWeight: '700' }}>→</button>
-            )}
+        )}
+
+        {dest.lodging_note && (
+          <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '10px', fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
+            🏨 {dest.lodging_note}
           </div>
+        )}
+
+        <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.65)', lineHeight: '1.7', marginBottom: '1rem' }}>
+          {dest.why_it_works}
         </div>
 
-        {/* Card label */}
-        <div style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: isStretch ? purple : accent, marginBottom: '0.75rem', fontWeight: '500' }}>
-          {isStretch ? '✦ Stretch goal' : activeCard === 0 ? '✦ Best match' : `Option ${activeCard + 1}`}
+        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
+          ✈ {dest.routing_note}
         </div>
 
-        {/* Destination name */}
-        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: 'clamp(2.2rem, 8vw, 3.2rem)', lineHeight: '1.05', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>
-          {dest.country_emoji} {dest.name}
+        <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
+          🌤 {dest.season_note}
         </div>
 
-        {/* Tagline */}
-        <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '1.5rem', maxWidth: '400px' }}>
-          {dest.tagline}
+        <div style={{ borderLeft: `2px solid ${accent}`, paddingLeft: '12px', fontSize: '13px', color: 'rgba(255,255,255,0.65)', lineHeight: '1.6', marginBottom: '1rem' }}>
+          {dest.savings_scenario}
         </div>
-{/* Price range preview */}
-{!isStretch && dest.p1_cost && dest.p2_cost && (
-  <div style={{
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: '8px',
-    background: 'rgba(255,255,255,0.08)',
-    border: '1px solid rgba(255,255,255,0.12)',
-    borderRadius: '100px',
-    padding: '6px 14px',
-    marginBottom: '1.5rem',
-  }}>
-    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>est. per person</span>
-    <span style={{ fontSize: '13px', fontWeight: '500', color: accent }}>{p1sym}{dest.p1_cost?.toLocaleString()}</span>
-    <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)' }}>—</span>
-    <span style={{ fontSize: '13px', fontWeight: '500', color: purple }}>{p2sym}{dest.p2_cost?.toLocaleString()}</span>
+
+        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem' }}>
+          {dest.fairness_note}
+        </div>
+
+        <button
+          onClick={() => navigate('/quiz')}
+          style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '100px', padding: '10px 24px', color: 'rgba(255,255,255,0.5)', fontSize: '13px', cursor: 'pointer' }}
+        >
+          Plan another trip
+        </button>
+      </div>
+    )}
+
+    {/* Swipe hint */}
+    {!expanded && (
+      <div style={{ paddingTop: '1rem', fontSize: '11px', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'center' }}>
+        swipe to explore ←→
+      </div>
+    )}
+
+  </div>
+
+</div>
+
+{/* Couple summary */}
+{result.couple_summary && (
+  <div style={{ padding: '1.5rem', background: 'var(--bg-card)', borderTop: '1px solid var(--border)', fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.7', textAlign: 'center' }}>
+    {result.couple_summary}
   </div>
 )}
-        {/* Bottom card */}
-        <div style={{
-          background: 'rgba(10,10,10,0.75)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          borderRadius: '20px 20px 0 0',
-          padding: '1.25rem 1.25rem 2rem',
-          marginTop: 'auto',
-          marginLeft: '-1.5rem',
-          marginRight: '-1.5rem',
-          marginBottom: '-2rem',
-        }}>
 
-          {/* Cost pills */}
-          {!isStretch && (
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
-              <div style={{ background: 'rgba(255,107,53,0.15)', border: '1px solid rgba(255,107,53,0.3)', borderRadius: '100px', padding: '8px 14px', fontSize: '13px' }}>
-                <span style={{ color: 'rgba(255,255,255,0.5)', marginRight: '6px' }}>P1</span>
-                <span style={{ color: accent, fontWeight: '500' }}>{p1sym}{dest.p1_cost?.toLocaleString()}</span>
-                <span style={{ color: 'rgba(255,255,255,0.4)', marginLeft: '4px', fontSize: '11px' }}>{dest.p1_days_income}d income</span>
-              </div>
-              <div style={{ background: 'rgba(156,126,196,0.15)', border: '1px solid rgba(156,126,196,0.3)', borderRadius: '100px', padding: '8px 14px', fontSize: '13px' }}>
-                <span style={{ color: 'rgba(255,255,255,0.5)', marginRight: '6px' }}>P2</span>
-                <span style={{ color: purple, fontWeight: '500' }}>{p2sym}{dest.p2_cost?.toLocaleString()}</span>
-                <span style={{ color: 'rgba(255,255,255,0.4)', marginLeft: '4px', fontSize: '11px' }}>{dest.p2_days_income}d income</span>
-              </div>
-            </div>
-          )}
-
-          {/* Stretch goal content */}
-          {isStretch && (
-            <div style={{ background: 'rgba(156,126,196,0.1)', border: '1px solid rgba(156,126,196,0.25)', borderRadius: 'var(--radius)', padding: '1rem', marginBottom: '1rem' }}>
-              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.6' }}>{dest.what_it_takes}</div>
-            </div>
-          )}
-
-          {/* Expand button */}
-          {!isStretch && (
-            <button
-              onClick={() => setExpanded(e => !e)}
-              style={{
-                background: 'rgba(255,255,255,0.08)',
-                border: '1px solid rgba(255,255,255,0.15)',
-                borderRadius: '100px',
-                padding: '10px 20px',
-                color: 'rgba(255,255,255,0.7)',
-                fontSize: '13px',
-                cursor: 'pointer',
-                alignSelf: 'flex-start',
-                marginBottom: expanded ? '1rem' : '0',
-                transition: 'all 0.2s',
-                display: 'block',
-              }}
-            >
-              {expanded ? 'Less details ↑' : 'More details ↓'}
-            </button>
-          )}
-
-          {/* Expanded details */}
-          {expanded && !isStretch && (
-            <div style={{ animation: 'fadeSlideUp 0.3s ease', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.25rem', marginTop: '1rem' }}>
-
-              {/* Cost breakdown */}
-              {dest.cost_breakdown && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px', marginBottom: '1.25rem' }}>
-                  {[
-                    { label: 'P1 Flight', value: dest.cost_breakdown.flights_p1, icon: '✈️' },
-                    { label: 'P2 Flight', value: dest.cost_breakdown.flights_p2, icon: '✈️' },
-                    { label: 'Lodging', value: dest.cost_breakdown.lodging_total, icon: '🏨' },
-                    { label: 'Food', value: dest.cost_breakdown.food_total, icon: '🍽️' },
-                    { label: 'Activities', value: dest.cost_breakdown.activities_total, icon: '🎯' },
-                  ].map(item => (
-                    <div key={item.label} style={{
-                      background: 'rgba(255,255,255,0.06)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '8px 4px',
-                      textAlign: 'center',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                    }}>
-                      <div style={{ fontSize: '14px', marginBottom: '3px' }}>{item.icon}</div>
-                      <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '2px' }}>{item.label}</div>
-                      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)', fontWeight: '500' }}>${item.value}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {dest.lodging_note && (
-                <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '10px', fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
-                  🏨 {dest.lodging_note}
-                </div>
-              )}
-
-              <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.65)', lineHeight: '1.7', marginBottom: '1rem' }}>
-                {dest.why_it_works}
-              </div>
-
-              <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
-                ✈ {dest.routing_note}
-              </div>
-
-              <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
-                🌤 {dest.season_note}
-              </div>
-
-              <div style={{ borderLeft: `2px solid ${accent}`, paddingLeft: '12px', fontSize: '13px', color: 'rgba(255,255,255,0.65)', lineHeight: '1.6', marginBottom: '1rem' }}>
-                {dest.savings_scenario}
-              </div>
-
-              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem' }}>
-                {dest.fairness_note}
-              </div>
-
-              <button
-                onClick={() => navigate('/quiz')}
-                style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '100px', padding: '10px 24px', color: 'rgba(255,255,255,0.5)', fontSize: '13px', cursor: 'pointer' }}
-              >
-                Plan another trip
-              </button>
-            </div>
-          )}
-
-          {/* Swipe hint */}
-          {!expanded && (
-            <div style={{ paddingTop: '1rem', fontSize: '11px', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'center' }}>
-              swipe to explore ←→
-            </div>
-          )}
-
-        </div>
-
-      </div>
-
-      {/* Couple summary */}
-      {result.couple_summary && (
-        <div style={{ padding: '1.5rem', background: 'var(--bg-card)', borderTop: '1px solid var(--border)', fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.7', textAlign: 'center' }}>
-          {result.couple_summary}
-        </div>
-      )}
-
-    </div>
+</div>
   )
 }
