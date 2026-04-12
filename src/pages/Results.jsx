@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
+import posthog from 'posthog-js'
 
 export default function Results() {
   const location = useLocation()
@@ -54,6 +55,15 @@ const loadingMessages = [
       fetchPhoto(dest.name, i)
     })
   }, [result])
+
+  useEffect(() => {
+  if (!result) return
+  posthog.capture('results_viewed', {
+    destination_1: result.destinations?.[0]?.name,
+    destination_2: result.destinations?.[1]?.name,
+    destination_3: result.destinations?.[2]?.name,
+  })
+}, [result])
 
   useEffect(() => {
   if (!loading) return

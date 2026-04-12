@@ -1,9 +1,16 @@
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import posthog from 'posthog-js'
 
 export default function Home() {
   const navigate = useNavigate()
   const [visible, setVisible] = useState(false)
+const [tripCount, setTripCount] = useState(0)
+
+useEffect(() => {
+  const count = parseInt(localStorage.getItem('roamie_trip_count') || '0')
+  setTripCount(count)
+}, [])
 
   useEffect(() => {
     setTimeout(() => setVisible(true), 100)
@@ -187,6 +194,19 @@ export default function Home() {
         textAlign: 'center',
         marginBottom: '2rem',
       }}>
+
+{tripCount > 0 && (
+  <div style={{
+    fontSize: '13px',
+    color: accent,
+    marginBottom: '0.5rem',
+    fontWeight: '500',
+    textAlign: 'center',
+  }}>
+    ✦ You've generated {tripCount} {tripCount === 1 ? 'trip' : 'trips'}
+  </div>
+)}
+
         Fill it out together on your next FaceTime 🤙
       </div>
 
