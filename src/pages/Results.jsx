@@ -102,12 +102,21 @@ const loadingMessages = [
     const prompt = `You are Roamie, a real-world couples travel planner with deep knowledge of actual flight prices, accommodation costs, and living expenses globally. Two partners need trip recommendations based on their REAL financial situation.
 
 PARTNER DETAILS:
-- Partner 1: Lives in ${data.p1.city} | Currency: ${data.p1.currency} (${p1sym}) | Max budget: ${p1sym}${data.p1.maxSpend.toLocaleString()} TOTAL for the entire trip
-- Partner 2: Lives in ${data.p2.city} | Currency: ${data.p2.currency} (${p2sym}) | Max budget: ${p2sym}${data.p2.maxSpend.toLocaleString()} TOTAL for the entire trip
+- Partner 1: Lives in ${data.p1.city} | Currency: ${data.p1.currency} (${p1sym}) | Max budget: ${p1sym}${data.p1.maxSpend.toLocaleString()} TOTAL for entire trip including ALL flights
+- Partner 2: Lives in ${data.p2.city} | Currency: ${data.p2.currency} (${p2sym}) | Max budget: ${p2sym}${data.p2.maxSpend.toLocaleString()} TOTAL for entire trip including ALL flights
 - Travel dates: ${data.dates.from} to ${data.dates.to}
-- Vibes both want: ${data.vibes?.join(', ') || 'open to anything'}
-- Region preference: ${data.region === 'surprise' ? 'Open to anywhere globally' : data.region.replace('_', ' ')}
-- Accommodation preference: ${data.accommodation === 'budget' ? 'Budget — hostels and cheap hotels' : data.accommodation === 'luxe' ? 'Luxe — boutique hotels and 4-5 star properties' : 'Mid-range — 3 star hotels and private Airbnbs'}
+- Vibes: ${data.vibes?.join(', ') || 'open to anything'}
+- Routing: ${(() => {
+  if (data.routing === 'fly_together') {
+    return `FLY TOGETHER: Calculate BOTH scenarios and pick the smartest one. SCENARIO A: Partner 1 flies ${data.p1.city} to ${data.p2.city} first, then both fly to destination together - P1 pays two flights, P2 pays one. SCENARIO B: Partner 2 flies ${data.p2.city} to ${data.p1.city} first, then both fly to destination together - P2 pays two flights, P1 pays one. Choose whichever scenario keeps both partners within budget and is most financially fair based on budget strength. Explain chosen routing in routing_note.`
+  }
+  if (data.routing === 'meet') {
+    return `MEET AT DESTINATION: Both fly separately. P1 flies directly from ${data.p1.city}. P2 flies directly from ${data.p2.city}. Calculate each independently.`
+  }
+  return 'DRIVING: No flights. Calculate fuel and driving costs only.'
+})()}
+- Accommodation: ${data.accommodation === 'budget' ? 'Budget — hostels and budget hotels' : data.accommodation === 'luxe' ? 'Luxe — boutique hotels 4-5 star' : 'Mid-range — 3 star hotels and private Airbnbs'}
+- Region preference: ${data.region !== 'surprise' ? data.region.replace('_', ' ') : 'open globally'}
 
 REALISM REQUIREMENTS — NON NEGOTIABLE:
 - You have deep knowledge of actual 2024/2025 flight prices, airline routes, and accommodation costs
@@ -127,6 +136,10 @@ REALISM REQUIREMENTS — NON NEGOTIABLE:
 - If a destination is tight on budget say so honestly and explain what to cut
 - Flag any safety concerns for the travel dates — political instability, high crime areas, travel advisories. If a destination has active travel warnings recommend an alternative.
 - Add a safety_note field to each destination — one honest sentence on safety for this specific couple visiting in ${data.dates.from} to ${data.dates.to}
+- For fly_together routing: flights_p1_total MUST equal flights_p1_leg1 (${data.p1.city} to ${data.p2.city}) PLUS flights_p1_leg2 (${data.p2.city} to destination). Never calculate only one leg for Partner 1.
+- Also calculate the REVERSE routing cost — what if Partner 2 flew to Partner 1 first instead? Recommend whichever is cheaper overall and explain why in routing_note.
+- p1_cost must include ALL flights (both legs) + accommodation share + food + activities
+- p2_cost must include their single flight + accommodation share + food + activities
 
 WEATHER: Avoid monsoon season, extreme heat above 38C, or hurricane risk during ${data.dates.from} to ${data.dates.to}
 
@@ -141,14 +154,17 @@ Respond ONLY with valid JSON no markdown no backticks no explanation:
       "p1_cost": 1200,
       "p2_cost": 950,
       "cost_breakdown": {
-        "flights_p1": 400,
-        "flights_p2": 350,
-        "lodging_per_night": 120,
-        "lodging_total": 600,
-        "food_per_day": 50,
-        "food_total": 250,
-        "activities_total": 150
-      },
+  "flights_p1_leg1": 400,
+  "flights_p1_leg2": 300,
+  "flights_p1_total": 700,
+  "flights_p2": 180,
+  "lodging_per_night": 120,
+  "lodging_total": 600,
+  "food_per_day": 50,
+  "food_total": 250,
+  "activities_total": 150
+},
+    
       "lodging_note": "Specific recommendation with price per night",
       "p1_days_income": 4,
       "p2_days_income": 6,
@@ -158,7 +174,7 @@ Respond ONLY with valid JSON no markdown no backticks no explanation:
       "savings_scenario": "If both save X per week for Y weeks this becomes comfortable",
       "routing_note": "Specific airlines and approximate flight times from each city",
       "best_for": "weekend or week or two weeks",
-      "season_note": "One sentence on weather for their specific travel dates"
+      "season_note": "One sentence on weather for their specific travel dates",
       "safety_note": "One honest sentence on safety for this destination and time of year",
     }
   ],
@@ -174,17 +190,23 @@ Return exactly 3 destinations. Be brutally specific — name airlines, give temp
 
     try {
       const res = await fetch('https://roamie-61ib.onrender.com/api/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 2000,
-          messages: [{ role: 'user', content: prompt }]
-        })
-      })
-      const json = await res.json()
-      const text = json.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
-      const parsed = JSON.parse(text)
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    model: 'claude-sonnet-4-20250514',
+    max_tokens: 4000,
+    messages: [{ role: 'user', content: prompt }]
+  })
+})
+const rawText = await res.text()
+console.log('Raw response FULL:', rawText)
+const json = JSON.parse(rawText)
+const content = json.content || []
+const text = Array.isArray(content)
+  ? content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
+  : rawText.replace(/```json|```/g, '').trim()
+console.log('Parsed text:', text.substring(0, 300))
+const parsed = JSON.parse(text)
       setResult(parsed)
     } catch (e) {
       console.error('Error:', e)
@@ -474,28 +496,29 @@ async function shareTrip() {
       <div style={{ animation: 'fadeSlideUp 0.3s ease', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.25rem', marginTop: '1rem' }}>
 
         {dest.cost_breakdown && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px', marginBottom: '1.25rem' }}>
-            {[
-              { label: 'P1 Flight', value: dest.cost_breakdown.flights_p1, icon: '✈️' },
-              { label: 'P2 Flight', value: dest.cost_breakdown.flights_p2, icon: '✈️' },
-              { label: 'Lodging', value: dest.cost_breakdown.lodging_total, icon: '🏨' },
-              { label: 'Food', value: dest.cost_breakdown.food_total, icon: '🍽️' },
-              { label: 'Activities', value: dest.cost_breakdown.activities_total, icon: '🎯' },
-            ].map(item => (
-              <div key={item.label} style={{
-                background: 'rgba(255,255,255,0.06)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '8px 4px',
-                textAlign: 'center',
-                border: '1px solid rgba(255,255,255,0.08)',
-              }}>
-                <div style={{ fontSize: '14px', marginBottom: '3px' }}>{item.icon}</div>
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '2px' }}>{item.label}</div>
-                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)', fontWeight: '500' }}>${item.value}</div>
-              </div>
-            ))}
-          </div>
-        )}
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '1.25rem' }}>
+    {[
+      { label: 'P1 Leg 1', value: dest.cost_breakdown.flights_p1_leg1 || dest.cost_breakdown.flights_p1, icon: '✈️' },
+      { label: 'P1 Leg 2', value: dest.cost_breakdown.flights_p1_leg2 || null, icon: '✈️' },
+      { label: 'P2 Flight', value: dest.cost_breakdown.flights_p2, icon: '✈️' },
+      { label: 'Lodging', value: dest.cost_breakdown.lodging_total, icon: '🏨' },
+      { label: 'Food', value: dest.cost_breakdown.food_total, icon: '🍽️' },
+      { label: 'Activities', value: dest.cost_breakdown.activities_total, icon: '🎯' },
+    ].filter(item => item.value != null).map(item => (
+      <div key={item.label} style={{
+        background: 'rgba(255,255,255,0.06)',
+        borderRadius: 'var(--radius-sm)',
+        padding: '8px 4px',
+        textAlign: 'center',
+        border: '1px solid rgba(255,255,255,0.08)',
+      }}>
+        <div style={{ fontSize: '14px', marginBottom: '3px' }}>{item.icon}</div>
+        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '2px' }}>{item.label}</div>
+        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)', fontWeight: '500' }}>${item.value}</div>
+      </div>
+    ))}
+  </div>
+)}
 
         {dest.lodging_note && (
           <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '10px', fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
