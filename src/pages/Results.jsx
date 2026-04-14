@@ -109,17 +109,24 @@ PARTNER DETAILS:
 - Region preference: ${data.region === 'surprise' ? 'Open to anywhere globally' : data.region.replace('_', ' ')}
 - Accommodation preference: ${data.accommodation === 'budget' ? 'Budget — hostels and cheap hotels' : data.accommodation === 'luxe' ? 'Luxe — boutique hotels and 4-5 star properties' : 'Mid-range — 3 star hotels and private Airbnbs'}
 
-REALISM REQUIREMENTS:
-- Use REAL 2024/2025 flight prices for specific routes from ${data.p1.city} and ${data.p2.city}
-- Use REAL accommodation costs for each destination
-- Account for actual trip length between ${data.dates.from} and ${data.dates.to}
-- p1_cost must be in ${data.p1.currency}
-- p2_cost must be in ${data.p2.currency}
-- flights_p1 must reflect actual economy fares FROM ${data.p1.city} TO destination
-- flights_p2 must reflect actual economy fares FROM ${data.p2.city} TO destination
-- lodging_total must be nightly rate multiplied by number of nights
-- NEVER recommend a destination where either partner exceeds their max budget
-- If budgets are tight suggest nearby budget-friendly options
+REALISM REQUIREMENTS — NON NEGOTIABLE:
+- You have deep knowledge of actual 2024/2025 flight prices, airline routes, and accommodation costs
+- Always name specific airlines that actually fly these routes — never say "various airlines"
+- Give realistic price ranges based on actual market rates not round numbers
+- flights_p1 must reflect real economy fares FROM ${data.p1.city} — include layover cities
+- flights_p2 must reflect real economy fares FROM ${data.p2.city} — include layover cities  
+- lodging_total must be based on real nightly rates for ${data.accommodation === 'budget' ? 'hostels and budget hotels ($30-80/night)' : data.accommodation === 'luxe' ? 'boutique hotels ($200-400/night)' : '3-star hotels and Airbnbs ($80-180/night)'}
+- food_per_day must reflect actual daily food costs at that destination
+- NEVER recommend Paris, Barcelona, Rome, Amsterdam, or NYC as your first choice — find somewhere genuinely interesting
+- Always include at least one destination most people haven't considered
+- Account for ${data.region !== 'surprise' ? data.region.replace('_', ' ') + ' region preference' : 'global options'}
+- Account for ${data.accommodation} accommodation preference throughout
+- Weather must be specific to ${data.dates.from} to ${data.dates.to} — mention actual temperatures
+- routing_note must name specific airlines and approximate flight times for BOTH partners
+- NEVER exceed either partner's max budget in your recommendations
+- If a destination is tight on budget say so honestly and explain what to cut
+- Flag any safety concerns for the travel dates — political instability, high crime areas, travel advisories. If a destination has active travel warnings recommend an alternative.
+- Add a safety_note field to each destination — one honest sentence on safety for this specific couple visiting in ${data.dates.from} to ${data.dates.to}
 
 WEATHER: Avoid monsoon season, extreme heat above 38C, or hurricane risk during ${data.dates.from} to ${data.dates.to}
 
@@ -152,17 +159,18 @@ Respond ONLY with valid JSON no markdown no backticks no explanation:
       "routing_note": "Specific airlines and approximate flight times from each city",
       "best_for": "weekend or week or two weeks",
       "season_note": "One sentence on weather for their specific travel dates"
+      "safety_note": "One honest sentence on safety for this destination and time of year",
     }
   ],
   "stretch_goal": {
     "name": "City, Country",
-    "country_emoji": "🇯🇵",
+    "country_emoji": "correct flag emoji for that country",
     "tagline": "Why this is the dream trip for them",
     "what_it_takes": "Exactly what both need to save weekly and how many weeks"
   },
   "couple_summary": "2 warm sentences about what kind of travelers they are together"
 }
-Return exactly 3 destinations ranked by joint affordability. Be brutally realistic with costs — users will actually book these trips.`
+Return exactly 3 destinations. Be brutally specific — name airlines, give temperature ranges, mention neighborhoods. Users will actually book these trips so accuracy matters more than sounding impressive. Avoid obvious tourist traps unless they genuinely fit the budget and vibe better than alternatives.`
 
     try {
       const res = await fetch('https://roamie-61ib.onrender.com/api/messages', {
@@ -288,6 +296,27 @@ if (loading) return (
   const dest = allCards[activeCard] || {}
   const isStretch = dest.isStretch || false
 
+async function shareTrip() {
+  const dest = allCards[activeCard]
+  if (!dest || isStretch) return
+
+  const shareText = `✈️ We're thinking ${dest.country_emoji} ${dest.name}!\n\n💰 P1: ${p1sym}${dest.p1_cost?.toLocaleString()}\n💰 P2: ${p2sym}${dest.p2_cost?.toLocaleString()}\n\n${dest.tagline}\n\n🔗 Plan yours free at roamie-nu.vercel.app`
+
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: `${dest.name} — Roamie`,
+        text: shareText,
+      })
+    } catch (e) {
+      console.log('Share cancelled')
+    }
+  } else {
+    navigator.clipboard.writeText(shareText)
+    alert('Copied to clipboard!')
+  }
+}
+
   return (
     <div style={{ minHeight: '100vh', overflowX: 'hidden' }}>
       <style>{`
@@ -399,12 +428,12 @@ if (loading) return (
     {!isStretch && (
       <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
         <div style={{ background: 'rgba(255,107,53,0.15)', border: '1px solid rgba(255,107,53,0.3)', borderRadius: '100px', padding: '8px 14px', fontSize: '13px' }}>
-          <span style={{ color: 'rgba(255,255,255,0.5)', marginRight: '6px' }}>P1</span>
+          <span style={{ color: 'rgba(255,255,255,0.5)', marginRight: '6px' }}>✈️ P1 est.</span>
           <span style={{ color: accent, fontWeight: '500' }}>{p1sym}{dest.p1_cost?.toLocaleString()}</span>
           <span style={{ color: 'rgba(255,255,255,0.4)', marginLeft: '4px', fontSize: '11px' }}>{dest.p1_days_income}d income</span>
         </div>
         <div style={{ background: 'rgba(156,126,196,0.15)', border: '1px solid rgba(156,126,196,0.3)', borderRadius: '100px', padding: '8px 14px', fontSize: '13px' }}>
-          <span style={{ color: 'rgba(255,255,255,0.5)', marginRight: '6px' }}>P2</span>
+          <span style={{ color: 'rgba(255,255,255,0.5)', marginRight: '6px' }}>✈️ P2 est.</span>
           <span style={{ color: purple, fontWeight: '500' }}>{p2sym}{dest.p2_cost?.toLocaleString()}</span>
           <span style={{ color: 'rgba(255,255,255,0.4)', marginLeft: '4px', fontSize: '11px' }}>{dest.p2_days_income}d income</span>
         </div>
@@ -482,6 +511,12 @@ if (loading) return (
           ✈ {dest.routing_note}
         </div>
 
+{dest.safety_note && (
+  <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
+    🛡️ {dest.safety_note}
+  </div>
+)}
+
         <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
           🌤 {dest.season_note}
         </div>
@@ -503,12 +538,33 @@ if (loading) return (
       </div>
     )}
 
-    {/* Swipe hint */}
-    {!expanded && (
-      <div style={{ paddingTop: '1rem', fontSize: '11px', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase', textAlign: 'center' }}>
-        swipe to explore ←→
-      </div>
+    {/* Share + Swipe */}
+{!expanded && (
+  <div style={{ paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+    {!isStretch && (
+      <button
+        onClick={shareTrip}
+        style={{
+          background: 'rgba(255,107,53,0.15)',
+          border: '1px solid rgba(255,107,53,0.3)',
+          borderRadius: '100px',
+          padding: '10px 24px',
+          color: accent,
+          fontSize: '13px',
+          fontWeight: '500',
+          cursor: 'pointer',
+          width: '100%',
+          transition: 'all 0.2s',
+        }}
+      >
+        Share this trip ✈️
+      </button>
     )}
+    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+      swipe to explore ←→
+    </div>
+  </div>
+)}
 
   </div>
 
