@@ -38,12 +38,21 @@ function httpsPost(hostname, path, headers, body) {
 }
 
 async function getFlightPrices(p1City, p2City, dates, destinations) {
-  const query = `What are realistic round trip economy flight prices in 2026 for these routes:
-1. ${p1City} to ${p2City} (transatlantic/connecting)
-2. ${p1City} to ${destinations} 
-3. ${p2City} to ${destinations}
-Travel dates: ${dates}
-Give me actual price ranges in USD and GBP. Name specific airlines. Be realistic not optimistic.`
+const query = `Flight prices for travel ${dates}. Return ONLY prices in this exact format, no explanation:
+
+${p1City} to ${p2City}: $XXX-XXX USD (Airline name)
+${p1City} to Lisbon: $XXX-XXX USD (Airline name)
+${p1City} to Porto: $XXX-XXX USD (Airline name)
+${p1City} to Azores: $XXX-XXX USD (Airline name)
+${p1City} to Iceland: $XXX-XXX USD (Airline name)
+${p1City} to Malta: $XXX-XXX USD (Airline name)
+${p2City} to Lisbon: £XXX-XXX GBP (Airline name)
+${p2City} to Porto: £XXX-XXX GBP (Airline name)
+${p2City} to Azores: £XXX-XXX GBP (Airline name)
+${p2City} to Iceland: £XXX-XXX GBP (Airline name)
+${p2City} to Malta: £XXX-XXX GBP (Airline name)
+
+Numbers only. No paragraphs. No explanations. Just the price list.`  
 
   const body = JSON.stringify({
     model: 'sonar',

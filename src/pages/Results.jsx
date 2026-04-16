@@ -13,6 +13,7 @@ export default function Results() {
   const [expanded, setExpanded] = useState(false)
   const [photos, setPhotos] = useState({})
   const [messageIndex, setMessageIndex] = useState(0)
+  const [showSummary, setShowSummary] = useState(false)
 
 const loadingMessages = [
   "Checking flight routes from both cities...",
@@ -107,6 +108,9 @@ PARTNER DETAILS:
 - Travel dates: ${data.dates.from} to ${data.dates.to}
 - Vibes: ${data.vibes?.join(', ') || 'open to anything'}
 - Routing: ${(() => {
+  if (data.sameCity) {
+    return `SAME CITY: Both partners fly together from ${data.p1.city}. ONE set of flights split 50/50 between partners. Calculate flights_p1 and flights_p2 as equal halves of the total flight cost from ${data.p1.city} to destination.`
+  }
   if (data.routing === 'fly_together') {
     return `FLY TOGETHER: Calculate BOTH scenarios and pick the smartest one. SCENARIO A: Partner 1 flies ${data.p1.city} to ${data.p2.city} first, then both fly to destination together - P1 pays two flights, P2 pays one. SCENARIO B: Partner 2 flies ${data.p2.city} to ${data.p1.city} first, then both fly to destination together - P2 pays two flights, P1 pays one. Choose whichever scenario keeps both partners within budget and is most financially fair based on budget strength. Explain chosen routing in routing_note.`
   }
@@ -140,6 +144,10 @@ REALISM REQUIREMENTS — NON NEGOTIABLE:
 - Also calculate the REVERSE routing cost — what if Partner 2 flew to Partner 1 first instead? Recommend whichever is cheaper overall and explain why in routing_note.
 - p1_cost must include ALL flights (both legs) + accommodation share + food + activities
 - p2_cost must include their single flight + accommodation share + food + activities
+- reality_strip crowd must be: Low, Medium, or High based on tourism levels for those exact dates
+- reality_strip weather must be: Good, Uncertain, or Risky based on actual climate for those dates
+- reality_strip fairness must be: Balanced, Slightly Skewed, or Very Skewed based on cost difference between partners
+- reality_strip budget_stretch must be: Comfortable, Slight Stretch, or Heavy Stretch based on how close to max budget
 
 WEATHER: Avoid monsoon season, extreme heat above 38C, or hurricane risk during ${data.dates.from} to ${data.dates.to}
 
@@ -176,6 +184,12 @@ Respond ONLY with valid JSON no markdown no backticks no explanation:
       "best_for": "weekend or week or two weeks",
       "season_note": "One sentence on weather for their specific travel dates",
       "safety_note": "One honest sentence on safety for this destination and time of year",
+      "reality_strip": {
+  "crowd": "Low",
+  "weather": "Good",
+  "fairness": "Balanced",
+  "budget_stretch": "Comfortable"
+},
     }
   ],
   "stretch_goal": {
@@ -418,6 +432,39 @@ async function shareTrip() {
       height: '60%',
       background: 'linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%)',
     }} />
+    {/* Reality strip */}
+{!isStretch && dest.reality_strip && (
+  <div style={{
+    position: 'absolute',
+    top: '1rem',
+    right: '1rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+  }}>
+    {[
+      { label: dest.reality_strip.crowd, icon: '👥' },
+      { label: dest.reality_strip.weather, icon: '🌤' },
+      { label: dest.reality_strip.fairness, icon: '⚖️' },
+      { label: dest.reality_strip.budget_stretch, icon: '💰' },
+    ].map(item => (
+      <div key={item.label} style={{
+        background: 'rgba(0,0,0,0.6)',
+        backdropFilter: 'blur(8px)',
+        borderRadius: '100px',
+        padding: '3px 8px',
+        fontSize: '10px',
+        color: 'white',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px',
+        whiteSpace: 'nowrap',
+      }}>
+        {item.icon} {item.label}
+      </div>
+    ))}
+  </div>
+)}
     {/* Destination name on photo */}
     <div style={{
       position: 'absolute',
@@ -561,27 +608,46 @@ async function shareTrip() {
       </div>
     )}
 
-    {/* Share + Swipe */}
+{/* Share + Swipe */}
 {!expanded && (
   <div style={{ paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
     {!isStretch && (
-      <button
-        onClick={shareTrip}
-        style={{
-          background: 'rgba(255,107,53,0.15)',
-          border: '1px solid rgba(255,107,53,0.3)',
-          borderRadius: '100px',
-          padding: '10px 24px',
-          color: accent,
-          fontSize: '13px',
-          fontWeight: '500',
-          cursor: 'pointer',
-          width: '100%',
-          transition: 'all 0.2s',
-        }}
-      >
-        Share this trip ✈️
-      </button>
+      <>
+        <button
+          onClick={shareTrip}
+          style={{
+            background: 'rgba(255,107,53,0.15)',
+            border: '1px solid rgba(255,107,53,0.3)',
+            borderRadius: '100px',
+            padding: '10px 24px',
+            color: accent,
+            fontSize: '13px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            width: '100%',
+            transition: 'all 0.2s',
+          }}
+        >
+          Share this trip ✈️
+        </button>
+        <button
+          onClick={() => setShowSummary(true)}
+          style={{
+            background: 'rgba(156,126,196,0.15)',
+            border: '1px solid rgba(156,126,196,0.3)',
+            borderRadius: '100px',
+            padding: '10px 24px',
+            color: purple,
+            fontSize: '13px',
+            fontWeight: '500',
+            cursor: 'pointer',
+            width: '100%',
+            transition: 'all 0.2s',
+          }}
+        >
+          Save summary card 📸
+        </button>
+      </>
     )}
     <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
       swipe to explore ←→
@@ -589,17 +655,105 @@ async function shareTrip() {
   </div>
 )}
 
+
   </div>
 
 </div>
 
 {/* Couple summary */}
-{result.couple_summary && (
-  <div style={{ padding: '1.5rem', background: 'var(--bg-card)', borderTop: '1px solid var(--border)', fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.7', textAlign: 'center' }}>
-    {result.couple_summary}
-  </div>
-)}
+      {result.couple_summary && (
+        <div style={{ padding: '1.5rem', background: 'var(--bg-card)', borderTop: '1px solid var(--border)', fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.7', textAlign: 'center' }}>
+          {result.couple_summary}
+        </div>
+      )}
 
-</div>
+      {/* Summary card modal */}
+      {showSummary && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.85)',
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1.5rem',
+        }}
+          onClick={() => setShowSummary(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#111',
+              borderRadius: '24px',
+              padding: '2rem',
+              width: '100%',
+              maxWidth: '360px',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: '13px', color: accent, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '500' }}>✦ Roamie</div>
+              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '2rem', lineHeight: '1.1', marginBottom: '8px' }}>
+                {dest.country_emoji} {dest.name}
+              </div>
+              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+                {dest.tagline}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '1.25rem' }}>
+              <div style={{ background: 'rgba(255,107,53,0.1)', border: '1px solid rgba(255,107,53,0.2)', borderRadius: '14px', padding: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>Partner 1</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: '600', color: accent }}>{p1sym}{dest.p1_cost?.toLocaleString()}</div>
+                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>{dest.p1_days_income} days income</div>
+              </div>
+              <div style={{ background: 'rgba(156,126,196,0.1)', border: '1px solid rgba(156,126,196,0.2)', borderRadius: '14px', padding: '12px', textAlign: 'center' }}>
+                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>Partner 2</div>
+                <div style={{ fontSize: '1.3rem', fontWeight: '600', color: purple }}>{p2sym}{dest.p2_cost?.toLocaleString()}</div>
+                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>{dest.p2_days_income} days income</div>
+              </div>
+            </div>
+
+            {dest.reality_strip && (
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1.25rem', justifyContent: 'center' }}>
+                {[
+                  { label: dest.reality_strip.crowd, icon: '👥' },
+                  { label: dest.reality_strip.weather, icon: '🌤' },
+                  { label: dest.reality_strip.fairness, icon: '⚖️' },
+                  { label: dest.reality_strip.budget_stretch, icon: '💰' },
+                ].map(item => (
+                  <div key={item.label} style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    borderRadius: '100px',
+                    padding: '4px 10px',
+                    fontSize: '11px',
+                    color: 'rgba(255,255,255,0.6)',
+                  }}>
+                    {item.icon} {item.label}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ borderLeft: `2px solid ${accent}`, paddingLeft: '12px', fontSize: '12px', color: 'rgba(255,255,255,0.5)', lineHeight: '1.6', marginBottom: '1.5rem' }}>
+              {dest.savings_scenario}
+            </div>
+
+            <div style={{ textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.25)' }}>
+              Planned with Roamie · roamie-nu.vercel.app
+            </div>
+
+            <button
+              onClick={() => setShowSummary(false)}
+              style={{ width: '100%', marginTop: '1.25rem', background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '100px', padding: '10px', color: 'rgba(255,255,255,0.4)', fontSize: '13px', cursor: 'pointer' }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+    </div>
   )
 }

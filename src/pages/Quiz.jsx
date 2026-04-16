@@ -58,6 +58,7 @@ export default function Quiz() {
   routing: 'fly_together',
   region: 'surprise',
   accommodation: 'mid',
+  sameCity: false,
 })
   const accent = '#FF6B35'
   const accentSoft = 'rgba(255,107,53,0.12)'
@@ -209,37 +210,84 @@ export default function Quiz() {
     ))}
   </div>
 </div>
-      <div style={base.question}>Where are you both based?</div>
-      <div style={base.sub}>Your home cities — we'll find what works from both</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', width: '100%', marginBottom: '1rem' }}>
-        <div>
-          <div style={{ fontSize: '11px', color: accent, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '500' }}>Partner 1</div>
-          <input
-            type="text"
-            placeholder="e.g. Memphis"
-            value={data.p1.city}
-            onChange={e => setData(d => ({ ...d, p1: { ...d.p1, city: e.target.value } }))}
-          />
-        </div>
-        <div>
-          <div style={{ fontSize: '11px', color: '#9c7ec4', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '500' }}>Partner 2</div>
-          <input
-            type="text"
-            placeholder="e.g. London"
-            value={data.p2.city}
-            onChange={e => setData(d => ({ ...d, p2: { ...d.p2, city: e.target.value } }))}
-          />
-        </div>
-      </div>
+      {/* Same city toggle */}
+<div
+  onClick={() => setData(d => ({ ...d, sameCity: !d.sameCity, p2: { ...d.p2, city: !d.sameCity ? d.p1.city : '' } }))}
+  style={{
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    marginBottom: '1rem',
+    cursor: 'pointer',
+    padding: '10px 14px',
+    borderRadius: 'var(--radius)',
+    border: `1px solid ${data.sameCity ? accentBorder : 'var(--border)'}`,
+    background: data.sameCity ? accentSoft : 'var(--bg-card)',
+  }}
+>
+  <div style={{
+    width: '36px',
+    height: '20px',
+    borderRadius: '10px',
+    background: data.sameCity ? accent : 'rgba(255,255,255,0.15)',
+    position: 'relative',
+    transition: 'all 0.2s',
+    flexShrink: 0,
+  }}>
+    <div style={{
+      width: '16px',
+      height: '16px',
+      borderRadius: '50%',
+      background: 'white',
+      position: 'absolute',
+      top: '2px',
+      left: data.sameCity ? '18px' : '2px',
+      transition: 'all 0.2s',
+    }} />
+  </div>
+  <div style={{ fontSize: '13px', color: data.sameCity ? accent : 'var(--text-secondary)' }}>
+    We're based in the same city
+  </div>
+</div>
+
+{/* City inputs */}
+<div style={{ display: 'grid', gridTemplateColumns: data.sameCity ? '1fr' : '1fr 1fr', gap: '12px', width: '100%', marginBottom: '1rem', transition: 'all 0.3s' }}>
+  <div>
+    <div style={{ fontSize: '11px', color: accent, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '500' }}>
+      {data.sameCity ? 'Your city' : 'Partner 1'}
+    </div>
+    <input
+      type="text"
+      placeholder="e.g. Memphis"
+      value={data.p1.city}
+      onChange={e => setData(d => ({
+        ...d,
+        p1: { ...d.p1, city: e.target.value },
+        p2: d.sameCity ? { ...d.p2, city: e.target.value } : d.p2
+      }))}
+    />
+  </div>
+  {!data.sameCity && (
+    <div>
+      <div style={{ fontSize: '11px', color: '#9c7ec4', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '500' }}>Partner 2</div>
+      <input
+        type="text"
+        placeholder="e.g. London"
+        value={data.p2.city}
+        onChange={e => setData(d => ({ ...d, p2: { ...d.p2, city: e.target.value } }))}
+      />
+    </div>
+  )}
+</div>
       {/* Routing selector */}
       <div style={{ width: '100%', marginTop: '0.5rem', marginBottom: '1rem' }}>
         <div style={{ fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '10px' }}>How are you getting there?</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {[
-            { id: 'fly_together', label: '✈️ Fly to each other first, then together', desc: 'One flies to the other, then you both fly to destination' },
-            { id: 'meet', label: '🛬 Meet at the destination', desc: 'Both fly separately to the same place' },
-            { id: 'drive', label: '🚗 Drive', desc: 'One or both partners driving' },
-          ].map(r => (
+  !data.sameCity && { id: 'fly_together', label: '✈️ Fly to each other first, then together', desc: 'One flies to the other, then you both fly to destination' },
+  { id: 'meet', label: data.sameCity ? '✈️ Fly together from same city' : '🛬 Meet at the destination', desc: data.sameCity ? 'Both flying from the same origin' : 'Both fly separately to the same place' },
+  { id: 'drive', label: '🚗 Drive', desc: 'One or both partners driving' },
+].filter(Boolean).map(r => (
             <div
               key={r.id}
               onClick={() => setData(d => ({ ...d, routing: r.id }))}
