@@ -634,12 +634,12 @@ async function shareTrip() {
         {dest.cost_breakdown && (
   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '1.25rem' }}>
     {[
-      { label: 'P1 Leg 1', value: dest.cost_breakdown.flights_p1_leg1 || dest.cost_breakdown.flights_p1, icon: '✈️' },
-      { label: 'P1 Leg 2', value: dest.cost_breakdown.flights_p1_leg2 || null, icon: '✈️' },
-      { label: 'P2 Flight', value: dest.cost_breakdown.flights_p2, icon: '✈️' },
-      { label: 'Lodging', value: dest.cost_breakdown.lodging_total, icon: '🏨' },
-      { label: 'Food', value: dest.cost_breakdown.food_total, icon: '🍽️' },
-      { label: 'Activities', value: dest.cost_breakdown.activities_total, icon: '🎯' },
+      { label: 'P1 Leg 1', value: dest.cost_breakdown.flights_p1_leg1 || dest.cost_breakdown.flights_p1, icon: '✈️', sym: p1sym, color: accent },
+      { label: 'P1 Leg 2', value: dest.cost_breakdown.flights_p1_leg2 || null, icon: '✈️', sym: p1sym, color: accent },
+      { label: 'P2 Flight', value: dest.cost_breakdown.flights_p2, icon: '✈️', sym: p2sym, color: purple },
+      { label: 'Lodging', value: dest.cost_breakdown.lodging_total, icon: '🏨', sym: '$', color: 'rgba(255,255,255,0.85)' },
+      { label: 'Food', value: dest.cost_breakdown.food_total, icon: '🍽️', sym: '$', color: 'rgba(255,255,255,0.85)' },
+      { label: 'Activities', value: dest.cost_breakdown.activities_total, icon: '🎯', sym: '$', color: 'rgba(255,255,255,0.85)' },
     ].filter(item => item.value != null).map(item => (
       <div key={item.label} style={{
         background: 'rgba(255,255,255,0.06)',
@@ -650,7 +650,7 @@ async function shareTrip() {
       }}>
         <div style={{ fontSize: '14px', marginBottom: '3px' }}>{item.icon}</div>
         <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '2px' }}>{item.label}</div>
-        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)', fontWeight: '500' }}>${item.value}</div>
+        <div style={{ fontSize: '11px', color: item.color, fontWeight: '500' }}>{item.sym}{item.value?.toLocaleString()}</div>
       </div>
     ))}
   </div>
