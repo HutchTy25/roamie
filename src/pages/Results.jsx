@@ -2,6 +2,95 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import posthog from 'posthog-js'
 
+function EmailCapture() {
+  const [email, setEmail] = useState('')
+  const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const accent = '#FF6B35'
+
+  async function submit() {
+    if (!email.includes('@')) return
+    setLoading(true)
+    try {
+      await fetch('https://roamie-61ib.onrender.com/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      setSubmitted(true)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (submitted) return (
+    <div style={{
+      padding: '2rem 1.5rem',
+      textAlign: 'center',
+      borderTop: '1px solid rgba(255,255,255,0.06)',
+    }}>
+      <div style={{ fontSize: '1.5rem', marginBottom: '8px' }}>✦</div>
+      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.1rem', marginBottom: '6px', color: 'var(--text-primary)' }}>
+        You're in.
+      </div>
+      <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
+        We'll keep you posted on new features.
+      </div>
+    </div>
+  )
+
+  return (
+    <div style={{
+      padding: '2rem 1.5rem',
+      borderTop: '1px solid rgba(255,255,255,0.06)',
+      background: 'rgba(255,107,53,0.03)',
+    }}>
+      <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
+        <div style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: accent, marginBottom: '8px', fontWeight: '500' }}>
+          Early access
+        </div>
+        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.2rem', marginBottom: '6px', color: 'var(--text-primary)' }}>
+          Want to be first to know?
+        </div>
+        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+          We're building new features for couples. Drop your email and we'll keep you in the loop.
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '8px', maxWidth: '400px', margin: '0 auto' }}>
+        <input
+          type="email"
+          placeholder="your@email.com"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && submit()}
+          style={{ flex: 1, fontSize: '14px', padding: '12px 16px' }}
+        />
+        <button
+          onClick={submit}
+          disabled={loading || !email.includes('@')}
+          style={{
+            background: accent,
+            border: 'none',
+            borderRadius: '100px',
+            padding: '12px 20px',
+            color: '#0a0a0a',
+            fontSize: '13px',
+            fontWeight: '600',
+            cursor: loading ? 'wait' : 'pointer',
+            opacity: !email.includes('@') ? 0.4 : 1,
+            whiteSpace: 'nowrap',
+            transition: 'opacity 0.2s',
+          }}
+        >
+          {loading ? '...' : 'Join'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Results() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -661,11 +750,14 @@ async function shareTrip() {
 </div>
 
 {/* Couple summary */}
-      {result.couple_summary && (
-        <div style={{ padding: '1.5rem', background: 'var(--bg-card)', borderTop: '1px solid var(--border)', fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.7', textAlign: 'center' }}>
-          {result.couple_summary}
-        </div>
-      )}
+{result.couple_summary && (
+  <div style={{ padding: '1.5rem', background: 'var(--bg-card)', borderTop: '1px solid var(--border)', fontSize: '14px', color: 'var(--text-secondary)', lineHeight: '1.7', textAlign: 'center' }}>
+    {result.couple_summary}
+  </div>
+)}
+
+{/* Email capture */}
+<EmailCapture />
 
       {/* Summary card modal */}
       {showSummary && (

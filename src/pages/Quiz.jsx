@@ -1,7 +1,5 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import DatePicker from 'react-datepicker'
-import 'react-datepicker/dist/react-datepicker.css'
 import posthog from 'posthog-js'
 
 const CURRENCIES = [
@@ -46,6 +44,157 @@ const VIBES = [
   { id: 'landmarks', label: 'Landmark chaser', emoji: '🏛️', bg: '#1a160d' },
   { id: 'surprise', label: 'Surprise us', emoji: '✨', bg: '#12101a' },
 ]
+
+function CalendarPicker({ label, selected, onChange, minDate }) {
+  const [viewDate, setViewDate] = useState(() => selected ? new Date(selected) : new Date())
+  
+  const today = new Date()
+  today.setHours(0,0,0,0)
+  const min = minDate || today
+
+  const year = viewDate.getFullYear()
+  const month = viewDate.getMonth()
+
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December']
+  const dayNames = ['Su','Mo','Tu','We','Th','Fr','Sa']
+
+  const firstDay = new Date(year, month, 1).getDay()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+
+  const cells = []
+  for (let i = 0; i < firstDay; i++) cells.push(null)
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d)
+
+  function prevMonth() {
+    setViewDate(new Date(year, month - 1, 1))
+  }
+
+  function nextMonth() {
+    setViewDate(new Date(year, month + 1, 1))
+  }
+
+  function selectDay(day) {
+    if (!day) return
+    const date = new Date(year, month, day)
+    date.setHours(0,0,0,0)
+    if (date < min) return
+    onChange(date.toISOString().split('T')[0])
+  }
+
+  function isSelected(day) {
+    if (!day || !selected) return false
+    const d = new Date(year, month, day)
+    return d.toISOString().split('T')[0] === selected
+  }
+
+  function isDisabled(day) {
+    if (!day) return true
+    const d = new Date(year, month, day)
+    d.setHours(0,0,0,0)
+    return d < min
+  }
+
+  function isToday(day) {
+    if (!day) return false
+    const d = new Date(year, month, day)
+    return d.toISOString().split('T')[0] === today.toISOString().split('T')[0]
+  }
+
+  const accent = '#FF6B35'
+
+  return (
+    <div style={{ width: '100%', marginBottom: '1rem' }}>
+      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '8px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</div>
+      <div style={{
+        background: 'rgba(20,20,20,0.95)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderRadius: '20px',
+        border: '1px solid rgba(255,255,255,0.08)',
+        padding: '1.25rem',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+      }}>
+        {/* Quick jump pills */}
+<div style={{ display: 'flex', gap: '6px', marginBottom: '1rem', justifyContent: 'center' }}>
+  {[3, 6, 9].map(months => (
+    <button
+      key={months}
+      onClick={() => {
+        const d = new Date()
+        d.setMonth(d.getMonth() + months)
+        setViewDate(d)
+      }}
+      style={{
+        background: 'rgba(255,255,255,0.06)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: '100px',
+        padding: '4px 12px',
+        fontSize: '11px',
+        color: 'rgba(255,255,255,0.45)',
+        cursor: 'pointer',
+        letterSpacing: '0.05em',
+      }}
+    >
+      +{months}mo
+    </button>
+  ))}
+</div>
+        {/* Month navigation */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <button
+            onClick={prevMonth}
+            style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >←</button>
+          <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1rem', color: 'rgba(255,255,255,0.9)' }}>
+            {monthNames[month]} {year}
+          </div>
+          <button
+            onClick={nextMonth}
+            style={{ background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          >→</button>
+        </div>
+
+        {/* Day names */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: '6px' }}>
+          {dayNames.map(d => (
+            <div key={d} style={{ textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.3)', padding: '4px 0', fontWeight: '500' }}>{d}</div>
+          ))}
+        </div>
+
+        {/* Day cells */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
+          {cells.map((day, i) => (
+            <div
+              key={i}
+              onClick={() => selectDay(day)}
+              style={{
+                textAlign: 'center',
+                padding: '10px 0',
+                borderRadius: '10px',
+                fontSize: '13px',
+                fontWeight: isSelected(day) ? '600' : '400',
+                cursor: day && !isDisabled(day) ? 'pointer' : 'default',
+                background: isSelected(day) ? accent : isToday(day) ? 'rgba(255,107,53,0.12)' : 'transparent',
+                color: isSelected(day) ? '#0a0a0a' : isDisabled(day) ? 'rgba(255,255,255,0.15)' : isToday(day) ? accent : 'rgba(255,255,255,0.8)',
+                transition: 'all 0.15s',
+                userSelect: 'none',
+              }}
+            >
+              {day || ''}
+            </div>
+          ))}
+        </div>
+
+        {/* Selected date display */}
+        {selected && (
+          <div style={{ marginTop: '1rem', textAlign: 'center', fontSize: '13px', color: accent, fontWeight: '500' }}>
+            {new Date(selected + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default function Quiz() {
   const navigate = useNavigate()
@@ -440,54 +589,46 @@ export default function Quiz() {
       </button>
     </div>,
 
-    // Step 3 — Dates
-    <div style={base.container}>
-      <div style={base.progress}><div style={base.progressFill} /></div>
-      <button style={base.back} onClick={back}>← back</button>
-      <div style={base.question}>When are you thinking?</div>
-      <div style={base.sub}>Approximate window is fine</div>
-      <div style={{ width: '100%', marginBottom: '1rem' }}>
-        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>From</div>
-        <DatePicker
-          selected={data.dates.from ? new Date(data.dates.from) : null}
-          onChange={date => setData(d => ({ ...d, dates: { ...d.dates, from: date.toISOString().split('T')[0] } }))}
-          minDate={new Date()}
-          placeholderText="Departure date"
-          dateFormat="MMM d, yyyy"
-          customInput={<input style={{ width: '100%', cursor: 'pointer' }} />}
-        />
-      </div>
-      <div style={{ width: '100%', marginBottom: '1.5rem' }}>
-        <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '6px', letterSpacing: '0.08em', textTransform: 'uppercase' }}>To</div>
-        <DatePicker
-          selected={data.dates.to ? new Date(data.dates.to) : null}
-          onChange={date => setData(d => ({ ...d, dates: { ...d.dates, to: date.toISOString().split('T')[0] } }))}
-          minDate={data.dates.from ? new Date(data.dates.from) : new Date()}
-          placeholderText="Return date"
-          dateFormat="MMM d, yyyy"
-          customInput={<input style={{ width: '100%', cursor: 'pointer' }} />}
-        />
-    </div>
-      <button
-        style={{ ...base.btn, ...(!data.dates.from || !data.dates.to ? base.btnDisabled : {}) }}
-        disabled={!data.dates.from || !data.dates.to}
-        onClick={() => {
-          const count = parseInt(localStorage.getItem('roamie_trip_count') || '0')
-          localStorage.setItem('roamie_trip_count', count + 1)
-          posthog.capture('generate_trip_clicked', {
-            p1_city: data.p1.city,
-            p2_city: data.p2.city,
-            region: data.region,
-            vibe_count: data.vibes.length,
-            accommodation: data.accommodation,
-            trip_number: count + 1,
-          })
-          navigate('/results', { state: { data } })
-        }}
-      >
-        Find our trips ✦
-      </button>
-    </div>,
+   // Step 3 — Dates
+<div style={base.container}>
+  <div style={base.progress}><div style={base.progressFill} /></div>
+  <button style={base.back} onClick={back}>← back</button>
+  <div style={base.question}>When are you thinking?</div>
+  <div style={base.sub}>Approximate window is fine</div>
+
+  <CalendarPicker
+    label="Departure"
+    selected={data.dates.from}
+    onChange={date => setData(d => ({ ...d, dates: { ...d.dates, from: date } }))}
+    minDate={new Date()}
+  />
+  <CalendarPicker
+    label="Return"
+    selected={data.dates.to}
+    onChange={date => setData(d => ({ ...d, dates: { ...d.dates, to: date } }))}
+    minDate={data.dates.from ? new Date(data.dates.from) : new Date()}
+  />
+
+  <button
+    style={{ ...base.btn, ...(!data.dates.from || !data.dates.to ? base.btnDisabled : {}) }}
+    disabled={!data.dates.from || !data.dates.to}
+    onClick={() => {
+      const count = parseInt(localStorage.getItem('roamie_trip_count') || '0')
+      localStorage.setItem('roamie_trip_count', count + 1)
+      posthog.capture('generate_trip_clicked', {
+        p1_city: data.p1.city,
+        p2_city: data.p2.city,
+        region: data.region,
+        vibe_count: data.vibes.length,
+        accommodation: data.accommodation,
+        trip_number: count + 1,
+      })
+      navigate('/results', { state: { data } })
+    }}
+  >
+    Find our trips ✦
+  </button>
+</div>,
   ]
 
   const currentStep = steps[step]

@@ -128,5 +128,27 @@ console.log('ANTHROPIC KEY CHECK:', process.env.ANTHROPIC_API_KEY?.substring(0, 
     res.status(500).json({ error: err.message })
   }
 })
+app.post('/api/waitlist', async (req, res) => {
+  const { email } = req.body
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({ error: 'Invalid email' })
+  }
 
+  try {
+    const { Resend } = await import('resend')
+    const resend = new Resend(process.env.RESEND_API_KEY)
+
+    await resend.emails.send({
+      from: 'Roamie <onboarding@resend.dev>',
+      to: ['hutchiesonty25@gmail.com'],
+      subject: `New beta signup: ${email}`,
+      html: `<p>New Roamie beta signup: <strong>${email}</strong></p>`
+    })
+
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Resend error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
 app.listen(3001, () => console.log('Server running on port 3001'))
