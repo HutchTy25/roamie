@@ -607,24 +607,44 @@ async function shareTrip() {
 
     {/* Expand button */}
     {!isStretch && (
-      <button
-        onClick={() => setExpanded(e => !e)}
-        style={{
-          background: 'none',
-          border: '1px solid rgba(255,255,255,0.1)',
-          borderRadius: '100px',
-          padding: '10px 20px',
-          color: 'rgba(255,255,255,0.7)',
-          fontSize: '13px',
-          cursor: 'pointer',
-          alignSelf: 'flex-start',
-          marginBottom: expanded ? '1rem' : '0',
-          transition: 'all 0.2s',
-          display: 'block',
-        }}
-      >
-        {expanded ? 'Less details ↑' : 'More details ↓'}
-      </button>
+    <button
+  onClick={async () => {
+    const isPaid = localStorage.getItem('roamie_paid') === 'true'
+    if (isPaid) {
+      setExpanded(e => !e)
+      return
+    }
+    try {
+      const res = await fetch('https://roamie-61ib.onrender.com/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          priceId: import.meta.env.VITE_STRIPE_PRICE_ONETIME,
+          mode: 'payment',
+        })
+      })
+      const data = await res.json()
+      if (data.url) window.location.href = data.url
+    } catch (e) {
+      console.error('Checkout error:', e)
+    }
+  }}
+  style={{
+    background: localStorage.getItem('roamie_paid') === 'true' ? 'none' : 'rgba(255,107,53,0.1)',
+    border: `1px solid ${localStorage.getItem('roamie_paid') === 'true' ? 'rgba(255,255,255,0.1)' : 'rgba(255,107,53,0.3)'}`,
+    borderRadius: '100px',
+    padding: '10px 20px',
+    color: localStorage.getItem('roamie_paid') === 'true' ? 'rgba(255,255,255,0.7)' : accent,
+    fontSize: '13px',
+    cursor: 'pointer',
+    alignSelf: 'flex-start',
+    marginBottom: expanded ? '1rem' : '0',
+    transition: 'all 0.2s',
+    display: 'block',
+  }}
+>
+  {expanded ? 'Less details ↑' : localStorage.getItem('roamie_paid') === 'true' ? 'More details ↓' : '🔓 Unlock full breakdown — $3.99'}
+</button>  
     )}
 
     {/* Expanded details */}

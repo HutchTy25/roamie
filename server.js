@@ -5,6 +5,8 @@ import cors from 'cors'
 import https from 'https'
 import rateLimit from 'express-rate-limit'
 import { body, validationResult } from 'express-validator'
+import Stripe from 'stripe'
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
 console.log('Anthropic Key:', process.env.ANTHROPIC_API_KEY ? 'YES' : 'NO')
 console.log('Perplexity Key:', process.env.PERPLEXITY_API_KEY ? 'YES' : 'NO')
@@ -17,7 +19,7 @@ app.use(cors({
     'http://localhost:4173',
   ],
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
+ allowedHeaders: ['Content-Type', 'stripe-signature'],
   credentials: false,
 }))
 app.use(express.json())
@@ -189,6 +191,52 @@ app.post('/api/waitlist', [
     res.json({ success: true })
   } catch (err) {
     console.error('Resend error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+app.post('/api/create-checkout', [
+  body('priceId').isString().trim().notEmpty(),
+  body('mode').isIn(['payment', 'subscription']),
+], async (req, res) => {
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ error: 'Invalid request' })
+  }
+
+  try {
+    const { priceId, mode } = req.body
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      mode: mode,
+      success_url: 'https://roamie-nu.vercel.app/success?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: 'https://roamie-nu.vercel.app/results',
+    })
+    res.json({ url: session.url })
+  } catch (err) {
+    console.error('Stripe error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.post('/api/verify-payment', [
+  body('sessionId').isString().trim().notEmpty(),
+], async (req, res) => {
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ error: 'Invalid request' })
+  }
+
+  try {
+    const { sessionId } = req.body
+    const session = await stripe.checkout.sessions.retrieve(sessionId)
+    if (session.payment_status === 'paid' || session.status === 'complete') {
+      res.json({ success: true, customerId: session.customer })
+    } else {
+      res.json({ success: false })
+    }
+  } catch (err) {
+    console.error('Verify error:', err)
     res.status(500).json({ error: err.message })
   }
 })
