@@ -615,6 +615,7 @@ async function shareTrip() {
       return
     }
     try {
+      console.log('Price ID:', import.meta.env.VITE_STRIPE_PRICE_ONETIME)
       const res = await fetch('https://roamie-61ib.onrender.com/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
