@@ -4,12 +4,22 @@ import express from 'express'
 import cors from 'cors'
 import https from 'https'
 import rateLimit from 'express-rate-limit'
+import { body, validationResult } from 'express-validator'
 
 console.log('Anthropic Key:', process.env.ANTHROPIC_API_KEY ? 'YES' : 'NO')
 console.log('Perplexity Key:', process.env.PERPLEXITY_API_KEY ? 'YES' : 'NO')
 
 const app = express()
-app.use(cors())
+app.use(cors({
+  origin: [
+    'https://roamie-nu.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:4173',
+  ],
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+  credentials: false,
+}))
 app.use(express.json())
 
 const apiLimiter = rateLimit({
@@ -92,7 +102,18 @@ Numbers only. No paragraphs. No explanations. Just the price list.`
   }
 }
 
-app.post('/api/messages', async (req, res) => {
+app.post('/api/messages', [
+  body('messages').isArray().notEmpty(),
+  body('messages.*.role').isIn(['user', 'assistant']),
+  body('messages.*.content').isString().trim().isLength({ max: 50000 }),
+  body('model').isString().trim(),
+  body('max_tokens').isInt({ min: 1, max: 4000 }),
+], async (req, res) => {
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ error: 'Invalid request', details: errors.array() })
+  }
+
   try {
     const messages = req.body.messages || []
     const userMessage = messages[messages.length - 1]?.content || ''
@@ -146,9 +167,11 @@ console.log('ANTHROPIC KEY CHECK:', process.env.ANTHROPIC_API_KEY?.substring(0, 
     res.status(500).json({ error: err.message })
   }
 })
-app.post('/api/waitlist', async (req, res) => {
-  const { email } = req.body
-  if (!email || !email.includes('@')) {
+app.post('/api/waitlist', [
+  body('email').isEmail().normalizeEmail().trim(),
+], async (req, res) => {
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) {
     return res.status(400).json({ error: 'Invalid email' })
   }
 
