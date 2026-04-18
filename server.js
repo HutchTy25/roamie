@@ -3,6 +3,7 @@ dotenv.config()
 import express from 'express'
 import cors from 'cors'
 import https from 'https'
+import rateLimit from 'express-rate-limit'
 
 console.log('Anthropic Key:', process.env.ANTHROPIC_API_KEY ? 'YES' : 'NO')
 console.log('Perplexity Key:', process.env.PERPLEXITY_API_KEY ? 'YES' : 'NO')
@@ -10,6 +11,23 @@ console.log('Perplexity Key:', process.env.PERPLEXITY_API_KEY ? 'YES' : 'NO')
 const app = express()
 app.use(cors())
 app.use(express.json())
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // max 10 requests per IP per hour
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
+const waitlistLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { error: 'Too many requests, please try again later.' },
+})
+
+app.use('/api/messages', apiLimiter)
+app.use('/api/waitlist', waitlistLimiter)
 
 function httpsPost(hostname, path, headers, body) {
   return new Promise((resolve, reject) => {
