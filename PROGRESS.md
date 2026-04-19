@@ -1,54 +1,52 @@
-# Roamie Progress Log
-
-## April 17, 2026
+## April 18, 2026
 
 ### What we built
-- Custom calendar component with quick jump pills (+3mo, +6mo, +9mo)
-- Email capture (Resend) soft ask after results — working and sending notifications
-- Currency symbols color coded in cost breakdown grid (P1 orange, P2 purple)
-- Fixed hardcoded $ sign in cost breakdown
-- Stress tested Nigeria/Japan extreme scenario — passed
+- Rate limiting on backend (10 req/hour per IP)
+- CORS locked to Veramie domains only
+- Input validation on all endpoints (express-validator)
+- Stripe integration — checkout + verify payment endpoints
+- Success page built
+- Paywall on "More details" button — $3.99 one time
+- Security hardening complete
 
-### Current state
-- Live at roamie-nu.vercel.app
-- Backend at roamie-61ib.onrender.com
-- PostHog analytics active
-- Perplexity + Claude dual API working
-- Resend email capture working
-- 4 step quiz flow
-- Photo cards via Unsplash
-- Reality strip pills (crowd, weather, fairness, budget stretch)
-- Share trip + save summary card
-- Safety notes per destination
-- Same city toggle
-- 30 currencies with dynamic sliders
-- Accommodation tier selector
-- Region preference selector
+### Known issues / next session
+- Success page returning 404 on live site — needs investigation
+- Beta tester bypass not built yet
+- Currency fairness logic needs strengthening in prompt
+- Paid breakdown content needs to be worth $3.99
 
-### Known issues
-- Budget ceiling occasionally leaks slightly over max — needs stronger prompt enforcement
-- Rate limiting not built yet — API abuse risk
-- Usage gate (3 free trips then email) not built yet
+### Roadmap (in order)
+1. Fix success page 404
+2. Beta tester bypass for free full breakdown
+3. Strengthen paid breakdown prompt — make it worth paying for
+4. Partner Sync — linked accounts, saved profiles
+5. Monthly Getaway feature — two cards per month (vibe match + wildcard)
+6. Landing page
 
-### Next up
-1. Rate limiting on backend
-2. Usage gate — 3 free trips then soft paywall
-3. Landing page
+### Pricing locked
+- Free: 3 trip searches, basic results
+- $3.99 one-time: Full breakdown per search
+- $5.99/month: First 25 couples — founding rate, locked forever
+- $9.99/month: Everyone after first 25
+- Counter on landing page: "X of 25 founding spots remaining"
 
-### Env vars needed
+### Monthly Getaway feature spec
+- Two cards delivered monthly
+- Card 1: Matches saved vibe profile exactly
+- Card 2: Roamie wildcard — slightly outside comfort zone
+- Requires Partner Sync first (saved profiles)
+- Validated by Perplexity — gap in market confirmed, no competitor doing this
+
+### Env vars
+Frontend (Vercel):
+- VITE_STRIPE_PRICE_ONETIME
+- VITE_STRIPE_PUBLISHABLE_KEY
+- VITE_UNSPLASH_KEY
+
+Backend (Render):
 - ANTHROPIC_API_KEY
 - PERPLEXITY_API_KEY
 - RESEND_API_KEY
-- VITE_UNSPLASH_KEY
-
-## Monetization Plan
-- Free tier: 3 searches, basic cost totals
-- $3.99 one-time: Full detailed breakdown per search
-- $5.99/month: Unlimited full breakdowns + future paid features
-
-## Short-term roadmap
-1. Rate limiting
-2. Stripe integration + paid prompt gate
-3. Usage gate (3 free searches)
-4. Landing page
-5. Partner Sync
+- STRIPE_SECRET_KEY
+- STRIPE_PRICE_ONETIME
+- STRIPE_PRICE_MONTHLY
