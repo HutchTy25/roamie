@@ -1,6 +1,8 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import posthog from 'posthog-js'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
 
 function EmailCapture() {
   const [email, setEmail] = useState('')
@@ -40,6 +42,31 @@ function EmailCapture() {
       </div>
     </div>
   )
+
+async function downloadPDF() {
+  const element = document.getElementById('roamie-pdf-content')
+  if (!element) return
+
+  const canvas = await html2canvas(element, {
+    backgroundColor: '#0a0a0a',
+    scale: 2,
+    useCORS: true,
+    allowTaint: true,
+  })
+
+  const imgData = canvas.toDataURL('image/png')
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  })
+
+  const pdfWidth = pdf.internal.pageSize.getWidth()
+  const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+
+  pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+  pdf.save(`Roamie-${dest.name?.replace(/,/g, '').replace(/ /g, '-')}.pdf`)
+}
 
   return (
     <div style={{
@@ -135,9 +162,20 @@ const loadingMessages = [
 
   const UNSPLASH_KEY = import.meta.env.VITE_UNSPLASH_KEY
   useEffect(() => {
-    if (!data) { navigate('/'); return }
+  if (!data) { navigate('/'); return }
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('beta') === 'true') {
+    localStorage.setItem('roamie_paid', 'true')
+  }
+  const savedResult = localStorage.getItem('roamie_last_result')
+  if (savedResult) {
+    setResult(JSON.parse(savedResult))
+    setLoading(false)
+    localStorage.removeItem('roamie_last_result')
+  } else {
     fetchRecommendations()
-  }, [])
+  }
+}, [])
 
   useEffect(() => {
   if (!result) return
@@ -624,7 +662,11 @@ async function shareTrip() {
         })
       })
       const data = await res.json()
-      if (data.url) window.location.href = data.url
+      if (data.url) {
+  localStorage.setItem('roamie_last_result', JSON.stringify(result))
+  localStorage.setItem('roamie_last_data', JSON.stringify(data))
+  window.location.href = data.url
+}
     } catch (e) {
       console.error('Checkout error:', e)
     }
@@ -649,7 +691,7 @@ async function shareTrip() {
 
     {/* Expanded details */}
     {expanded && !isStretch && (
-      <div style={{ animation: 'fadeSlideUp 0.3s ease', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.25rem', marginTop: '1rem' }}>
+  <div id="roamie-pdf-content" style={{ animation: 'fadeSlideUp 0.3s ease', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.25rem', marginTop: '1rem' }}>
 
         {dest.cost_breakdown && (
   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '1.25rem' }}>
@@ -707,6 +749,35 @@ async function shareTrip() {
         <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem' }}>
           {dest.fairness_note}
         </div>
+
+        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem' }}>
+  {dest.fairness_note}
+</div>
+
+<button
+  onClick={downloadPDF}
+  style={{
+    width: '100%',
+    marginBottom: '10px',
+    padding: '12px 24px',
+    background: 'rgba(255,107,53,0.15)',
+    border: '1px solid rgba(255,107,53,0.3)',
+    borderRadius: '100px',
+    color: accent,
+    fontSize: '13px',
+    fontWeight: '500',
+    cursor: 'pointer',
+  }}
+>
+  Download trip brief PDF ↓
+</button>
+
+<button
+  onClick={() => navigate('/quiz')}
+  style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '100px', padding: '10px 24px', color: 'rgba(255,255,255,0.5)', fontSize: '13px', cursor: 'pointer' }}
+>
+  Plan another trip
+</button>
 
         <button
           onClick={() => navigate('/quiz')}

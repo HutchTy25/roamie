@@ -6,6 +6,7 @@ export default function Success() {
   const [searchParams] = useSearchParams()
   const [verified, setVerified] = useState(false)
   const sessionId = searchParams.get('session_id')
+  console.log('Session ID:', sessionId)
   const accent = '#FF6B35'
 
   useEffect(() => {
@@ -53,20 +54,27 @@ export default function Success() {
             Your full breakdown is unlocked. Head back to your results to see everything.
           </div>
           <button
-            onClick={() => navigate(-1)}
-            style={{
-              background: accent,
-              border: 'none',
-              borderRadius: '100px',
-              padding: '14px 36px',
-              color: '#0a0a0a',
-              fontSize: '15px',
-              fontWeight: '600',
-              cursor: 'pointer',
-            }}
-          >
-            See my results
-          </button>
+  onClick={() => {
+    const lastData = localStorage.getItem('roamie_last_data')
+    if (lastData) {
+      navigate('/results', { state: { data: JSON.parse(lastData) } })
+    } else {
+      navigate('/quiz')
+    }
+  }}
+  style={{
+    background: accent,
+    border: 'none',
+    borderRadius: '100px',
+    padding: '14px 36px',
+    color: '#0a0a0a',
+    fontSize: '15px',
+    fontWeight: '600',
+    cursor: 'pointer',
+  }}
+>
+  See my results
+</button>
         </>
       ) : (
         <div style={{ color: 'var(--text-secondary)' }}>Verifying payment...</div>

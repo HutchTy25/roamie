@@ -206,19 +206,18 @@ app.post('/api/create-checkout', [
   try {
     const { priceId, mode } = req.body
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{ price: priceId, quantity: 1 }],
-      mode: mode,
-      success_url: 'https://roamie-nu.vercel.app/success?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'https://roamie-nu.vercel.app/results',
-    })
-    res.json({ url: session.url })
+  payment_method_types: ['card'],
+  line_items: [{ price: priceId, quantity: 1 }],
+  mode: mode,
+  success_url: 'https://roamie-nu.vercel.app/success?session_id={CHECKOUT_SESSION_ID}',
+  cancel_url: 'https://roamie-nu.vercel.app/results',
+})
+res.json({ url: session.url })
   } catch (err) {
     console.error('Stripe error:', err)
     res.status(500).json({ error: err.message })
   }
 })
-
 app.post('/api/verify-payment', [
   body('sessionId').isString().trim().notEmpty(),
 ], async (req, res) => {
