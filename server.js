@@ -246,4 +246,107 @@ app.post('/api/verify-payment', [
     res.status(500).json({ error: err.message })
   }
 })
+
+app.post('/api/trip-basics', [
+  body('destination').isString().trim().notEmpty(),
+  body('neighborhood').isString().trim().optional(),
+  body('vibe').isArray().optional(),
+  body('accommodation').isString().trim().optional(),
+], async (req, res) => {
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ error: 'Invalid request' })
+  }
+
+  try {
+    const { destination, vibe, accommodation } = req.body
+
+    const perplexityQuery = `For ${destination} in 2026, give me ONLY these specific details in plain text:
+
+1. AIRPORT: Which airport serves ${destination}? How do you get from airport to city center? What does it cost?
+2. GETTING AROUND: Best ways to get around ${destination} - Uber/taxi/public transport/rental car with rough costs per trip
+3. NEIGHBORHOOD: Best area to stay for ${vibe?.join(', ')} vibe with ${accommodation} accommodation. Why?
+4. STAYS: 3 specific hotels or Airbnb areas in that neighborhood with price range per night in local currency
+5. FOOD: 3 specific restaurant recommendations near that neighborhood with cuisine type and price range
+6. ESSENTIALS: Nearest grocery store, pharmacy, and convenience store to tourist areas
+
+Be specific with real place names. No fluff.`
+
+    const perplexityBody = JSON.stringify({
+      model: 'sonar',
+      messages: [{ role: 'user', content: perplexityQuery }],
+      max_tokens: 1000,
+    })
+
+    const perplexityData = await httpsPost(
+      'api.perplexity.ai',
+      '/chat/completions',
+      { 'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}` },
+      perplexityBody
+    )
+
+    const rawData = perplexityData.choices?.[0]?.message?.content || ''
+
+    const claudePrompt = `You are Roamie. Based on this research about ${destination}, create a structured Trip Basics guide.
+
+RESEARCH DATA:
+${rawData}
+
+Respond ONLY with valid JSON no markdown no backticks:
+{
+  "destination": "${destination}",
+  "airport": {
+    "name": "Airport name",
+    "transport_options": [
+      { "method": "Taxi", "cost": "$25-35", "time": "30 mins" },
+      { "method": "Metro", "cost": "$3", "time": "45 mins" }
+    ]
+  },
+  "getting_around": [
+    { "method": "Uber/Bolt", "avg_cost": "$5-10 per trip", "recommended": true },
+    { "method": "Public transit", "avg_cost": "$1-2 per trip", "recommended": false }
+  ],
+  "neighborhood": {
+    "name": "Neighborhood name",
+    "why": "One sentence why this fits their vibe"
+  },
+  "stays": [
+    { "name": "Hotel/Area name", "type": "Hotel or Airbnb", "price_range": "$80-120/night" }
+  ],
+  "restaurants": [
+    { "name": "Restaurant name", "cuisine": "Type", "price": "$$ or $$$" }
+  ],
+  "essentials": {
+    "grocery": "Store name",
+    "pharmacy": "Pharmacy name",
+    "convenience": "Store name"
+  }
+}`
+
+    const claudeBody = JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: claudePrompt }]
+    })
+
+    const claudeResult = await httpsPost(
+      'api.anthropic.com',
+      '/v1/messages',
+      {
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      claudeBody
+    )
+
+    const text = claudeResult.content?.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
+    const parsed = JSON.parse(text)
+    res.json(parsed)
+
+  } catch (err) {
+    console.error('Trip basics error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 app.listen(3001, () => console.log('Server running on port 3001'))

@@ -99,8 +99,8 @@ export default function Results() {
   const location = useLocation()
   const navigate = useNavigate()
   const location_data = location.state?.data
-const savedDataStr = localStorage.getItem('roamie_last_data')
-const data = location_data || (savedDataStr ? JSON.parse(savedDataStr) : null)
+  const savedDataStr = localStorage.getItem('roamie_last_data')
+  const data = location_data || (savedDataStr ? JSON.parse(savedDataStr) : null)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -109,6 +109,8 @@ const data = location_data || (savedDataStr ? JSON.parse(savedDataStr) : null)
   const [photos, setPhotos] = useState({})
   const [messageIndex, setMessageIndex] = useState(0)
   const [showSummary, setShowSummary] = useState(false)
+  const [tripBasics, setTripBasics] = useState(null)
+  const [loadingBasics, setLoadingBasics] = useState(false)
 
 const loadingMessages = [
   "Checking flight routes from both cities...",
@@ -397,6 +399,28 @@ async function downloadPDF() {
   pdf.save(`Roamie-${dest.name?.replace(/,/g, '').replace(/ /g, '-')}.pdf`)
 }
 
+async function fetchTripBasics() {
+  if (tripBasics || loadingBasics) return
+  setLoadingBasics(true)
+  try {
+    const res = await fetch('https://roamie-61ib.onrender.com/api/trip-basics', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        destination: dest.name,
+        vibe: data?.vibes || [],
+        accommodation: data?.accommodation || 'mid',
+      })
+    })
+    const basics = await res.json()
+    setTripBasics(basics)
+  } catch (e) {
+    console.error('Trip basics error:', e)
+  } finally {
+    setLoadingBasics(false)
+  }
+}
+
 if (loading) return (
     <div style={{
       minHeight: '100vh', display: 'flex', flexDirection: 'column',
@@ -652,11 +676,13 @@ async function shareTrip() {
     {!isStretch && (
     <button
   onClick={async () => {
-    const isPaid = localStorage.getItem('roamie_paid') === 'true'
-    if (isPaid) {
-      setExpanded(e => !e)
-      return
-    }
+  const isPaid = localStorage.getItem('roamie_paid') === 'true'
+  if (isPaid) {
+    setExpanded(e => !e)
+    if (!expanded) fetchTripBasics()
+    return
+  }
+
     try {
       const res = await fetch('https://roamie-61ib.onrender.com/api/create-checkout', {
         method: 'POST',
@@ -758,6 +784,81 @@ if (stripeResponse.url) {
         <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem' }}>
   {dest.fairness_note}
 </div>
+
+{/* Trip Basics */}
+{loadingBasics && (
+  <div style={{ textAlign: 'center', padding: '1rem', fontSize: '13px', color: 'var(--text-muted)' }}>
+    Loading trip basics...
+  </div>
+)}
+
+{tripBasics && !loadingBasics && (
+  <div style={{ marginBottom: '1.5rem' }}>
+    <div style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: accent, marginBottom: '1rem', fontWeight: '500' }}>
+      ✦ Trip basics
+    </div>
+
+    {/* Airport */}
+    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
+      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>✈️ Getting there</div>
+      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '6px' }}>{tripBasics.airport?.name}</div>
+      {tripBasics.airport?.transport_options?.map(t => (
+        <div key={t.method} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '3px' }}>
+          <span>{t.method}</span>
+          <span>{t.cost} · {t.time}</span>
+        </div>
+      ))}
+    </div>
+
+    {/* Getting around */}
+    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
+      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>🚗 Getting around</div>
+      {tripBasics.getting_around?.map(g => (
+        <div key={g.method} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '3px' }}>
+          <span>{g.method}</span>
+          <span style={{ color: g.recommended ? accent : 'rgba(255,255,255,0.4)' }}>{g.avg_cost}</span>
+        </div>
+      ))}
+    </div>
+
+    {/* Neighborhood */}
+    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
+      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>📍 Where to stay</div>
+      <div style={{ fontSize: '13px', color: accent, marginBottom: '4px', fontWeight: '500' }}>{tripBasics.neighborhood?.name}</div>
+      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>{tripBasics.neighborhood?.why}</div>
+    </div>
+
+    {/* Stays */}
+    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
+      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>🏨 Stay options</div>
+      {tripBasics.stays?.map(s => (
+        <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>
+          <span>{s.name} <span style={{ color: 'rgba(255,255,255,0.3)' }}>· {s.type}</span></span>
+          <span style={{ color: accent }}>{s.price_range}</span>
+        </div>
+      ))}
+    </div>
+
+    {/* Restaurants */}
+    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
+      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>🍽️ Where to eat</div>
+      {tripBasics.restaurants?.map(r => (
+        <div key={r.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>
+          <span>{r.name} <span style={{ color: 'rgba(255,255,255,0.3)' }}>· {r.cuisine}</span></span>
+          <span>{r.price}</span>
+        </div>
+      ))}
+    </div>
+
+    {/* Essentials */}
+    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
+      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>🛒 Essentials nearby</div>
+      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '3px' }}>🛍️ {tripBasics.essentials?.grocery}</div>
+      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '3px' }}>💊 {tripBasics.essentials?.pharmacy}</div>
+      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>🏪 {tripBasics.essentials?.convenience}</div>
+    </div>
+  </div>
+)}
 
 <button
   onClick={downloadPDF}

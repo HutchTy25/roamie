@@ -1,52 +1,22 @@
-## April 18, 2026
+## April 19, 2026
 
 ### What we built
-- Rate limiting on backend (10 req/hour per IP)
-- CORS locked to Veramie domains only
-- Input validation on all endpoints (express-validator)
-- Stripe integration — checkout + verify payment endpoints
-- Success page built
-- Paywall on "More details" button — $3.99 one time
-- Security hardening complete
+- Fixed Perplexity graceful fallback when flight data unusable
+- Fixed downloadPDF moved to correct component
+- Fixed data restoration after Stripe redirect
+- Stripe full payment flow working on live site
+- Success page working
+- Beta tester bypass working (?beta=true)
+- Vercel breach response — all API keys rotated
+- Secret header protection discussion noted for next session
 
-### Known issues / next session
-- Success page returning 404 on live site — needs investigation
-- Beta tester bypass not built yet
-- Currency fairness logic needs strengthening in prompt
-- Paid breakdown content needs to be worth $3.99
+### Next up
+1. PDF download — make it premium and worth $3.99
+2. Secret header protection on backend
+3. Update PROGRESS.md roadmap
+4. Partner Sync
 
-### Roadmap (in order)
-1. Fix success page 404
-2. Beta tester bypass for free full breakdown
-3. Strengthen paid breakdown prompt — make it worth paying for
-4. Partner Sync — linked accounts, saved profiles
-5. Monthly Getaway feature — two cards per month (vibe match + wildcard)
-6. Landing page
-
-### Pricing locked
-- Free: 3 trip searches, basic results
-- $3.99 one-time: Full breakdown per search
-- $5.99/month: First 25 couples — founding rate, locked forever
-- $9.99/month: Everyone after first 25
-- Counter on landing page: "X of 25 founding spots remaining"
-
-### Monthly Getaway feature spec
-- Two cards delivered monthly
-- Card 1: Matches saved vibe profile exactly
-- Card 2: Roamie wildcard — slightly outside comfort zone
-- Requires Partner Sync first (saved profiles)
-- Validated by Perplexity — gap in market confirmed, no competitor doing this
-
-### Env vars
-Frontend (Vercel):
-- VITE_STRIPE_PRICE_ONETIME
-- VITE_STRIPE_PUBLISHABLE_KEY
-- VITE_UNSPLASH_KEY
-
-Backend (Render):
-- ANTHROPIC_API_KEY
-- PERPLEXITY_API_KEY
-- RESEND_API_KEY
-- STRIPE_SECRET_KEY
-- STRIPE_PRICE_ONETIME
-- STRIPE_PRICE_MONTHLY
+### Notes
+- PDF is the last piece of the paid breakdown feature
+- Once PDF is done the $3.99 paywall is fully justified
+- Test on live site not localhost for Stripe flows
