@@ -1,8 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import posthog from 'posthog-js'
-import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
+
 
 function EmailCapture() {
   const [email, setEmail] = useState('')
@@ -168,7 +167,10 @@ const loadingMessages = [
     fetchPhoto(result.stretch_goal.name, 'stretch')
   }
 }, [result])
-
+useEffect(() => {
+  setTripBasics(null)
+  setExpanded(false)
+}, [activeCard])
   useEffect(() => {
   if (!result) return
   posthog.capture('results_viewed', {
@@ -720,34 +722,34 @@ if (stripeResponse.url) {
 </button>  
     )}
 
-    {/* Expanded details */}
+{/* Expanded details */}
     {expanded && !isStretch && (
-  <div id="roamie-pdf-content" style={{ animation: 'fadeSlideUp 0.3s ease', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.25rem', marginTop: '1rem' }}>
+      <div style={{ animation: 'fadeSlideUp 0.3s ease', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '1.25rem', marginTop: '1rem' }}>
 
         {dest.cost_breakdown && (
-  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '1.25rem' }}>
-    {[
-      { label: 'P1 Leg 1', value: dest.cost_breakdown.flights_p1_leg1 || dest.cost_breakdown.flights_p1, icon: '✈️', sym: p1sym, color: accent },
-      { label: 'P1 Leg 2', value: dest.cost_breakdown.flights_p1_leg2 || null, icon: '✈️', sym: p1sym, color: accent },
-      { label: 'P2 Flight', value: dest.cost_breakdown.flights_p2, icon: '✈️', sym: p2sym, color: purple },
-      { label: 'Lodging', value: dest.cost_breakdown.lodging_total, icon: '🏨', sym: '$', color: 'rgba(255,255,255,0.85)' },
-      { label: 'Food', value: dest.cost_breakdown.food_total, icon: '🍽️', sym: '$', color: 'rgba(255,255,255,0.85)' },
-      { label: 'Activities', value: dest.cost_breakdown.activities_total, icon: '🎯', sym: '$', color: 'rgba(255,255,255,0.85)' },
-    ].filter(item => item.value != null).map(item => (
-      <div key={item.label} style={{
-        background: 'rgba(255,255,255,0.06)',
-        borderRadius: 'var(--radius-sm)',
-        padding: '8px 4px',
-        textAlign: 'center',
-        border: '1px solid rgba(255,255,255,0.08)',
-      }}>
-        <div style={{ fontSize: '14px', marginBottom: '3px' }}>{item.icon}</div>
-        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '2px' }}>{item.label}</div>
-        <div style={{ fontSize: '11px', color: item.color, fontWeight: '500' }}>{item.sym}{item.value?.toLocaleString()}</div>
-      </div>
-    ))}
-  </div>
-)}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '1.25rem' }}>
+            {[
+              { label: 'P1 Leg 1', value: dest.cost_breakdown.flights_p1_leg1 || dest.cost_breakdown.flights_p1, icon: '✈️', sym: p1sym, color: accent },
+              { label: 'P1 Leg 2', value: dest.cost_breakdown.flights_p1_leg2 || null, icon: '✈️', sym: p1sym, color: accent },
+              { label: 'P2 Flight', value: dest.cost_breakdown.flights_p2, icon: '✈️', sym: p2sym, color: purple },
+              { label: 'Lodging', value: dest.cost_breakdown.lodging_total, icon: '🏨', sym: '$', color: 'rgba(255,255,255,0.85)' },
+              { label: 'Food', value: dest.cost_breakdown.food_total, icon: '🍽️', sym: '$', color: 'rgba(255,255,255,0.85)' },
+              { label: 'Activities', value: dest.cost_breakdown.activities_total, icon: '🎯', sym: '$', color: 'rgba(255,255,255,0.85)' },
+            ].filter(item => item.value != null).map(item => (
+              <div key={item.label} style={{
+                background: 'rgba(255,255,255,0.06)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '8px 4px',
+                textAlign: 'center',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}>
+                <div style={{ fontSize: '14px', marginBottom: '3px' }}>{item.icon}</div>
+                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginBottom: '2px' }}>{item.label}</div>
+                <div style={{ fontSize: '11px', color: item.color, fontWeight: '500' }}>{item.sym}{item.value?.toLocaleString()}</div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {dest.lodging_note && (
           <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '10px', fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
@@ -763,11 +765,11 @@ if (stripeResponse.url) {
           ✈ {dest.routing_note}
         </div>
 
-{dest.safety_note && (
-  <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
-    🛡️ {dest.safety_note}
-  </div>
-)}
+        {dest.safety_note && (
+          <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
+            🛡️ {dest.safety_note}
+          </div>
+        )}
 
         <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.65)' }}>
           🌤 {dest.season_note}
@@ -781,109 +783,68 @@ if (stripeResponse.url) {
           {dest.fairness_note}
         </div>
 
-        <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginBottom: '1.5rem' }}>
-  {dest.fairness_note}
-</div>
+        {/* Trip Basics */}
+        {loadingBasics && (
+          <div style={{ textAlign: 'center', padding: '1rem', fontSize: '13px', color: 'var(--text-muted)' }}>
+            Loading trip basics...
+          </div>
+        )}
 
-{/* Trip Basics */}
-{loadingBasics && (
-  <div style={{ textAlign: 'center', padding: '1rem', fontSize: '13px', color: 'var(--text-muted)' }}>
-    Loading trip basics...
-  </div>
-)}
-
-{tripBasics && !loadingBasics && (
-  <div style={{ marginBottom: '1.5rem' }}>
-    <div style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: accent, marginBottom: '1rem', fontWeight: '500' }}>
-      ✦ Trip basics
-    </div>
-
-    {/* Airport */}
-    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
-      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>✈️ Getting there</div>
-      <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '6px' }}>{tripBasics.airport?.name}</div>
-      {tripBasics.airport?.transport_options?.map(t => (
-        <div key={t.method} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '3px' }}>
-          <span>{t.method}</span>
-          <span>{t.cost} · {t.time}</span>
-        </div>
-      ))}
-    </div>
-
-    {/* Getting around */}
-    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
-      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>🚗 Getting around</div>
-      {tripBasics.getting_around?.map(g => (
-        <div key={g.method} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '3px' }}>
-          <span>{g.method}</span>
-          <span style={{ color: g.recommended ? accent : 'rgba(255,255,255,0.4)' }}>{g.avg_cost}</span>
-        </div>
-      ))}
-    </div>
-
-    {/* Neighborhood */}
-    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
-      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>📍 Where to stay</div>
-      <div style={{ fontSize: '13px', color: accent, marginBottom: '4px', fontWeight: '500' }}>{tripBasics.neighborhood?.name}</div>
-      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>{tripBasics.neighborhood?.why}</div>
-    </div>
-
-    {/* Stays */}
-    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
-      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>🏨 Stay options</div>
-      {tripBasics.stays?.map(s => (
-        <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>
-          <span>{s.name} <span style={{ color: 'rgba(255,255,255,0.3)' }}>· {s.type}</span></span>
-          <span style={{ color: accent }}>{s.price_range}</span>
-        </div>
-      ))}
-    </div>
-
-    {/* Restaurants */}
-    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
-      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>🍽️ Where to eat</div>
-      {tripBasics.restaurants?.map(r => (
-        <div key={r.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>
-          <span>{r.name} <span style={{ color: 'rgba(255,255,255,0.3)' }}>· {r.cuisine}</span></span>
-          <span>{r.price}</span>
-        </div>
-      ))}
-    </div>
-
-    {/* Essentials */}
-    <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
-      <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>🛒 Essentials nearby</div>
-      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '3px' }}>🛍️ {tripBasics.essentials?.grocery}</div>
-      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '3px' }}>💊 {tripBasics.essentials?.pharmacy}</div>
-      <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>🏪 {tripBasics.essentials?.convenience}</div>
-    </div>
-  </div>
-)}
-
-<button
-  onClick={downloadPDF}
-  style={{
-    width: '100%',
-    marginBottom: '10px',
-    padding: '12px 24px',
-    background: 'rgba(255,107,53,0.15)',
-    border: '1px solid rgba(255,107,53,0.3)',
-    borderRadius: '100px',
-    color: accent,
-    fontSize: '13px',
-    fontWeight: '500',
-    cursor: 'pointer',
-  }}
->
-  Download trip brief PDF ↓
-</button>
-
-<button
-  onClick={() => navigate('/quiz')}
-  style={{ background: 'none', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '100px', padding: '10px 24px', color: 'rgba(255,255,255,0.5)', fontSize: '13px', cursor: 'pointer' }}
->
-  Plan another trip
-</button>
+        {tripBasics && !loadingBasics && (
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: accent, marginBottom: '1rem', fontWeight: '500' }}>
+              ✦ Trip basics
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>✈️ Getting there</div>
+              <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', marginBottom: '6px' }}>{tripBasics.airport?.name}</div>
+              {tripBasics.airport?.transport_options?.map(t => (
+                <div key={t.method} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '3px' }}>
+                  <span>{t.method}</span>
+                  <span>{t.cost} · {t.time}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>🚗 Getting around</div>
+              {tripBasics.getting_around?.map(g => (
+                <div key={g.method} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '3px' }}>
+                  <span>{g.method}</span>
+                  <span style={{ color: g.recommended ? accent : 'rgba(255,255,255,0.4)' }}>{g.avg_cost}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>📍 Where to stay</div>
+              <div style={{ fontSize: '13px', color: accent, marginBottom: '4px', fontWeight: '500' }}>{tripBasics.neighborhood?.name}</div>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>{tripBasics.neighborhood?.why}</div>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>🏨 Stay options</div>
+              {tripBasics.stays?.map(s => (
+                <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>
+                  <span>{s.name} <span style={{ color: 'rgba(255,255,255,0.3)' }}>· {s.type}</span></span>
+                  <span style={{ color: accent }}>{s.price_range}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>🍽️ Where to eat</div>
+              {tripBasics.restaurants?.map(r => (
+                <div key={r.name} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}>
+                  <span>{r.name} <span style={{ color: 'rgba(255,255,255,0.3)' }}>· {r.cuisine}</span></span>
+                  <span>{r.price}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 'var(--radius-sm)', padding: '12px 14px', marginBottom: '8px' }}>
+              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.08em' }}>🛒 Essentials nearby</div>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '3px' }}>🛍️ {tripBasics.essentials?.grocery}</div>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '3px' }}>💊 {tripBasics.essentials?.pharmacy}</div>
+              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>🏪 {tripBasics.essentials?.convenience}</div>
+            </div>
+          </div>
+        )}
 
         <button
           onClick={() => navigate('/quiz')}
@@ -894,56 +855,54 @@ if (stripeResponse.url) {
       </div>
     )}
 
-{/* Share + Swipe */}
-{!expanded && (
-  <div style={{ paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
-    {!isStretch && (
-      <>
-        <button
-          onClick={shareTrip}
-          style={{
-            background: 'rgba(255,107,53,0.15)',
-            border: '1px solid rgba(255,107,53,0.3)',
-            borderRadius: '100px',
-            padding: '10px 24px',
-            color: accent,
-            fontSize: '13px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            width: '100%',
-            transition: 'all 0.2s',
-          }}
-        >
-          Share this trip ✈️
-        </button>
-        <button
-          onClick={() => setShowSummary(true)}
-          style={{
-            background: 'rgba(156,126,196,0.15)',
-            border: '1px solid rgba(156,126,196,0.3)',
-            borderRadius: '100px',
-            padding: '10px 24px',
-            color: purple,
-            fontSize: '13px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            width: '100%',
-            transition: 'all 0.2s',
-          }}
-        >
-          Save summary card 📸
-        </button>
-      </>
+    {/* Share + Swipe */}
+    {!expanded && (
+      <div style={{ paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center' }}>
+        {!isStretch && (
+          <>
+            <button
+              onClick={shareTrip}
+              style={{
+                background: 'rgba(255,107,53,0.15)',
+                border: '1px solid rgba(255,107,53,0.3)',
+                borderRadius: '100px',
+                padding: '10px 24px',
+                color: accent,
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                width: '100%',
+                transition: 'all 0.2s',
+              }}
+            >
+              Share this trip ✈️
+            </button>
+            <button
+              onClick={() => setShowSummary(true)}
+              style={{
+                background: 'rgba(156,126,196,0.15)',
+                border: '1px solid rgba(156,126,196,0.3)',
+                borderRadius: '100px',
+                padding: '10px 24px',
+                color: purple,
+                fontSize: '13px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                width: '100%',
+                transition: 'all 0.2s',
+              }}
+            >
+              Save summary card 📸
+            </button>
+          </>
+        )}
+        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          swipe to explore ←→
+        </div>
+      </div>
     )}
-    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-      swipe to explore ←→
-    </div>
-  </div>
-)}
-
 
   </div>
-
 </div>
 
 {/* Couple summary */}
@@ -956,93 +915,88 @@ if (stripeResponse.url) {
 {/* Email capture */}
 <EmailCapture />
 
-      {/* Summary card modal */}
-      {showSummary && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.85)',
-          zIndex: 100,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '1.5rem',
-        }}
-          onClick={() => setShowSummary(false)}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: '#111',
-              borderRadius: '24px',
-              padding: '2rem',
-              width: '100%',
-              maxWidth: '360px',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}
-          >
-            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-              <div style={{ fontSize: '13px', color: accent, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '500' }}>✦ Roamie</div>
-              <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '2rem', lineHeight: '1.1', marginBottom: '8px' }}>
-                {dest.country_emoji} {dest.name}
-              </div>
-              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                {dest.tagline}
-              </div>
+{/* Summary card modal */}
+{showSummary && (
+  <div style={{
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    background: 'rgba(0,0,0,0.85)',
+    zIndex: 100,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '1.5rem',
+  }}
+    onClick={() => setShowSummary(false)}
+  >
+    <div
+      onClick={e => e.stopPropagation()}
+      style={{
+        background: '#111',
+        borderRadius: '24px',
+        padding: '2rem',
+        width: '100%',
+        maxWidth: '360px',
+        border: '1px solid rgba(255,255,255,0.08)',
+      }}
+    >
+      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+        <div style={{ fontSize: '13px', color: accent, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '500' }}>✦ Roamie</div>
+        <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '2rem', lineHeight: '1.1', marginBottom: '8px' }}>
+          {dest.country_emoji} {dest.name}
+        </div>
+        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+          {dest.tagline}
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '1.25rem' }}>
+        <div style={{ background: 'rgba(255,107,53,0.1)', border: '1px solid rgba(255,107,53,0.2)', borderRadius: '14px', padding: '12px', textAlign: 'center' }}>
+          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>Partner 1</div>
+          <div style={{ fontSize: '1.3rem', fontWeight: '600', color: accent }}>{p1sym}{dest.p1_cost?.toLocaleString()}</div>
+          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>{dest.p1_days_income} days income</div>
+        </div>
+        <div style={{ background: 'rgba(156,126,196,0.1)', border: '1px solid rgba(156,126,196,0.2)', borderRadius: '14px', padding: '12px', textAlign: 'center' }}>
+          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>Partner 2</div>
+          <div style={{ fontSize: '1.3rem', fontWeight: '600', color: purple }}>{p2sym}{dest.p2_cost?.toLocaleString()}</div>
+          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>{dest.p2_days_income} days income</div>
+        </div>
+      </div>
+      {dest.reality_strip && (
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1.25rem', justifyContent: 'center' }}>
+          {[
+            { label: dest.reality_strip.crowd, icon: '👥' },
+            { label: dest.reality_strip.weather, icon: '🌤' },
+            { label: dest.reality_strip.fairness, icon: '⚖️' },
+            { label: dest.reality_strip.budget_stretch, icon: '💰' },
+          ].map(item => (
+            <div key={item.label} style={{
+              background: 'rgba(255,255,255,0.06)',
+              borderRadius: '100px',
+              padding: '4px 10px',
+              fontSize: '11px',
+              color: 'rgba(255,255,255,0.6)',
+            }}>
+              {item.icon} {item.label}
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '1.25rem' }}>
-              <div style={{ background: 'rgba(255,107,53,0.1)', border: '1px solid rgba(255,107,53,0.2)', borderRadius: '14px', padding: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>Partner 1</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: '600', color: accent }}>{p1sym}{dest.p1_cost?.toLocaleString()}</div>
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>{dest.p1_days_income} days income</div>
-              </div>
-              <div style={{ background: 'rgba(156,126,196,0.1)', border: '1px solid rgba(156,126,196,0.2)', borderRadius: '14px', padding: '12px', textAlign: 'center' }}>
-                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>Partner 2</div>
-                <div style={{ fontSize: '1.3rem', fontWeight: '600', color: purple }}>{p2sym}{dest.p2_cost?.toLocaleString()}</div>
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.3)', marginTop: '2px' }}>{dest.p2_days_income} days income</div>
-              </div>
-            </div>
-
-            {dest.reality_strip && (
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '1.25rem', justifyContent: 'center' }}>
-                {[
-                  { label: dest.reality_strip.crowd, icon: '👥' },
-                  { label: dest.reality_strip.weather, icon: '🌤' },
-                  { label: dest.reality_strip.fairness, icon: '⚖️' },
-                  { label: dest.reality_strip.budget_stretch, icon: '💰' },
-                ].map(item => (
-                  <div key={item.label} style={{
-                    background: 'rgba(255,255,255,0.06)',
-                    borderRadius: '100px',
-                    padding: '4px 10px',
-                    fontSize: '11px',
-                    color: 'rgba(255,255,255,0.6)',
-                  }}>
-                    {item.icon} {item.label}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ borderLeft: `2px solid ${accent}`, paddingLeft: '12px', fontSize: '12px', color: 'rgba(255,255,255,0.5)', lineHeight: '1.6', marginBottom: '1.5rem' }}>
-              {dest.savings_scenario}
-            </div>
-
-            <div style={{ textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.25)' }}>
-              Planned with Roamie · roamie-nu.vercel.app
-            </div>
-
-            <button
-              onClick={() => setShowSummary(false)}
-              style={{ width: '100%', marginTop: '1.25rem', background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '100px', padding: '10px', color: 'rgba(255,255,255,0.4)', fontSize: '13px', cursor: 'pointer' }}
-            >
-              Close
-            </button>
-          </div>
+          ))}
         </div>
       )}
+      <div style={{ borderLeft: `2px solid ${accent}`, paddingLeft: '12px', fontSize: '12px', color: 'rgba(255,255,255,0.5)', lineHeight: '1.6', marginBottom: '1.5rem' }}>
+        {dest.savings_scenario}
+      </div>
+      <div style={{ textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.25)' }}>
+        Planned with Roamie · roamie-nu.vercel.app
+      </div>
+      <button
+        onClick={() => setShowSummary(false)}
+        style={{ width: '100%', marginTop: '1.25rem', background: 'none', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '100px', padding: '10px', color: 'rgba(255,255,255,0.4)', fontSize: '13px', cursor: 'pointer' }}
+      >
+        Close
+      </button>
+    </div>
+  </div>
+)}
 
     </div>
   )
-}
+}    

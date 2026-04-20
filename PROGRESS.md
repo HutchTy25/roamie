@@ -1,22 +1,22 @@
-## April 19, 2026
+## April 20, 2026
 
 ### What we built
-- Fixed Perplexity graceful fallback when flight data unusable
-- Fixed downloadPDF moved to correct component
-- Fixed data restoration after Stripe redirect
-- Stripe full payment flow working on live site
-- Success page working
-- Beta tester bypass working (?beta=true)
-- Vercel breach response — all API keys rotated
-- Secret header protection discussion noted for next session
+- Trip Basics feature (Perplexity + Claude dual API)
+- Getting there, getting around, where to stay, restaurants, essentials
+- PDF download working on live site
+- Fixed Perplexity fallback filter strengthened
+- Perplexity query rewritten to use actual destination not hardcoded European cities
+
+### Known bugs to fix next session
+- Trip basics duping across different destinations
+- Two "Plan another trip" buttons — duplicate to remove
+- PDF bottom half blank white — capture area too large
+- duping flight cost in some ways
+- Could it be that we are asking to much? (Maybe check tokens)
 
 ### Next up
-1. PDF download — make it premium and worth $3.99
-2. Secret header protection on backend
-3. Update PROGRESS.md roadmap
-4. Partner Sync
-
-### Notes
-- PDF is the last piece of the paid breakdown feature
-- Once PDF is done the $3.99 paywall is fully justified
-- Test on live site not localhost for Stripe flows
+1. Fix Perplexity flight data reliability
+2. Fix duplicate Plan another trip button
+3. Polish PDF output
+4. Secret header protection on backend
+5. Partner Sync
