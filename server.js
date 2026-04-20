@@ -68,21 +68,12 @@ function httpsPost(hostname, path, headers, body) {
 }
 
 async function getFlightPrices(p1City, p2City, dates, destinations) {
-const query = `Flight prices for travel ${dates}. Return ONLY prices in this exact format, no explanation:
+  const query = `What are typical economy flight prices in 2026 for these routes during ${dates}? Give realistic price ranges only in this exact format, no explanations:
 
-${p1City} to ${p2City}: $XXX-XXX USD (Airline name)
-${p1City} to Lisbon: $XXX-XXX USD (Airline name)
-${p1City} to Porto: $XXX-XXX USD (Airline name)
-${p1City} to Azores: $XXX-XXX USD (Airline name)
-${p1City} to Iceland: $XXX-XXX USD (Airline name)
-${p1City} to Malta: $XXX-XXX USD (Airline name)
-${p2City} to Lisbon: £XXX-XXX GBP (Airline name)
-${p2City} to Porto: £XXX-XXX GBP (Airline name)
-${p2City} to Azores: £XXX-XXX GBP (Airline name)
-${p2City} to Iceland: £XXX-XXX GBP (Airline name)
-${p2City} to Malta: £XXX-XXX GBP (Airline name)
+${p1City} to ${destinations}: $XXX-XXX USD (Airline name)
+${p2City} to ${destinations}: $XXX-XXX (local currency) (Airline name)
 
-Numbers only. No paragraphs. No explanations. Just the price list.`  
+If exact prices unknown give realistic estimates based on distance and typical fares. Always provide numbers, never say unknown or cannot.`
 
   const body = JSON.stringify({
     model: 'sonar',
@@ -97,7 +88,9 @@ Numbers only. No paragraphs. No explanations. Just the price list.`
       { 'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}` },
       body
     )
-    return result.choices?.[0]?.message?.content || ''
+    const content = result.choices?.[0]?.message?.content || ''
+    console.log('Perplexity raw:', content.substring(0, 300))
+    return content
   } catch (e) {
     console.error('Perplexity error:', e)
     return ''
@@ -134,7 +127,12 @@ if (p1City && p2City) {
   const rawFlight = await getFlightPrices(p1City, p2City, dates, 'top European and midpoint destinations')
   console.log('Flight data:', rawFlight.substring(0, 200))
   // Only use flight data if it looks like actual prices not an explanation
-  if (rawFlight && !rawFlight.includes('cannot') && !rawFlight.includes('I don') && !rawFlight.includes('understand') && rawFlight.includes('$')) {
+  if (rawFlight && 
+    !rawFlight.toLowerCase().includes('cannot') && 
+    !rawFlight.toLowerCase().includes('unable') && 
+    !rawFlight.toLowerCase().includes('xxx') && 
+    !rawFlight.toLowerCase().includes('don\'t have') &&
+    (rawFlight.includes('$') || rawFlight.includes('£') || rawFlight.includes('€'))) {
     flightData = rawFlight
   } else {
     console.log('Perplexity returned unusable data, skipping flight injection')
