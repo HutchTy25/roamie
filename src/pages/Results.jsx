@@ -43,30 +43,7 @@ function EmailCapture() {
     </div>
   )
 
-async function downloadPDF() {
-  const element = document.getElementById('roamie-pdf-content')
-  if (!element) return
 
-  const canvas = await html2canvas(element, {
-    backgroundColor: '#0a0a0a',
-    scale: 2,
-    useCORS: true,
-    allowTaint: true,
-  })
-
-  const imgData = canvas.toDataURL('image/png')
-  const pdf = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-  })
-
-  const pdfWidth = pdf.internal.pageSize.getWidth()
-  const pdfHeight = (canvas.height * pdfWidth) / canvas.width
-
-  pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
-  pdf.save(`Roamie-${dest.name?.replace(/,/g, '').replace(/ /g, '-')}.pdf`)
-}
 
   return (
     <div style={{
@@ -121,7 +98,9 @@ async function downloadPDF() {
 export default function Results() {
   const location = useLocation()
   const navigate = useNavigate()
-  const data = location.state?.data
+  const location_data = location.state?.data
+const savedDataStr = localStorage.getItem('roamie_last_data')
+const data = location_data || (savedDataStr ? JSON.parse(savedDataStr) : null)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
@@ -167,6 +146,8 @@ const loadingMessages = [
   if (params.get('beta') === 'true') {
     localStorage.setItem('roamie_paid', 'true')
   }
+  console.log('Saved result:', localStorage.getItem('roamie_last_result') ? 'YES' : 'NO')
+  console.log('Location data:', data)
   const savedResult = localStorage.getItem('roamie_last_result')
   if (savedResult) {
     setResult(JSON.parse(savedResult))
@@ -176,7 +157,6 @@ const loadingMessages = [
     fetchRecommendations()
   }
 }, [])
-
   useEffect(() => {
   if (!result) return
   result.destinations?.forEach((dest, i) => {
@@ -390,7 +370,32 @@ async function fetchPhoto(cityName, index) {
 }
 
   const p1sym = CURR_SYMBOLS[data?.p1?.currency] || ''
-  const p2sym = CURR_SYMBOLS[data?.p2?.currency] || ''
+const p2sym = CURR_SYMBOLS[data?.p2?.currency] || ''
+
+async function downloadPDF() {
+  const element = document.getElementById('roamie-pdf-content')
+  if (!element) return
+
+  const canvas = await html2canvas(element, {
+    backgroundColor: '#0a0a0a',
+    scale: 2,
+    useCORS: true,
+    allowTaint: true,
+  })
+
+  const imgData = canvas.toDataURL('image/png')
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  })
+
+  const pdfWidth = pdf.internal.pageSize.getWidth()
+  const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+
+  pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+  pdf.save(`Roamie-${dest.name?.replace(/,/g, '').replace(/ /g, '-')}.pdf`)
+}
 
 if (loading) return (
     <div style={{
@@ -661,12 +666,12 @@ async function shareTrip() {
           mode: 'payment',
         })
       })
-      const data = await res.json()
-      if (data.url) {
+    const stripeResponse = await res.json()
+if (stripeResponse.url) {
   localStorage.setItem('roamie_last_result', JSON.stringify(result))
   localStorage.setItem('roamie_last_data', JSON.stringify(data))
-  window.location.href = data.url
-}
+  window.location.href = stripeResponse.url
+}  
     } catch (e) {
       console.error('Checkout error:', e)
     }
