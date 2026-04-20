@@ -129,10 +129,17 @@ app.post('/api/messages', [
     const dates = datesMatch?.[1]?.trim() || ''
 
     let flightData = ''
-    if (p1City && p2City) {
-      console.log(`Fetching flight prices: ${p1City} + ${p2City}`)
-      flightData = await getFlightPrices(p1City, p2City, dates, 'top European and midpoint destinations')
-      console.log('Flight data:', flightData.substring(0, 200))
+if (p1City && p2City) {
+  console.log(`Fetching flight prices: ${p1City} + ${p2City}`)
+  const rawFlight = await getFlightPrices(p1City, p2City, dates, 'top European and midpoint destinations')
+  console.log('Flight data:', rawFlight.substring(0, 200))
+  // Only use flight data if it looks like actual prices not an explanation
+  if (rawFlight && !rawFlight.includes('cannot') && !rawFlight.includes('I don') && !rawFlight.includes('understand') && rawFlight.includes('$')) {
+    flightData = rawFlight
+  } else {
+    console.log('Perplexity returned unusable data, skipping flight injection')
+  }
+
     }
 
     const enhancedMessages = messages.map((msg, i) => {
