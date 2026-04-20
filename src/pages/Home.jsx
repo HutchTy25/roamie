@@ -109,7 +109,7 @@ useEffect(() => {
           lineHeight: '1.7',
           margin: 0,
         }}>
-          Put in both your budgets, your cities, your vibe — Roamie finds trips that actually work for both of you. 🤝
+          Put in both your budgets, your cities, your vibe — Roamie finds trips that actually work for both of you.
         </p>
       </div>
 
@@ -126,7 +126,7 @@ useEffect(() => {
         {[
           { icon: '💸', text: 'Two budgets, one plan' },
           { icon: '🌍', text: '30+ currencies' },
-          { icon: '✈️', text: 'LDR routing' },
+          { icon: '✈️', text: 'Flights from both cities' },
         ].map(p => (
           <div key={p.text} className="feature-pill" style={{
             display: 'flex',
@@ -153,6 +153,7 @@ useEffect(() => {
         maxWidth: '320px',
         marginBottom: '1rem',
       }}>
+        Fill it out together on your next FaceTime 🤙
         <button
           className="start-btn"
           onClick={() => navigate('/quiz')}
@@ -207,7 +208,7 @@ useEffect(() => {
   </div>
 )}
 
-        Fill it out together on your next FaceTime 🤙
+        
       </div>
 
       {/* Social proof — Reddit review */}
