@@ -290,7 +290,7 @@ Respond ONLY with valid JSON no markdown no backticks no explanation:
       "fairness_note": "One honest sentence on currency fairness",
       "harder_partner": "p1 or p2",
       "vibe_match": ["vibe1", "vibe2"],
-      "savings_scenario": "If both save X per week for Y weeks this becomes comfortable",
+      "savings_scenario": "Calculate accurately: subtract current budget from actual trip cost to find the gap, divide gap by number of weeks available before travel dates, state exact weekly savings amount per partner and exact weeks needed. Math must be correct. Example format: 'Save $85/week each for 10 weeks to cover the $1,700 gap.'",
       "routing_note": "Specific airlines and approximate flight times from each city",
       "best_for": "weekend or week or two weeks",
       "season_note": "One sentence on weather for their specific travel dates",
