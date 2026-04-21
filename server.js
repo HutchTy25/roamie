@@ -23,6 +23,7 @@ app.use(cors({
   credentials: false,
 }))
 app.use(express.json())
+app.set('trust proxy', 1)
 
 const apiLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
@@ -183,6 +184,7 @@ app.post('/api/waitlist', [
   }
 
   try {
+    const { email } = req.body
     const { Resend } = await import('resend')
     const resend = new Resend(process.env.RESEND_API_KEY)
 

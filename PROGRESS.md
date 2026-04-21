@@ -1,20 +1,24 @@
-## April 20, 2026
+## April 20, 2026 (afternoon)
 
 ### What we built
-- Trip Basics feature working end to end
-- Perplexity + Claude dual API for trip basics
-- Getting there, getting around, where to stay, restaurants, essentials
-- Removed PDF — pivoted to in-app rich breakdown based on Perplexity research
-- Fixed trip basics resetting when swiping destinations
-- Cleaned up duplicate buttons and code
-- Stripe paid breakdown fully working on live site
+- Landing page polished — LDR routing → Flights from both cities
+- Removed 🤝 emoji from subheadline
+- Moved FaceTime line above CTA button
+- Trip basics feature complete and working on live site
+- Removed PDF — pivoted to in-app rich breakdown
+- Fixed trip basics resetting on card swipe
+- Cleaned up duplicate buttons
+
+### Current live state
+- roamie-nu.vercel.app — fully working
+- Landing page ✅
+- Quiz flow ✅
+- AI recommendations ✅
+- Paid breakdown + trip basics ✅
+- Stripe payments ✅
+- Email capture ✅
+- Share + summary card ✅
 
 ### Next up
-1. Landing page — visitors land cold with no context currently
-2. Google Sign In — for Partner Sync later
-3. Partner Sync — linked accounts
-4. Monthly Getaway feature
-
-### Notes
-- Trip basics loads in a few seconds — acceptable, two API calls
-- Landing page research to run through Perplexity first
+1. Basic dashboard — saved trips, partner sync slot, saved home cities
+2. Google Sign In —
