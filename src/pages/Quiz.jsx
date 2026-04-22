@@ -612,19 +612,27 @@ export default function Quiz() {
   <button
     style={{ ...base.btn, ...(!data.dates.from || !data.dates.to ? base.btnDisabled : {}) }}
     disabled={!data.dates.from || !data.dates.to}
-    onClick={() => {
-      const count = parseInt(localStorage.getItem('roamie_trip_count') || '0')
-      localStorage.setItem('roamie_trip_count', count + 1)
-      posthog.capture('generate_trip_clicked', {
-        p1_city: data.p1.city,
-        p2_city: data.p2.city,
-        region: data.region,
-        vibe_count: data.vibes.length,
-        accommodation: data.accommodation,
-        trip_number: count + 1,
-      })
-      navigate('/results', { state: { data } })
-    }}
+  onClick={() => {
+  const isPaid = localStorage.getItem('roamie_paid') === 'true'
+  const isBeta = new URLSearchParams(window.location.search).get('beta') === 'true'
+  const count = parseInt(localStorage.getItem('roamie_trip_count') || '0')
+
+  if (!isPaid && !isBeta && count >= 3) {
+    navigate('/gate', { state: { data } })
+    return
+  }
+
+  localStorage.setItem('roamie_trip_count', count + 1)
+  posthog.capture('generate_trip_clicked', {
+    p1_city: data.p1.city,
+    p2_city: data.p2.city,
+    region: data.region,
+    vibe_count: data.vibes.length,
+    accommodation: data.accommodation,
+    trip_number: count + 1,
+  })
+  navigate('/results', { state: { data } })
+}}  
   >
     Find our trips ✦
   </button>

@@ -8,8 +8,13 @@ export default function Home() {
 const [tripCount, setTripCount] = useState(0)
 
 useEffect(() => {
-  const count = parseInt(localStorage.getItem('roamie_trip_count') || '0')
-  setTripCount(count)
+  fetch('https://roamie-61ib.onrender.com/api/trip-count')
+    .then(res => res.json())
+    .then(data => setTripCount(data.count))
+    .catch(() => {
+      const count = parseInt(localStorage.getItem('roamie_trip_count') || '0')
+      setTripCount(count)
+    })
 }, [])
 
   useEffect(() => {

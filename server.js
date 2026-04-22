@@ -23,6 +23,13 @@ app.use(cors({
   credentials: false,
 }))
 app.use(express.json())
+app.use('/api/messages', (req, res, next) => {
+  const secret = req.headers['x-roamie-secret']
+  if (secret !== process.env.ROAMIE_SECRET) {
+    return res.status(403).json({ error: 'Forbidden' })
+  }
+  next()
+})
 app.set('trust proxy', 1)
 
 const apiLimiter = rateLimit({
@@ -85,6 +92,7 @@ async function getExchangeRates(baseCurrency) {
 }
 
 const searchCache = new Map()
+let globalTripCount = 0
 
 function getCacheKey(p1City, p2City, dates) {
   return `${p1City.toLowerCase()}-${p2City.toLowerCase()}-${dates}`
@@ -245,8 +253,10 @@ console.log('ANTHROPIC KEY CHECK:', process.env.ANTHROPIC_API_KEY?.substring(0, 
       claudeBody
     )
 
-    console.log('Claude response received')
-    res.json(claudeResult)
+   console.log('Claude response received')
+globalTripCount++
+console.log('Global trip count:', globalTripCount)
+res.json(claudeResult)
 
   } catch (err) {
     console.error('Server error:', err)
@@ -428,3 +438,6 @@ Respond ONLY with valid JSON no markdown no backticks:
 })
 
 app.listen(3001, () => console.log('Server running on port 3001'))
+app.get('/api/trip-count', (req, res) => {
+  res.json({ count: globalTripCount })
+})

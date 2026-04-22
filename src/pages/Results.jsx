@@ -313,16 +313,20 @@ Respond ONLY with valid JSON no markdown no backticks no explanation:
 }
 Return exactly 3 destinations. Be brutally specific — name airlines, give temperature ranges, mention neighborhoods. Users will actually book these trips so accuracy matters more than sounding impressive. Avoid obvious tourist traps unless they genuinely fit the budget and vibe better than alternatives.`
 
-    try {
-      const res = await fetch('https://roamie-61ib.onrender.com/api/messages', {
+try {
+const res = await fetch('https://roamie-61ib.onrender.com/api/messages', {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 
+    'Content-Type': 'application/json',
+    'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+  },
   body: JSON.stringify({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 4000,
     messages: [{ role: 'user', content: prompt }]
   })
 })
+
 const rawText = await res.text()
 console.log('Raw response FULL:', rawText)
 const json = JSON.parse(rawText)
@@ -407,7 +411,10 @@ async function fetchTripBasics() {
   try {
     const res = await fetch('https://roamie-61ib.onrender.com/api/trip-basics', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+    'Content-Type': 'application/json',
+    'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+  },
       body: JSON.stringify({
         destination: dest.name,
         vibe: data?.vibes || [],
