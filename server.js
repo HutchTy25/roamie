@@ -68,6 +68,47 @@ function httpsPost(hostname, path, headers, body) {
   })
 }
 
+async function getExchangeRates(baseCurrency) {
+  try {
+    const res = await fetch(
+      `https://v6.exchangerate-api.com/v6/${process.env.EXCHANGERATE_API_KEY}/latest/${baseCurrency}`
+    )
+    const data = await res.json()
+    if (data.result === 'success') {
+      return data.conversion_rates
+    }
+    return null
+  } catch (e) {
+    console.error('Exchange rate error:', e)
+    return null
+  }
+}
+
+const searchCache = new Map()
+
+function getCacheKey(p1City, p2City, dates) {
+  return `${p1City.toLowerCase()}-${p2City.toLowerCase()}-${dates}`
+}
+
+function getCached(key) {
+  const cached = searchCache.get(key)
+  if (!cached) return null
+  const age = Date.now() - cached.timestamp
+  if (age > 30 * 60 * 1000) {
+    searchCache.delete(key)
+    return null
+  }
+  return cached.data
+}
+
+function setCache(key, data) {
+  searchCache.set(key, { data, timestamp: Date.now() })
+  if (searchCache.size > 100) {
+    const firstKey = searchCache.keys().next().value
+    searchCache.delete(firstKey)
+  }
+}
+
 async function getFlightPrices(p1City, p2City, dates, destinations) {
   const query = `What are typical economy flight prices in 2026 for these routes during ${dates}? Give realistic price ranges only in this exact format, no explanations:
 
@@ -122,34 +163,71 @@ app.post('/api/messages', [
     const p2City = p2CityMatch?.[1]?.trim() || ''
     const dates = datesMatch?.[1]?.trim() || ''
 
-    let flightData = ''
-if (p1City && p2City) {
-  console.log(`Fetching flight prices: ${p1City} + ${p2City}`)
-  const rawFlight = await getFlightPrices(p1City, p2City, dates, 'top European and midpoint destinations')
-  console.log('Flight data:', rawFlight.substring(0, 200))
-  // Only use flight data if it looks like actual prices not an explanation
-  if (rawFlight && 
-    !rawFlight.toLowerCase().includes('cannot') && 
-    !rawFlight.toLowerCase().includes('unable') && 
-    !rawFlight.toLowerCase().includes('xxx') && 
-    !rawFlight.toLowerCase().includes('don\'t have') &&
-    (rawFlight.includes('$') || rawFlight.includes('£') || rawFlight.includes('€'))) {
-    flightData = rawFlight
+ // CACHE CHECK HERE
+const cacheKey = getCacheKey(p1City, p2City, dates)
+const cachedData = getCached(cacheKey)
+
+let flightData = ''
+let exchangeRates = null
+let currencyContext = ''
+
+const p1CurrMatch = userMessage.match(/Currency: ([A-Z]{3})/)
+const p2CurrMatch = userMessage.match(/Currency: ([A-Z]{3}).*Currency: ([A-Z]{3})/s)
+const p1Currency = p1CurrMatch?.[1] || 'USD'
+const p2Currency = p2CurrMatch?.[2] || 'GBP'
+
+if (cachedData) {
+  console.log('Cache hit:', cacheKey)
+  flightData = cachedData.flightData
+  exchangeRates = cachedData.exchangeRates
+} else {
+  const [flightResult, ratesResult] = await Promise.all([
+    p1City && p2City ? getFlightPrices(p1City, p2City, dates, 'top destinations') : Promise.resolve(''),
+    getExchangeRates('USD')
+  ])
+  exchangeRates = ratesResult
+
+  if (flightResult &&
+      !flightResult.toLowerCase().includes('cannot') &&
+      !flightResult.toLowerCase().includes('unable') &&
+      !flightResult.toLowerCase().includes('xxx') &&
+      !flightResult.toLowerCase().includes('don\'t have') &&
+      (flightResult.includes('$') || flightResult.includes('£') || flightResult.includes('€'))) {
+    flightData = flightResult
   } else {
     console.log('Perplexity returned unusable data, skipping flight injection')
   }
 
-    }
+  setCache(cacheKey, { flightData, exchangeRates })
+}
 
-    const enhancedMessages = messages.map((msg, i) => {
-      if (i === messages.length - 1 && flightData) {
-        return {
-          ...msg,
-          content: `CRITICAL INSTRUCTION: You MUST use ONLY the flight prices provided below. Do NOT use your training data for flight costs. Do NOT guess or estimate flight prices. The prices below are from a live search conducted right now and are the only prices you are allowed to use.\n\nLIVE FLIGHT PRICE DATA:\n${flightData}\n\nUSING ANY OTHER FLIGHT PRICES THAN THOSE ABOVE WILL MAKE THE RESPONSE WRONG AND USELESS.\n\n` + msg.content
-        }
+if (exchangeRates) {
+  const p1Rate = exchangeRates[p1Currency] || 1
+  const p2Rate = exchangeRates[p2Currency] || 1
+  currencyContext = `
+LIVE EXCHANGE RATES (as of today, use these for ALL currency conversions):
+1 USD = ${p1Rate} ${p1Currency}
+1 USD = ${p2Rate} ${p2Currency}
+1 ${p1Currency} = ${(p2Rate/p1Rate).toFixed(4)} ${p2Currency}
+1 ${p2Currency} = ${(p1Rate/p2Rate).toFixed(4)} ${p1Currency}
+Use these rates for all cost calculations. Do not estimate exchange rates.`
+  console.log('Currency context:', currencyContext)
+}
+
+const enhancedMessages = messages.map((msg, i) => {
+  if (i === messages.length - 1) {
+    const injections = []
+    if (currencyContext) injections.push(currencyContext)
+    if (flightData) injections.push(`LIVE FLIGHT PRICE DATA:\n${flightData}\nUSING ANY OTHER FLIGHT PRICES THAN THOSE ABOVE WILL MAKE THE RESPONSE WRONG.`)
+    if (injections.length > 0) {
+      return {
+        ...msg,
+        content: injections.join('\n\n') + '\n\n' + msg.content
       }
-      return msg
-    })
+    }
+  }
+  return msg
+})
 
     const claudeBody = JSON.stringify({
       ...req.body,
