@@ -19,7 +19,7 @@ app.use(cors({
     'http://localhost:4173',
   ],
   methods: ['GET', 'POST'],
- allowedHeaders: ['Content-Type', 'stripe-signature'],
+ allowedHeaders: ['Content-Type', 'stripe-signature', 'x-roamie-secret'],
   credentials: false,
 }))
 app.use(express.json())

@@ -1,35 +1,30 @@
-## April 21, 2026 (evening)
+## April 22, 2026
 
 ### What we built
-- Parallel API orchestration with Promise.all
-- Real exchange rates via ExchangeRate-API (live rates, 100% math accuracy)
-- Map-based session cache (30 min TTL, max 100 entries)
-- Cache prevents redundant API calls for same city pair + dates
-- Currency context injected into Claude prompt with real rates
-- Architecture upgrade validated — Gemini's approach confirmed correct
+- Global trip counter — real backend counter not localStorage
+- Usage gate — 3 free searches then email capture to continue (beta mode)
+- Secret header protection — x-roamie-secret on all API calls
+- Gate page — clean branded email capture before 4th search
+- Fixed Home.jsx to fetch real global trip count from backend
 
-### How it works now
-1. Request comes in
-2. Check cache — if hit, use cached flight + rate data instantly
-3. If miss — Perplexity (flights) + ExchangeRate-API (rates) run in PARALLEL
-4. Real exchange rates injected into Claude prompt
-5. Claude focuses only on reasoning and recommendations
-6. Result cached for 30 mins for repeat searches
+### Current live state — READY FOR MARKETING
+- roamie-nu.vercel.app fully working
+- Usage gate protects against API cost blowout
+- Email capture at two touchpoints (soft + hard gate)
+- Beta bypass: roamie-nu.vercel.app?beta=true
+- All security layers in place
 
-### Performance improvement
-- Before: Serial calls (Perplexity → Claude) 
-- After: Parallel calls + cache hits = significantly faster
-- Math accuracy: 100% from real API vs Claude estimating
+### Marketing mode
+- Share roamie-nu.vercel.app for organic users
+- Share roamie-nu.vercel.app?beta=true for trusted testers
+- Monitor Resend for email signups
+- Monitor PostHog for usage analytics
 
-### Next up
-1. Share with beta testers — roamie-nu.vercel.app?beta=true
-2. Dashboard — saved trips, home cities, partner sync slot
-3. Google Sign In
-4. Partner Sync
-5. Regen feature for $5.99/month subscribers
-6. Monthly Getaway
-7. Amadeus flight API (Phase 2)
-8. Streaming responses (Phase 2)
-
-### Env vars added
-- EXCHANGERATE_API_KEY (Render + local .env)
+### Next up (after marketing push)
+1. Dashboard — saved trips, home cities, partner sync slot
+2. Google Sign In
+3. Partner Sync
+4. Regen feature for $5.99/month subscribers
+5. Monthly Getaway
+6. Amadeus flight API (Phase 2)
+7. Streaming responses (Phase 2)
