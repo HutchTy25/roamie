@@ -65,52 +65,65 @@ export default function Home({ session }) {
       <div style={{ position: 'absolute', top: '25%', right: '10%', width: '3px', height: '3px', borderRadius: '50%', background: '#9c7ec4', opacity: 0.3, animation: 'pulse 3s infinite 1s' }} />
       <div style={{ position: 'absolute', bottom: '30%', left: '12%', width: '3px', height: '3px', borderRadius: '50%', background: accent, opacity: 0.2, animation: 'pulse 3s infinite 2s' }} />
 
-      {/* User bar */}
-      {session ? (
-        <div style={{
-          position: 'absolute',
-          top: '1.5rem',
-          right: '1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-        }}>
-          <img
-            src={session.user.user_metadata?.avatar_url}
-            style={{ width: '28px', height: '28px', borderRadius: '50%' }}
-            alt="avatar"
-          />
-          <button
-            onClick={() => supabase.auth.signOut()}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-muted)',
-              fontSize: '12px',
-              cursor: 'pointer',
-            }}
-          >
-            Sign out
-          </button>
-        </div>
-      ) : (
-        <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem' }}>
-          <button
-            onClick={() => navigate('/login')}
-            style={{
-              background: 'none',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '100px',
-              padding: '6px 14px',
-              color: 'var(--text-muted)',
-              fontSize: '12px',
-              cursor: 'pointer',
-            }}
-          >
-            Sign in
-          </button>
-        </div>
-      )}
+     {/* User bar */}
+{session ? (
+  <div style={{
+    position: 'fixed',
+    top: '1rem',
+    right: '1rem',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    zIndex: 100,
+    background: 'rgba(10,10,10,0.8)',
+    backdropFilter: 'blur(8px)',
+    borderRadius: '100px',
+    padding: '4px 12px 4px 4px',
+    border: '1px solid rgba(255,255,255,0.08)',
+  }}>
+    <img
+      src={session.user.user_metadata?.avatar_url}
+      style={{ width: '26px', height: '26px', borderRadius: '50%' }}
+      alt="avatar"
+    />
+    <button
+      onClick={() => supabase.auth.signOut()}
+      style={{
+        background: 'none',
+        border: 'none',
+        color: 'var(--text-muted)',
+        fontSize: '12px',
+        cursor: 'pointer',
+        padding: 0,
+      }}
+    >
+      Sign out
+    </button>
+  </div>
+) : (
+  <div style={{
+    position: 'fixed',
+    top: '1rem',
+    right: '1rem',
+    zIndex: 100,
+  }}>
+    <button
+      onClick={() => navigate('/login')}
+      style={{
+        background: 'rgba(10,10,10,0.8)',
+        backdropFilter: 'blur(8px)',
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: '100px',
+        padding: '6px 14px',
+        color: 'var(--text-muted)',
+        fontSize: '12px',
+        cursor: 'pointer',
+      }}
+    >
+      Sign in
+    </button>
+  </div>
+)}
 
       {/* Badge */}
       <div style={{
