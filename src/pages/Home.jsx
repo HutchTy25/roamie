@@ -8,6 +8,8 @@ export default function Home({ session }) {
   const [visible, setVisible] = useState(false)
   const [tripCount, setTripCount] = useState(0)
 
+  console.log('Session:', session)
+
   useEffect(() => {
     fetch('https://roamie-61ib.onrender.com/api/trip-count')
       .then(res => res.json())
