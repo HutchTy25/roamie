@@ -1,21 +1,22 @@
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { supabase } from '../supabase'
 import posthog from 'posthog-js'
 
-export default function Home() {
+export default function Home({ session }) {
   const navigate = useNavigate()
   const [visible, setVisible] = useState(false)
-const [tripCount, setTripCount] = useState(0)
+  const [tripCount, setTripCount] = useState(0)
 
-useEffect(() => {
-  fetch('https://roamie-61ib.onrender.com/api/trip-count')
-    .then(res => res.json())
-    .then(data => setTripCount(data.count))
-    .catch(() => {
-      const count = parseInt(localStorage.getItem('roamie_trip_count') || '0')
-      setTripCount(count)
-    })
-}, [])
+  useEffect(() => {
+    fetch('https://roamie-61ib.onrender.com/api/trip-count')
+      .then(res => res.json())
+      .then(data => setTripCount(data.count))
+      .catch(() => {
+        const count = parseInt(localStorage.getItem('roamie_trip_count') || '0')
+        setTripCount(count)
+      })
+  }, [])
 
   useEffect(() => {
     setTimeout(() => setVisible(true), 100)
@@ -57,10 +58,57 @@ useEffect(() => {
         pointerEvents: 'none',
       }} />
 
-      {/* Floating dots decoration */}
+      {/* Floating dots */}
       <div style={{ position: 'absolute', top: '15%', left: '8%', width: '4px', height: '4px', borderRadius: '50%', background: accent, opacity: 0.3, animation: 'pulse 3s infinite' }} />
       <div style={{ position: 'absolute', top: '25%', right: '10%', width: '3px', height: '3px', borderRadius: '50%', background: '#9c7ec4', opacity: 0.3, animation: 'pulse 3s infinite 1s' }} />
       <div style={{ position: 'absolute', bottom: '30%', left: '12%', width: '3px', height: '3px', borderRadius: '50%', background: accent, opacity: 0.2, animation: 'pulse 3s infinite 2s' }} />
+
+      {/* User bar */}
+      {session ? (
+        <div style={{
+          position: 'absolute',
+          top: '1.5rem',
+          right: '1.5rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+        }}>
+          <img
+            src={session.user.user_metadata?.avatar_url}
+            style={{ width: '28px', height: '28px', borderRadius: '50%' }}
+            alt="avatar"
+          />
+          <button
+            onClick={() => supabase.auth.signOut()}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-muted)',
+              fontSize: '12px',
+              cursor: 'pointer',
+            }}
+          >
+            Sign out
+          </button>
+        </div>
+      ) : (
+        <div style={{ position: 'absolute', top: '1.5rem', right: '1.5rem' }}>
+          <button
+            onClick={() => navigate('/login')}
+            style={{
+              background: 'none',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '100px',
+              padding: '6px 14px',
+              color: 'var(--text-muted)',
+              fontSize: '12px',
+              cursor: 'pointer',
+            }}
+          >
+            Sign in
+          </button>
+        </div>
+      )}
 
       {/* Badge */}
       <div style={{
@@ -150,6 +198,18 @@ useEffect(() => {
         ))}
       </div>
 
+      {/* FaceTime line */}
+      <div style={{
+        opacity: visible ? 1 : 0,
+        animation: visible ? 'fadeUp 0.6s ease 0.35s forwards' : 'none',
+        fontSize: '13px',
+        color: '#4a4642',
+        marginBottom: '1rem',
+        textAlign: 'center',
+      }}>
+        Fill it out together on your next FaceTime 🤙
+      </div>
+
       {/* CTA Button */}
       <div style={{
         opacity: visible ? 1 : 0,
@@ -158,7 +218,6 @@ useEffect(() => {
         maxWidth: '320px',
         marginBottom: '1rem',
       }}>
-        Fill it out together on your next FaceTime 🤙
         <button
           className="start-btn"
           onClick={() => navigate('/quiz')}
@@ -180,7 +239,7 @@ useEffect(() => {
         </button>
       </div>
 
-{/* Trust line */}
+      {/* Trust line */}
       <div style={{
         opacity: visible ? 1 : 0,
         animation: visible ? 'fadeUp 0.6s ease 0.5s forwards' : 'none',
@@ -191,32 +250,20 @@ useEffect(() => {
         Free to use · No sign up required · Takes 2 minutes
       </div>
 
-      {/* Bottom tagline */}
+      {/* Trip counter */}
       <div style={{
         opacity: visible ? 1 : 0,
         animation: visible ? 'fadeUp 0.6s ease 0.6s forwards' : 'none',
         fontSize: '13px',
-        color: '#4a4642',
-        textAlign: 'center',
+        color: accent,
         marginBottom: '2rem',
+        fontWeight: '500',
+        textAlign: 'center',
       }}>
-
-{tripCount > 0 && (
-  <div style={{
-    fontSize: '13px',
-    color: accent,
-    marginBottom: '0.5rem',
-    fontWeight: '500',
-    textAlign: 'center',
-  }}>
-    ✦ You've generated {tripCount} {tripCount === 1 ? 'trip' : 'trips'}
-  </div>
-)}
-
-        
+        {tripCount > 0 && `✦ ${tripCount} trips planned by couples worldwide`}
       </div>
 
-      {/* Social proof — Reddit review */}
+      {/* Social proof */}
       <div style={{
         opacity: visible ? 1 : 0,
         animation: visible ? 'fadeUp 0.6s ease 0.7s forwards' : 'none',

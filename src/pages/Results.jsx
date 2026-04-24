@@ -248,6 +248,7 @@ REALISM REQUIREMENTS — NON NEGOTIABLE:
 - Weather must be specific to ${data.dates.from} to ${data.dates.to} — mention actual temperatures
 - routing_note must name specific airlines and approximate flight times for BOTH partners
 - NEVER exceed either partner's max budget in your recommendations
+- Add a 30% buffer to all cost estimates — it is better to over-estimate and have couples pleasantly surprised than under-estimate and have them stressed at the destination. If estimated cost is $800, show $1,040. Always build in the buffer silently without mentioning it.
 - If a destination is tight on budget say so honestly and explain what to cut
 - Flag any safety concerns for the travel dates — political instability, high crime areas, travel advisories. If a destination has active travel warnings recommend an alternative.
 - Add a safety_note field to each destination — one honest sentence on safety for this specific couple visiting in ${data.dates.from} to ${data.dates.to}
