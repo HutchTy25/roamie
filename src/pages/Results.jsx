@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import posthog from 'posthog-js'
+import { supabase } from '../supabase'
 
 
 function EmailCapture() {
@@ -110,6 +111,7 @@ export default function Results() {
   const [showSummary, setShowSummary] = useState(false)
   const [tripBasics, setTripBasics] = useState(null)
   const [loadingBasics, setLoadingBasics] = useState(false)
+  const [tripSaved, setTripSaved] = useState(false)
 
 const loadingMessages = [
   "Checking flight routes from both cities...",
@@ -170,8 +172,9 @@ const loadingMessages = [
 useEffect(() => {
   setTripBasics(null)
   setExpanded(false)
+  setTripSaved(false)
 }, [activeCard])
-  useEffect(() => {
+useEffect(() => {
   if (!result) return
   posthog.capture('results_viewed', {
     destination_1: result.destinations?.[0]?.name,
@@ -180,6 +183,36 @@ useEffect(() => {
   })
 }, [result])
 
+
+
+async function saveTripToSupabase() {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+    
+    await supabase.from('trips').insert({
+      user_id: session.user.id,
+      p1_city: data.p1.city,
+      p2_city: data.p2.city,
+      p1_currency: data.p1.currency,
+      p2_currency: data.p2.currency,
+      p1_budget: data.p1.maxSpend,
+      p2_budget: data.p2.maxSpend,
+      vibes: data.vibes,
+      dates_from: data.dates.from,
+      dates_to: data.dates.to,
+      routing: data.routing,
+      accommodation: data.accommodation,
+      region: data.region,
+      destinations: result.destinations,
+      stretch_goal: result.stretch_goal,
+    })
+    setTripSaved(true)
+    console.log('Trip saved to Supabase')
+  } catch (e) {
+    console.error('Save trip error:', e)
+  }
+}
   useEffect(() => {
   if (!loading) return
   const interval = setInterval(() => {
@@ -455,7 +488,7 @@ if (loading) return (
           minHeight: '24px',
           fontStyle: 'italic',
         }}>
-          {loadingMessages[messageIndex]}
+          {loadingMessages[messageIndex]} 
         </div>
       </div>
 
@@ -546,6 +579,12 @@ async function shareTrip() {
     >
       ← back
     </button>
+    <button
+  onClick={() => navigate('/dashboard')}
+  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '13px', cursor: 'pointer', padding: 0 }}
+>
+  Dashboard →
+</button>
     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
       {allCards.map((_, i) => (
         <div
@@ -902,6 +941,24 @@ if (stripeResponse.url) {
             >
               Save summary card 📸
             </button>
+          <button
+  onClick={saveTripToSupabase}
+  disabled={tripSaved}
+  style={{
+    background: tripSaved ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.06)',
+    border: `1px solid ${tripSaved ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.1)'}`,
+    borderRadius: '100px',
+    padding: '10px 24px',
+    color: tripSaved ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.6)',
+    fontSize: '13px',
+    fontWeight: '500',
+    cursor: tripSaved ? 'default' : 'pointer',
+    width: '100%',
+    transition: 'all 0.2s',
+  }}
+>
+  {tripSaved ? '✓ Saved to dashboard' : '💾 Save to dashboard'}
+</button>
           </>
         )}
         <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>

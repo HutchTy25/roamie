@@ -7,6 +7,7 @@ import Results from './pages/Results'
 import Success from './pages/Success'
 import Gate from './pages/Gate'
 import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
 
 export default function App() {
   const [session, setSession] = useState(undefined)
@@ -33,6 +34,7 @@ export default function App() {
       <Route path="/success" element={<Success />} />
       <Route path="/gate" element={<Gate />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/dashboard" element={<Dashboard session={session} />} />
     </Routes>
   )
 }

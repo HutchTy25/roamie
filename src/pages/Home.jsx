@@ -87,6 +87,19 @@ export default function Home({ session }) {
       alt="avatar"
     />
     <button
+      onClick={() => navigate('/dashboard')}
+      style={{
+        background: 'none',
+        border: 'none',
+        color: accent,
+        fontSize: '12px',
+        cursor: 'pointer',
+        padding: 0,
+      }}
+    >
+      Dashboard
+    </button>
+    <button
       onClick={() => supabase.auth.signOut()}
       style={{
         background: 'none',
