@@ -130,6 +130,7 @@ export default function Home({ session }) {
         opacity: visible ? 1 : 0,
         animation: visible ? 'fadeUp 0.6s ease forwards' : 'none',
         marginBottom: '1.5rem',
+marginTop: '2.5rem',
         display: 'inline-flex',
         alignItems: 'center',
         gap: '6px',
