@@ -14,13 +14,21 @@ export default function Connect({ session }) {
   const accent = '#FF6B35'
   const purple = '#9c7ec4'
 
-  useEffect(() => {
+useEffect(() => {
   if (!session) { navigate('/login'); return }
   
   // Check if coming from invite link
   const params = new URLSearchParams(window.location.search)
   const code = params.get('code')
-  if (code) setInputCode(code)
+  if (code) {
+    // Extract just the code if full URL was pasted
+    const extractedCode = code.includes('roamie-') 
+      ? code.split('roamie-')[1] 
+        ? 'roamie-' + code.split('roamie-')[1].split('?')[0].split(' ')[0]
+        : code 
+      : code
+    setInputCode(extractedCode)
+  }
   
   checkCoupleStatus()
 }, [session])
@@ -83,9 +91,18 @@ export default function Connect({ session }) {
   }
 
   async function acceptInvite() {
-    if (!inputCode.trim()) return
-    setLoading(true)
-    setError('')
+  if (!inputCode.trim()) return
+  setLoading(true)
+  setError('')
+  
+  // Extract code if full URL pasted
+  let code = inputCode.trim()
+  if (code.includes('?code=')) {
+    code = code.split('?code=')[1]
+  }
+  if (code.includes('&')) {
+    code = code.split('&')[0]
+  }
     try {
       const res = await fetch('https://roamie-61ib.onrender.com/api/accept-invite', {
         method: 'POST',
@@ -93,7 +110,7 @@ export default function Connect({ session }) {
           'Content-Type': 'application/json',
           'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
         },
-        body: JSON.stringify({ inviteCode: inputCode.trim(), userId: session.user.id })
+        body: JSON.stringify({ inviteCode: code, userId: session.user.id })
       })
       const data = await res.json()
       if (data.success) {
@@ -107,6 +124,40 @@ export default function Connect({ session }) {
       setLoading(false)
     }
   }
+
+
+
+async function disconnect() {
+  if (!window.confirm('Are you sure you want to disconnect from your partner?')) return
+  setLoading(true)
+  try {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('couple_id')
+      .eq('id', session.user.id)
+      .single()
+
+    if (profile?.couple_id) {
+      await supabase
+        .from('profiles')
+        .update({ couple_id: null })
+        .eq('couple_id', profile.couple_id)
+
+      await supabase
+        .from('couples')
+        .delete()
+        .eq('id', profile.couple_id)
+    }
+
+    setCoupled(false)
+    setPartnerName('')
+    setInviteCode('')
+  } catch (e) {
+    console.error('Disconnect error:', e)
+  } finally {
+    setLoading(false)
+  }
+}
 
   function copyInviteLink() {
     const link = `https://roamie-nu.vercel.app/connect?code=${inviteCode}`
@@ -148,7 +199,23 @@ export default function Connect({ session }) {
       >
         Go to dashboard ✦
       </button>
-    </div>
+    <button
+  onClick={disconnect}
+  disabled={loading}
+  style={{
+    marginTop: '1rem',
+    background: 'none',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '100px',
+    padding: '10px 24px',
+    color: 'var(--text-muted)',
+    fontSize: '13px',
+    cursor: 'pointer',
+  }}
+>
+  Disconnect partner
+</button>
+</div>
   )
 
   return (
