@@ -90,20 +90,24 @@ export default function Dashboard({ session }) {
         >
           ✦ Plan new trip
         </button>
-        <div style={{
-          background: 'var(--bg-card)',
-          border: '1px solid rgba(156,126,196,0.3)',
-          borderRadius: 'var(--radius)',
-          padding: '1rem',
-          fontSize: '13px',
-          color: purple,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '4px',
-        }}>
-          <div style={{ fontWeight: '500' }}>👫 Partner Sync</div>
-          <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Coming soon</div>
-        </div>
+        <button
+  onClick={() => navigate('/connect')}
+  style={{
+    background: 'var(--bg-card)',
+    border: '1px solid rgba(156,126,196,0.3)',
+    borderRadius: 'var(--radius)',
+    padding: '1rem',
+    fontSize: '13px',
+    color: purple,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
+    cursor: 'pointer',
+    textAlign: 'left',
+  }}
+>
+<div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Connect your partner →</div>
+        </button>
       </div>
 
       {/* Saved trips */}
