@@ -436,7 +436,91 @@ Respond ONLY with valid JSON no markdown no backticks:
     res.status(500).json({ error: err.message })
   }
 })
+app.post('/api/create-invite', async (req, res) => {
+  try {
+    const { userId } = req.body
+    if (!userId) return res.status(400).json({ error: 'Missing userId' })
 
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY
+    )
+
+    // Check if user already has a couple
+    const { data: existingCouple } = await supabase
+      .from('couples')
+      .select('*')
+      .or(`partner1_id.eq.${userId},partner2_id.eq.${userId}`)
+      .single()
+
+    if (existingCouple) {
+      return res.json({ invite_code: existingCouple.invite_code, existing: true })
+    }
+
+    // Generate unique invite code
+    const inviteCode = `roamie-${Math.random().toString(36).substring(2, 8)}`
+
+    // Create couple record
+    const { data, error } = await supabase
+      .from('couples')
+      .insert({
+        partner1_id: userId,
+        invite_code: inviteCode,
+        status: 'pending'
+      })
+      .select()
+      .single()
+
+    if (error) throw error
+
+    res.json({ invite_code: inviteCode, couple_id: data.id })
+  } catch (err) {
+    console.error('Create invite error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.post('/api/accept-invite', async (req, res) => {
+  try {
+    const { inviteCode, userId } = req.body
+    if (!inviteCode || !userId) return res.status(400).json({ error: 'Missing fields' })
+
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY
+    )
+
+    // Find the couple
+    const { data: couple, error: findError } = await supabase
+      .from('couples')
+      .select('*')
+      .eq('invite_code', inviteCode)
+      .single()
+
+    if (findError || !couple) return res.status(404).json({ error: 'Invalid invite code' })
+    if (couple.partner2_id) return res.status(400).json({ error: 'Already connected' })
+    if (couple.partner1_id === userId) return res.status(400).json({ error: 'Cannot connect with yourself' })
+
+    // Link the couple
+    const { error: updateError } = await supabase
+      .from('couples')
+      .update({ partner2_id: userId, status: 'connected' })
+      .eq('id', couple.id)
+
+    if (updateError) throw updateError
+
+    // Update both profiles with couple_id
+    await supabase.from('profiles').update({ couple_id: couple.id }).eq('id', userId)
+    await supabase.from('profiles').update({ couple_id: couple.id }).eq('id', couple.partner1_id)
+
+    res.json({ success: true, couple_id: couple.id })
+  } catch (err) {
+    console.error('Accept invite error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
 app.listen(3001, () => console.log('Server running on port 3001'))
 app.get('/api/trip-count', (req, res) => {
   res.json({ count: globalTripCount })
