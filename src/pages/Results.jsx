@@ -240,155 +240,250 @@ async function saveTripToSupabase() {
     startX.current = null
   }
 
-  async function fetchRecommendations() {
-    const p1sym = CURR_SYMBOLS[data.p1.currency] || data.p1.currency
-    const p2sym = CURR_SYMBOLS[data.p2.currency] || data.p2.currency
+async function fetchRecommendations() {
+  // VISIT MODE — skip AI, just flight prices
+  if (data.tripMode === 'visit') {
+    await fetchVisitPrices()
+    return
+  }
 
-    const prompt = `You are Roamie, a real-world couples travel planner with deep knowledge of actual flight prices, accommodation costs, and living expenses globally. Two partners need trip recommendations based on their REAL financial situation.
+  const p1sym = CURR_SYMBOLS[data.p1.currency] || data.p1.currency
+  const p2sym = CURR_SYMBOLS[data.p2.currency] || data.p2.currency
+
+  const destinationPrompt = `You are Roamie, a couples travel planner. Based on these details suggest exactly 3 destinations.
 
 PARTNER DETAILS:
-- Partner 1: Lives in ${data.p1.city} | Currency: ${data.p1.currency} (${p1sym}) | Max budget: ${p1sym}${data.p1.maxSpend.toLocaleString()} TOTAL for entire trip including ALL flights
-- Partner 2: Lives in ${data.p2.city} | Currency: ${data.p2.currency} (${p2sym}) | Max budget: ${p2sym}${data.p2.maxSpend.toLocaleString()} TOTAL for entire trip including ALL flights
+- Partner 1: Lives in ${data.p1.city} | Currency: ${data.p1.currency} (${p1sym}) | Max budget: ${p1sym}${data.p1.maxSpend.toLocaleString()} TOTAL
+- Partner 2: Lives in ${data.p2.city} | Currency: ${data.p2.currency} (${p2sym}) | Max budget: ${p2sym}${data.p2.maxSpend.toLocaleString()} TOTAL
 - Travel dates: ${data.dates.from} to ${data.dates.to}
 - Vibes: ${data.vibes?.join(', ') || 'open to anything'}
-- Routing: ${(() => {
-  if (data.sameCity) {
-    return `SAME CITY: Both partners fly together from ${data.p1.city}. ONE set of flights split 50/50 between partners. Calculate flights_p1 and flights_p2 as equal halves of the total flight cost from ${data.p1.city} to destination.`
-  }
-  if (data.routing === 'fly_together') {
-    return `FLY TOGETHER: Calculate BOTH scenarios and pick the smartest one. SCENARIO A: Partner 1 flies ${data.p1.city} to ${data.p2.city} first, then both fly to destination together - P1 pays two flights, P2 pays one. SCENARIO B: Partner 2 flies ${data.p2.city} to ${data.p1.city} first, then both fly to destination together - P2 pays two flights, P1 pays one. Choose whichever scenario keeps both partners within budget and is most financially fair based on budget strength. Explain chosen routing in routing_note.`
-  }
-  if (data.routing === 'meet') {
-    return `MEET AT DESTINATION: Both fly separately. P1 flies directly from ${data.p1.city}. P2 flies directly from ${data.p2.city}. Calculate each independently.`
-  }
-  return 'DRIVING: No flights. Calculate fuel and driving costs only.'
-})()}
-- Accommodation: ${data.accommodation === 'budget' ? 'Budget — hostels and budget hotels' : data.accommodation === 'luxe' ? 'Luxe — boutique hotels 4-5 star' : 'Mid-range — 3 star hotels and private Airbnbs'}
-- Region preference: ${data.region !== 'surprise' ? data.region.replace('_', ' ') : 'open globally'}
+- Routing: ${data.routing}
+- Accommodation: ${data.accommodation}
+- Region: ${data.region}
 
-REALISM REQUIREMENTS — NON NEGOTIABLE:
-- You have deep knowledge of actual 2024/2025 flight prices, airline routes, and accommodation costs
-- Always name specific airlines that actually fly these routes — never say "various airlines"
-- Give realistic price ranges based on actual market rates not round numbers
-- flights_p1 must reflect real economy fares FROM ${data.p1.city} — include layover cities
-- flights_p2 must reflect real economy fares FROM ${data.p2.city} — include layover cities  
-- lodging_total must be based on real nightly rates for ${data.accommodation === 'budget' ? 'hostels and budget hotels ($30-80/night)' : data.accommodation === 'luxe' ? 'boutique hotels ($200-400/night)' : '3-star hotels and Airbnbs ($80-180/night)'}
-- food_per_day must reflect actual daily food costs at that destination
-- NEVER recommend Paris, Barcelona, Rome, Amsterdam, or NYC as your first choice — find somewhere genuinely interesting
-- Always include at least one destination most people haven't considered
-- Account for ${data.region !== 'surprise' ? data.region.replace('_', ' ') + ' region preference' : 'global options'}
-- Account for ${data.accommodation} accommodation preference throughout
-- Weather must be specific to ${data.dates.from} to ${data.dates.to} — mention actual temperatures
-- routing_note must name specific airlines and approximate flight times for BOTH partners
-- NEVER exceed either partner's max budget in your recommendations
-- Add a 30% buffer to all cost estimates — it is better to over-estimate and have couples pleasantly surprised than under-estimate and have them stressed at the destination. If estimated cost is $800, show $1,040. Always build in the buffer silently without mentioning it.
-- If a destination is tight on budget say so honestly and explain what to cut
-- Flag any safety concerns for the travel dates — political instability, high crime areas, travel advisories. If a destination has active travel warnings recommend an alternative.
-- Add a safety_note field to each destination — one honest sentence on safety for this specific couple visiting in ${data.dates.from} to ${data.dates.to}
-- For fly_together routing: flights_p1_total MUST equal flights_p1_leg1 (${data.p1.city} to ${data.p2.city}) PLUS flights_p1_leg2 (${data.p2.city} to destination). Never calculate only one leg for Partner 1.
-- Also calculate the REVERSE routing cost — what if Partner 2 flew to Partner 1 first instead? Recommend whichever is cheaper overall and explain why in routing_note.
-- p1_cost must include ALL flights (both legs) + accommodation share + food + activities
-- p2_cost must include their single flight + accommodation share + food + activities
-- reality_strip crowd must be: Low, Medium, or High based on tourism levels for those exact dates
-- reality_strip weather must be: Good, Uncertain, or Risky based on actual climate for those dates
-- reality_strip fairness must be: Balanced, Slightly Skewed, or Very Skewed based on cost difference between partners
-- reality_strip budget_stretch must be: Comfortable, Slight Stretch, or Heavy Stretch based on how close to max budget
-
-WEATHER: Avoid monsoon season, extreme heat above 38C, or hurricane risk during ${data.dates.from} to ${data.dates.to}
-
-Respond ONLY with valid JSON no markdown no backticks no explanation:
+Return ONLY this JSON, no markdown, no explanation:
 {
   "destinations": [
     {
       "name": "City, Country",
       "country_emoji": "🇵🇹",
-      "tagline": "One warm sentence why this is perfect for them specifically",
-      "why_it_works": "2-3 sentences explaining why this fits their exact cities budgets and vibes",
-      "p1_cost": 1200,
-      "p2_cost": 950,
-      "cost_breakdown": {
-  "flights_p1_leg1": 400,
-  "flights_p1_leg2": 300,
-  "flights_p1_total": 700,
-  "flights_p2": 180,
-  "lodging_per_night": 120,
-  "lodging_total": 600,
-  "food_per_day": 50,
-  "food_total": 250,
-  "activities_total": 150
-},
-    
-      "lodging_note": "Specific recommendation with price per night",
-      "p1_days_income": 4,
-      "p2_days_income": 6,
-      "fairness_note": "One honest sentence on currency fairness",
-      "harder_partner": "p1 or p2",
+      "tagline": "One warm sentence why this is perfect for them",
+      "why_it_works": "2-3 sentences on why this fits their cities, budgets and vibes",
       "vibe_match": ["vibe1", "vibe2"],
-      "savings_scenario": "Calculate accurately: subtract current budget from actual trip cost to find the gap, divide gap by number of weeks available before travel dates, state exact weekly savings amount per partner and exact weeks needed. Math must be correct. Example format: 'Save $85/week each for 10 weeks to cover the $1,700 gap.'",
-      "routing_note": "Specific airlines and approximate flight times from each city",
       "best_for": "weekend or week or two weeks",
-      "season_note": "One sentence on weather for their specific travel dates",
-      "safety_note": "One honest sentence on safety for this destination and time of year",
+      "season_note": "Weather for their exact dates with temperatures",
+      "safety_note": "One honest sentence on safety",
       "reality_strip": {
-  "crowd": "Low",
-  "weather": "Good",
-  "fairness": "Balanced",
-  "budget_stretch": "Comfortable"
-},
+        "crowd": "Low or Medium or High",
+        "weather": "Good or Uncertain or Risky",
+        "fairness": "Balanced or Slightly Skewed or Very Skewed",
+        "budget_stretch": "Comfortable or Slight Stretch or Heavy Stretch"
+      }
     }
   ],
   "stretch_goal": {
     "name": "City, Country",
-    "country_emoji": "correct flag emoji for that country",
-    "tagline": "Why this is the dream trip for them",
+    "country_emoji": "🇬🇷",
+    "tagline": "Why this is the dream trip",
     "what_it_takes": "Exactly what both need to save weekly and how many weeks"
   },
   "couple_summary": "2 warm sentences about what kind of travelers they are together"
-}
-Return exactly 3 destinations. Be brutally specific — name airlines, give temperature ranges, mention neighborhoods. Users will actually book these trips so accuracy matters more than sounding impressive. Avoid obvious tourist traps unless they genuinely fit the budget and vibe better than alternatives.`
+}`
 
-try {
-const res = await fetch('https://roamie-61ib.onrender.com/api/messages', {
-  method: 'POST',
-  headers: { 
-    'Content-Type': 'application/json',
-    'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
-  },
-  body: JSON.stringify({
-    model: 'claude-sonnet-4-20250514',
-    max_tokens: 4000,
-    messages: [{ role: 'user', content: prompt }]
-  })
-})
+  try {
+    // CALL 1 — Get destinations
+    setMessageIndex(0)
+    const res1 = await fetch('https://roamie-61ib.onrender.com/api/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: destinationPrompt }]
+      })
+    })
 
-const rawText = await res.text()
-console.log('Raw response FULL:', rawText)
-const json = JSON.parse(rawText)
-const content = json.content || []
-const text = Array.isArray(content)
-  ? content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
-  : rawText.replace(/```json|```/g, '').trim()
-console.log('Parsed text:', text.substring(0, 300))
-const parsed = JSON.parse(text)
-      setResult(parsed)
-    } catch (e) {
-      console.error('Error:', e)
-      setError(true)
-    } finally {
-      setLoading(false)
-    }
+    const raw1 = await res1.text()
+    const json1 = JSON.parse(raw1)
+    const text1 = Array.isArray(json1.content)
+      ? json1.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
+      : raw1.replace(/```json|```/g, '').trim()
+
+    const destinations = JSON.parse(text1)
+    console.log('Call 1 destinations:', destinations.destinations?.map(d => d.name))
+
+    // Get destination names for flight search
+    const destNames = destinations.destinations?.map(d => d.name) || []
+
+    // CALL FlightAPI for real prices
+    setMessageIndex(2)
+    const flightPrices = await fetchRealFlightPrices(destNames)
+    console.log('Real flight prices:', flightPrices)
+
+    // CALL 2 — Get full breakdown with real prices
+    setMessageIndex(4)
+    const breakdownPrompt = buildBreakdownPrompt(destinations, flightPrices, p1sym, p2sym)
+
+    const res2 = await fetch('https://roamie-61ib.onrender.com/api/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 3000,
+        messages: [{ role: 'user', content: breakdownPrompt }]
+      })
+    })
+
+    const raw2 = await res2.text()
+    const json2 = JSON.parse(raw2)
+    const text2 = Array.isArray(json2.content)
+      ? json2.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
+      : raw2.replace(/```json|```/g, '').trim()
+
+    const fullResult = JSON.parse(text2)
+    setResult(fullResult)
+
+  } catch (e) {
+    console.error('Error:', e)
+    setError(true)
+  } finally {
+    setLoading(false)
   }
+}
 
-function getPhotoQuery() {
-  const vibes = data.vibes || []
-  if (vibes.includes('romantic')) return 'romantic sunset golden hour couple travel'
-  if (vibes.includes('beach')) return 'tropical beach aerial turquoise water paradise'
-  if (vibes.includes('nature')) return 'dramatic landscape mountains scenic wilderness'
-  if (vibes.includes('foodie')) return 'vibrant street food market city culture'
-  if (vibes.includes('landmarks')) return 'iconic landmark architecture historic travel'
-  if (vibes.includes('city')) return 'city skyline golden hour aerial architecture'
-  if (vibes.includes('surprise')) return 'breathtaking travel destination scenic aerial'
-  return 'stunning travel destination landscape aerial'
+async function fetchVisitPrices() {
+  try {
+    const res = await fetch('https://roamie-61ib.onrender.com/api/flight-prices', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+      },
+      body: JSON.stringify({
+        p1City: data.p1.city,
+        p2City: data.p2.city,
+        destinations: [data.p2.city, data.p1.city],
+        dates: `${data.dates.from} to ${data.dates.to}`,
+        routing: 'meet',
+        sameCity: false,
+      })
+    })
+    const prices = await res.json()
+    console.log('Visit prices:', prices)
+
+    // Build a simple result structure for visit mode
+    setResult({
+      destinations: [
+        {
+          name: data.p2.city,
+          country_emoji: '✈️',
+          tagline: `${data.p1.city} → ${data.p2.city}`,
+          isVisit: true,
+          visitDirection: 'p1_to_p2',
+          p1_cost: prices[data.p2.city]?.p1 || null,
+          p2_cost: null,
+          routing_note: `Round trip from ${data.p1.city} to ${data.p2.city}`,
+          reality_strip: null,
+        },
+        {
+          name: data.p1.city,
+          country_emoji: '✈️',
+          tagline: `${data.p2.city} → ${data.p1.city}`,
+          isVisit: true,
+          visitDirection: 'p2_to_p1',
+          p1_cost: null,
+          p2_cost: prices[data.p1.city]?.p2 || null,
+          routing_note: `Round trip from ${data.p2.city} to ${data.p1.city}`,
+          reality_strip: null,
+        }
+      ],
+      couple_summary: `Real flight prices for ${data.dates.from} to ${data.dates.to}`
+    })
+  } catch (e) {
+    console.error('Visit prices error:', e)
+    setError(true)
+  } finally {
+    setLoading(false)
+  }
+}
+
+async function fetchRealFlightPrices(destNames) {
+  try {
+    const res = await fetch('https://roamie-61ib.onrender.com/api/flight-prices', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+      },
+      body: JSON.stringify({
+        p1City: data.p1.city,
+        p2City: data.p2.city,
+        destinations: destNames,
+        dates: `${data.dates.from} to ${data.dates.to}`,
+        routing: data.routing,
+        sameCity: data.sameCity,
+      })
+    })
+    return await res.json()
+  } catch (e) {
+    console.error('Flight price fetch error:', e)
+    return {}
+  }
+}
+
+function buildBreakdownPrompt(destinations, flightPrices, p1sym, p2sym) {
+  const flightContext = Object.entries(flightPrices).map(([dest, prices]) => {
+    return `${dest}:
+  - P1 total round trip from ${data.p1.city}: ${prices.p1 ? prices.p1 : 'estimate needed'} USD
+  - P1 breakdown: leg1 (${data.p1.city}→${data.p2.city}): ${prices.p1_breakdown?.leg1 || 'N/A'} USD, leg2 (${data.p2.city}→destination): ${prices.p1_breakdown?.leg2 || 'N/A'} USD
+  - P2 total round trip from ${data.p2.city}: ${prices.p2 ? prices.p2 : 'estimate needed'} USD`
+  }).join('\n')
+
+  return `You are Roamie. Here are 3 destinations already selected for a couple. Add detailed cost breakdowns using the REAL flight prices provided.
+
+PARTNER DETAILS:
+- Partner 1: ${data.p1.city} | ${data.p1.currency} (${p1sym}) | Budget: ${p1sym}${data.p1.maxSpend.toLocaleString()}
+- Partner 2: ${data.p2.city} | ${data.p2.currency} (${p2sym}) | Budget: ${p2sym}${data.p2.maxSpend.toLocaleString()}
+- Dates: ${data.dates.from} to ${data.dates.to}
+- Routing: ${data.routing}
+- Accommodation: ${data.accommodation}
+
+REAL FLIGHT PRICES (use these exactly, do not estimate or change them):
+${flightContext}
+
+DESTINATIONS TO ADD BREAKDOWN TO:
+${JSON.stringify(destinations, null, 2)}
+
+CRITICAL RULES:
+- All numeric values must be plain numbers with NO currency symbols attached
+- p1_cost and p2_cost must be plain numbers only (e.g. 2265 not $2265)
+- All cost_breakdown values must be plain numbers only
+- All costs in USD equivalent
+- Use the EXACT flight prices provided above, do not modify them
+- flights_p1_leg1 = P1 flight from their city to partner city
+- flights_p1_leg2 = P1+P2 flight from partner city to destination  
+- flights_p1_total = leg1 + leg2
+- flights_p2 = P2 flight from their city to destination
+
+For each destination add these fields:
+- p1_cost: total trip cost for P1 as plain number in USD
+- p2_cost: total trip cost for P2 as plain number in USD
+- cost_breakdown: { flights_p1_leg1, flights_p1_leg2, flights_p1_total, flights_p2, lodging_per_night, lodging_total, food_per_day, food_total, activities_total } all plain numbers in USD
+- lodging_note: specific hotel recommendation with price per night
+- routing_note: specific airlines and flight times for both partners
+- fairness_note: one sentence on currency fairness
+- harder_partner: "p1" or "p2"
+- p1_days_income: estimated days of income as number
+- p2_days_income: estimated days of income as number
+- savings_scenario: accurate math — calculate exact gap between budget and cost, divide by weeks, give exact weekly amount
+
+Return the complete destinations JSON with all fields. Same JSON structure as input but with cost fields added. No markdown, no backticks, no explanation.`
 }
 
 async function fetchPhoto(cityName, index) {
@@ -443,7 +538,7 @@ async function fetchTripBasics() {
   if (tripBasics || loadingBasics) return
   setLoadingBasics(true)
   try {
-    const res = await fetch('https://roamie-61ib.onrender.com/api/trip-basics', {
+    const res = await fetch('https://roamie-61ib.onrender.com/api/messages', {
       method: 'POST',
       headers: { 
     'Content-Type': 'application/json',

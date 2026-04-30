@@ -75,12 +75,14 @@ export default function Dashboard({ session }) {
   const myName = session?.user?.user_metadata?.full_name?.split(' ')[0] || 'You'
   const myAvatar = customAvatar || session?.user?.user_metadata?.avatar_url
   const partnerName = partnerProfile?.full_name?.split(' ')[0] || null
-  const navItems = [
-    { id: 'home', icon: '🏠', label: 'Home' },
-    { id: 'trips', icon: '🔖', label: 'Saved' },
-    { id: 'checklist', icon: '✓', label: 'Checklist' },
-    { id: 'profile', icon: '👤', label: 'Profile' },
-  ]
+  // Inside Dashboard.jsx
+const navItems = [
+  { id: 'home', label: 'Home', icon: '🏠' },
+  { id: 'plan', label: 'Plan', icon: '✨' },
+  { id: 'orbit', label: 'Orbit', icon: '🪐' }, // The New Button
+  { id: 'chat', label: 'Chat', icon: '💬' },
+  { id: 'profile', label: 'You', icon: '👤' },
+];
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', maxWidth: '520px', margin: '0 auto', paddingBottom: '80px' }}>

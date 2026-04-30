@@ -9,6 +9,7 @@ import Gate from './pages/Gate'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Connect from './pages/Connect'
+import VisitResults from './pages/VisitResults'
 
 export default function App() {
   const [session, setSession] = useState(undefined)
@@ -37,6 +38,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={<Dashboard session={session} />} />
       <Route path="/connect" element={<Connect session={session} />} />
+      <Route path="/visit-results" element={<VisitResults />} />
     </Routes>
   )
 }

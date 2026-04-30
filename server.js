@@ -5,6 +5,8 @@ import cors from 'cors'
 import https from 'https'
 import rateLimit from 'express-rate-limit'
 import { body, validationResult } from 'express-validator'
+import { readFileSync } from 'fs'
+import { resolve } from 'path'
 import Stripe from 'stripe'
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
@@ -91,6 +93,60 @@ async function getExchangeRates(baseCurrency) {
   }
 }
 
+let airportDB = null
+
+function loadAirportDB() {
+  if (airportDB) return airportDB
+  try {
+    const data = readFileSync(resolve('./airports.dat'), 'utf8')
+    airportDB = {}
+    data.split('\n').forEach(line => {
+      const parts = line.split(',').map(p => p.replace(/"/g, '').trim())
+      if (parts.length < 5) return
+      const name = parts[1]?.toLowerCase()
+      const city = parts[2]?.toLowerCase()
+      const iata = parts[4]
+      if (iata && iata !== '\\N' && iata.length === 3) {
+        if (city) airportDB[city] = iata
+        if (name) airportDB[name] = iata
+      }
+    })
+    console.log(`Airport DB loaded: ${Object.keys(airportDB).length} entries`)
+    return airportDB
+  } catch (e) {
+    console.error('Airport DB load error:', e)
+    return {}
+  }
+}
+
+function getCityIATA(cityName) {
+  const db = loadAirportDB()
+  
+  // Clean input — strip everything after comma OR period, lowercase, trim
+  const city = cityName.toLowerCase().split(/[,\.]/)[0].trim()
+  
+  // 1. Direct match
+  if (db[city]) return db[city]
+  
+  // 2. Starts with match (handles "Manchester UK" → "manchester")
+  const startsMatch = Object.keys(db).find(key => key.startsWith(city) || city.startsWith(key))
+  if (startsMatch) return db[startsMatch]
+
+  // 3. Word match — first word of city name
+  const firstWord = city.split(' ')[0]
+  if (firstWord.length > 3 && db[firstWord]) return db[firstWord]
+
+  // 4. Known major city overrides — only for cities with multiple airports
+  const overrides = {
+    'london': 'LHR', 'new york': 'JFK', 'paris': 'CDG',
+    'chicago': 'ORD', 'los angeles': 'LAX', 'tokyo': 'NRT',
+    'washington': 'IAD', 'san francisco': 'SFO', 'miami': 'MIA',
+    'dubai': 'DXB', 'amsterdam': 'AMS', 'frankfurt': 'FRA',
+  }
+  
+  return overrides[city] || overrides[firstWord] || null
+}
+
 const searchCache = new Map()
 let globalTripCount = 0
 
@@ -118,10 +174,56 @@ function setCache(key, data) {
 }
 
 async function getFlightPrices(p1City, p2City, dates, destinations) {
+  try {
+    const p1IATA = getCityIATA(p1City)
+    const p2IATA = getCityIATA(p2City)
+
+    if (!p1IATA || !p2IATA) {
+      console.log(`IATA not found for ${p1City} or ${p2City}, falling back to Perplexity`)
+      return await getFlightPricesPerplexity(p1City, p2City, dates)
+    }
+
+   const dateParts = dates.split(' to ')
+const departDate = dateParts[0]?.trim() || dates
+const returnDate = dateParts[1]?.trim() || dates
+
+    // Use each partner's city as destination for the other
+const [p1Flights, p2Flights] = await Promise.all([
+  fetch(`https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p1IATA}/${p2IATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`)
+    .then(r => r.json()).catch(() => null),
+  fetch(`https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p2IATA}/${p1IATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`)
+    .then(r => r.json()).catch(() => null),
+])
+
+console.log('P1 IATA:', p1IATA, 'P2 IATA:', p2IATA)
+console.log('Depart:', departDate, 'Return:', returnDate)
+console.log('FlightAPI URL:', `https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p1IATA}/${p2IATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`)
+
+    console.log('FlightAPI P1 response:', JSON.stringify(p1Flights)?.substring(0, 200))
+    console.log('FlightAPI P2 response:', JSON.stringify(p2Flights)?.substring(0, 200))
+
+    let result = `LIVE FLIGHT PRICES FROM FLIGHTAPI:\n`
+
+    if (p1Flights && !p1Flights.error) {
+      result += `Flights from ${p1City} (${p1IATA}): Data received\n`
+    }
+    if (p2Flights && !p2Flights.error) {
+      result += `Flights from ${p2City} (${p2IATA}): Data received\n`
+    }
+
+    return result
+
+  } catch (e) {
+    console.error('FlightAPI error:', e)
+    return await getFlightPricesPerplexity(p1City, p2City, dates)
+  }
+}
+
+async function getFlightPricesPerplexity(p1City, p2City, dates) {
   const query = `What are typical economy flight prices in 2026 for these routes during ${dates}? Give realistic price ranges only in this exact format, no explanations:
 
-${p1City} to ${destinations}: $XXX-XXX USD (Airline name)
-${p2City} to ${destinations}: $XXX-XXX (local currency) (Airline name)
+${p1City} to top destinations: $XXX-XXX USD (Airline name)
+${p2City} to top destinations: $XXX-XXX (local currency) (Airline name)
 
 If exact prices unknown give realistic estimates based on distance and typical fares. Always provide numbers, never say unknown or cannot.`
 
@@ -138,11 +240,9 @@ If exact prices unknown give realistic estimates based on distance and typical f
       { 'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}` },
       body
     )
-    const content = result.choices?.[0]?.message?.content || ''
-    console.log('Perplexity raw:', content.substring(0, 300))
-    return content
+    return result.choices?.[0]?.message?.content || ''
   } catch (e) {
-    console.error('Perplexity error:', e)
+    console.error('Perplexity fallback error:', e)
     return ''
   }
 }
@@ -170,6 +270,7 @@ app.post('/api/messages', [
     const p1City = p1CityMatch?.[1]?.trim() || ''
     const p2City = p2CityMatch?.[1]?.trim() || ''
     const dates = datesMatch?.[1]?.trim() || ''
+    console.log('API hit - p1City:', p1City, 'p2City:', p2City, 'dates:', dates)
 
  // CACHE CHECK HERE
 const cacheKey = getCacheKey(p1City, p2City, dates)
@@ -521,7 +622,162 @@ app.post('/api/accept-invite', async (req, res) => {
     res.status(500).json({ error: err.message })
   }
 })
-app.listen(3001, () => console.log('Server running on port 3001'))
+
+function extractLowestPrice(response) {
+  if (!response || response.message) return null
+  try {
+    const itineraries = response.itineraries || []
+    if (itineraries.length === 0) return null
+    const prices = itineraries
+      .map(i => i.cheapest_price?.amount || i.pricing_options?.[0]?.price?.amount || null)
+      .filter(p => p !== null)
+      .map(p => parseFloat(p))
+      .filter(p => !isNaN(p) && p > 0)
+      .sort((a, b) => a - b)
+    return prices.length > 0 ? Math.round(prices[0]) : null
+  } catch (e) {
+    console.error('Price extraction error:', e)
+    return null
+  }
+}
+
+async function fetchWithRetry(url, maxRetries = 3, delay = 2000) {
+  for (let i = 0; i < maxRetries; i++) {
+    const res = await fetch(url).then(r => r.json()).catch(() => null)
+    if (res?.itineraries?.length > 0) {
+      console.log(`Got results on attempt ${i + 1}`)
+      return res
+    }
+    if (i < maxRetries - 1) {
+      console.log(`Empty results attempt ${i + 1}, retrying in ${delay}ms...`)
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+  return null
+}
+
+app.post('/api/flight-prices', [
+  body('p1City').isString().trim().notEmpty(),
+  body('p2City').isString().trim().notEmpty(),
+  body('destinations').isArray().notEmpty(),
+  body('dates').isString().trim().notEmpty(),
+  body('routing').isString().trim().notEmpty(),
+], async (req, res) => {
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ error: 'Invalid request' })
+  }
+
+  try {
+    const { p1City, p2City, destinations, dates, routing, sameCity } = req.body
+    const dateParts = dates.split(' to ')
+    const departDate = dateParts[0]?.trim()
+    const returnDate = dateParts[1]?.trim()
+
+    const p1IATA = getCityIATA(p1City)
+    const p2IATA = getCityIATA(p2City)
+
+    console.log('Flight prices request:', { p1City, p2City, p1IATA, p2IATA, departDate, returnDate, routing })
+
+    const priceResults = {}
+
+    for (const destName of destinations) {
+      const destIATA = getCityIATA(destName)
+      console.log(`Destination: ${destName} → IATA: ${destIATA}`)
+
+      if (!destIATA) {
+        console.log(`No IATA for ${destName} skipping FlightAPI`)
+        priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
+        continue
+      }
+
+      try {
+        if (sameCity) {
+          // Same city — one search split 50/50
+          const flights = await fetch(
+            `https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p1IATA}/${destIATA}/${departDate}/${returnDate}/2/0/0/Economy/USD`
+          ).then(r => r.json()).catch(() => null)
+
+          const totalPrice = extractLowestPrice(flights)
+          priceResults[destName] = {
+            p1: totalPrice ? Math.round(totalPrice / 2) : null,
+            p2: totalPrice ? Math.round(totalPrice / 2) : null,
+            source: totalPrice ? 'flightapi' : 'estimate'
+          }
+
+        } else if (routing === 'meet') {
+// Meet at destination — independent searches with retry
+const [p1Flights, p2Flights] = await Promise.all([
+  p1IATA ? fetchWithRetry(
+    `https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p1IATA}/${destIATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`
+  ) : null,
+  p2IATA ? fetchWithRetry(
+    `https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p2IATA}/${destIATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`
+  ) : null,
+])
+
+console.log('P1 itineraries count:', p1Flights?.itineraries?.length)
+console.log('P2 itineraries count:', p2Flights?.itineraries?.length)
+
+priceResults[destName] = {
+  p1: extractLowestPrice(p1Flights),
+  p2: extractLowestPrice(p2Flights),
+  source: 'flightapi'
+}
+
+        } else if (routing === 'fly_together') {
+          // P1 flies to P2 first, then both fly to destination
+          const [p1ToP2, bothToDestP1, p2ToDest] = await Promise.all([
+            // P1 round trip to P2 city
+            p1IATA && p2IATA ? fetch(
+              `https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p1IATA}/${p2IATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`
+            ).then(r => r.json()).catch(() => null) : null,
+            // Both fly from P2 city to destination (P1 share)
+            p2IATA ? fetch(
+              `https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p2IATA}/${destIATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`
+            ).then(r => r.json()).catch(() => null) : null,
+            // P2 flies to destination
+            p2IATA ? fetch(
+              `https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p2IATA}/${destIATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`
+            ).then(r => r.json()).catch(() => null) : null,
+          ])
+
+          console.log('P1ToP2 full:', JSON.stringify(p1ToP2)?.substring(0, 800))
+          console.log('First itinerary:', JSON.stringify(p1ToP2?.itineraries?.[0]))
+
+          const p1ToP2Price = extractLowestPrice(p1ToP2) || 0
+          const bothToDestPrice = extractLowestPrice(bothToDestP1) || 0
+          const p2ToDestPrice = extractLowestPrice(p2ToDest) || 0
+
+          priceResults[destName] = {
+            p1: p1ToP2Price + bothToDestPrice,
+            p2: p2ToDestPrice,
+            p1_breakdown: {
+              leg1: p1ToP2Price,
+              leg2: bothToDestPrice,
+            },
+            source: 'flightapi'
+          }
+        }
+
+      } catch (e) {
+        console.error(`Flight price error for ${destName}:`, e)
+        priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
+      }
+    }
+
+    console.log('Final price results:', JSON.stringify(priceResults))
+    res.json(priceResults)
+
+  } catch (err) {
+    console.error('Flight prices endpoint error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+
 app.get('/api/trip-count', (req, res) => {
   res.json({ count: globalTripCount })
 })
+
+app.listen(3001, () => console.log('Server running on port 3001'))
