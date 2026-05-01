@@ -7,11 +7,20 @@ export default function Dashboard({ session }) {
   const [trips, setTrips] = useState([])
   const [loading, setLoading] = useState(true)
   const [partnerProfile, setPartnerProfile] = useState(null)
+  const [coupleLoading, setCoupleLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('home')
   const [customAvatar, setCustomAvatar] = useState(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const accent = '#FF6B35'
   const purple = '#9c7ec4'
+
+  const navItems = [
+    { id: 'home', label: 'Home', icon: '🏠' },
+    { id: 'plan', label: 'Plan', icon: '✨' },
+    { id: 'orbit', label: 'Orbit', icon: '🪐' },
+    { id: 'checklist', label: 'Checklist', icon: '✓' },
+    { id: 'profile', label: 'You', icon: '👤' },
+  ]
 
   useEffect(() => {
     if (!session) { navigate('/login'); return }
@@ -40,6 +49,7 @@ export default function Dashboard({ session }) {
       console.error('Fetch data error:', e)
     } finally {
       setLoading(false)
+      setCoupleLoading(false)
     }
   }
 
@@ -75,14 +85,6 @@ export default function Dashboard({ session }) {
   const myName = session?.user?.user_metadata?.full_name?.split(' ')[0] || 'You'
   const myAvatar = customAvatar || session?.user?.user_metadata?.avatar_url
   const partnerName = partnerProfile?.full_name?.split(' ')[0] || null
-  // Inside Dashboard.jsx
-const navItems = [
-  { id: 'home', label: 'Home', icon: '🏠' },
-  { id: 'plan', label: 'Plan', icon: '✨' },
-  { id: 'orbit', label: 'Orbit', icon: '🪐' }, // The New Button
-  { id: 'chat', label: 'Chat', icon: '💬' },
-  { id: 'profile', label: 'You', icon: '👤' },
-];
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', flexDirection: 'column', maxWidth: '520px', margin: '0 auto', paddingBottom: '80px' }}>
@@ -94,7 +96,6 @@ const navItems = [
       {/* Header */}
       <div style={{ padding: '3rem 1.5rem 1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '0.75rem' }}>
-          {/* My avatar */}
           <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => document.getElementById('avatar-upload').click()}>
             {myAvatar ? (
               <img src={myAvatar} style={{ width: '44px', height: '44px', borderRadius: '50%', border: `2px solid ${accent}`, objectFit: 'cover' }} alt="you" />
@@ -109,10 +110,8 @@ const navItems = [
             <input id="avatar-upload" type="file" accept="image/*" style={{ display: 'none' }} onChange={uploadAvatar} />
           </div>
 
-          {/* Heart */}
           <div style={{ fontSize: '32px', animation: 'pulse 2s infinite', color: accent }}>♥</div>
 
-          {/* Partner avatar */}
           {partnerProfile ? (
             <div>
               {partnerProfile.avatar_url ? (
@@ -133,7 +132,7 @@ const navItems = [
         <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '4px' }}>
           {myName} {partnerName ? `♥ ${partnerName}` : ''}
         </div>
-        {!partnerProfile && (
+        {!coupleLoading && !partnerProfile && (
           <button onClick={() => navigate('/connect')} style={{ background: 'none', border: 'none', color: accent, fontSize: '13px', cursor: 'pointer', padding: 0 }}>
             + Connect your partner
           </button>
@@ -157,27 +156,18 @@ const navItems = [
               <div style={{ borderRadius: '24px', background: 'var(--bg-card)', border: '1px solid var(--border)', padding: '2rem', marginBottom: '1.5rem', textAlign: 'center' }}>
                 <div style={{ fontSize: '2rem', marginBottom: '12px' }}>✈️</div>
                 <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.2rem', marginBottom: '8px' }}>Your next adventure starts here</div>
-                <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
                   {trips.length > 0 ? 'Pick up where you left off?' : 'Plan your first trip together'}
                 </div>
-                <button onClick={() => navigate('/quiz')} style={{ background: accent, border: 'none', borderRadius: '100px', padding: '12px 28px', color: '#0a0a0a', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
-                  Plan a trip ✦
-                </button>
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: partnerProfile ? '1fr' : '1fr 1fr', gap: '10px' }}>
-              <button onClick={() => navigate('/quiz')} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '1rem', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'left' }}>
-                <div style={{ fontSize: '20px', marginBottom: '6px' }}>🗺️</div>
-                Plan new trip
+            {!coupleLoading && !partnerProfile && (
+              <button onClick={() => navigate('/connect')} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '1rem', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'left', width: '100%' }}>
+                <div style={{ fontSize: '20px', marginBottom: '6px' }}>🔗</div>
+                Connect your partner
               </button>
-              {!partnerProfile && (
-                <button onClick={() => navigate('/connect')} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: '1rem', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'left' }}>
-                  <div style={{ fontSize: '20px', marginBottom: '6px' }}>🔗</div>
-                  Partner Sync
-                </button>
-              )}
-            </div>
+            )}
           </div>
         )}
 
@@ -213,6 +203,17 @@ const navItems = [
                 </button>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ORBIT TAB */}
+        {activeTab === 'orbit' && (
+          <div style={{ animation: 'fadeSlideUp 0.4s ease', textAlign: 'center', paddingTop: '3rem' }}>
+            <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>🪐</div>
+            <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.4rem', marginBottom: '8px' }}>Your Orbit</div>
+            <div style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: '1.6', maxWidth: '280px', margin: '0 auto' }}>
+              A shared space for trip ideas, restaurants, and date plans. Coming soon.
+            </div>
           </div>
         )}
 
@@ -280,7 +281,17 @@ const navItems = [
       {/* Bottom nav */}
       <div style={{ position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '100%', maxWidth: '520px', background: 'rgba(10,10,10,0.95)', backdropFilter: 'blur(12px)', borderTop: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-around', padding: '0.75rem 0 1.25rem', zIndex: 100 }}>
         {navItems.map(item => (
-          <button key={item.id} onClick={() => setActiveTab(item.id)} style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '4px 16px' }}>
+          <button
+            key={item.id}
+            onClick={() => {
+              if (item.id === 'plan') {
+                navigate('/quiz')
+              } else {
+                setActiveTab(item.id)
+              }
+            }}
+            style={{ background: 'none', border: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', cursor: 'pointer', padding: '4px 16px' }}
+          >
             <div style={{ fontSize: '20px' }}>{item.icon}</div>
             <div style={{ fontSize: '10px', color: activeTab === item.id ? accent : 'var(--text-muted)', fontWeight: activeTab === item.id ? '600' : '400', letterSpacing: '0.05em' }}>
               {item.label}
