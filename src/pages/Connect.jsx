@@ -11,27 +11,23 @@ export default function Connect({ session }) {
   const [loading, setLoading] = useState(false)
   const [copyDone, setCopyDone] = useState(false)
   const [error, setError] = useState('')
-  const accent = '#FF6B35'
-  const purple = '#9c7ec4'
 
-useEffect(() => {
-  if (!session) { navigate('/login'); return }
-  
-  // Check if coming from invite link
-  const params = new URLSearchParams(window.location.search)
-  const code = params.get('code')
-  if (code) {
-    // Extract just the code if full URL was pasted
-    const extractedCode = code.includes('roamie-') 
-      ? code.split('roamie-')[1] 
-        ? 'roamie-' + code.split('roamie-')[1].split('?')[0].split(' ')[0]
-        : code 
-      : code
-    setInputCode(extractedCode)
-  }
-  
-  checkCoupleStatus()
-}, [session])
+  useEffect(() => {
+    if (!session) { navigate('/login'); return }
+    
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get('code')
+    if (code) {
+      const extractedCode = code.includes('roamie-') 
+        ? code.split('roamie-')[1] 
+          ? 'roamie-' + code.split('roamie-')[1].split('?')[0].split(' ')[0]
+          : code 
+        : code
+      setInputCode(extractedCode)
+    }
+    
+    checkCoupleStatus()
+  }, [session])
 
   async function checkCoupleStatus() {
     try {
@@ -91,18 +87,17 @@ useEffect(() => {
   }
 
   async function acceptInvite() {
-  if (!inputCode.trim()) return
-  setLoading(true)
-  setError('')
-  
-  // Extract code if full URL pasted
-  let code = inputCode.trim()
-  if (code.includes('?code=')) {
-    code = code.split('?code=')[1]
-  }
-  if (code.includes('&')) {
-    code = code.split('&')[0]
-  }
+    if (!inputCode.trim()) return
+    setLoading(true)
+    setError('')
+    
+    let code = inputCode.trim()
+    if (code.includes('?code=')) {
+      code = code.split('?code=')[1]
+    }
+    if (code.includes('&')) {
+      code = code.split('&')[0]
+    }
     try {
       const res = await fetch('https://roamie-61ib.onrender.com/api/accept-invite', {
         method: 'POST',
@@ -125,39 +120,37 @@ useEffect(() => {
     }
   }
 
-
-
-async function disconnect() {
-  if (!window.confirm('Are you sure you want to disconnect from your partner?')) return
-  setLoading(true)
-  try {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('couple_id')
-      .eq('id', session.user.id)
-      .single()
-
-    if (profile?.couple_id) {
-      await supabase
+  async function disconnect() {
+    if (!window.confirm('Are you sure you want to disconnect from your partner?')) return
+    setLoading(true)
+    try {
+      const { data: profile } = await supabase
         .from('profiles')
-        .update({ couple_id: null })
-        .eq('couple_id', profile.couple_id)
+        .select('couple_id')
+        .eq('id', session.user.id)
+        .single()
 
-      await supabase
-        .from('couples')
-        .delete()
-        .eq('id', profile.couple_id)
+      if (profile?.couple_id) {
+        await supabase
+          .from('profiles')
+          .update({ couple_id: null })
+          .eq('couple_id', profile.couple_id)
+
+        await supabase
+          .from('couples')
+          .delete()
+          .eq('id', profile.couple_id)
+      }
+
+      setCoupled(false)
+      setPartnerName('')
+      setInviteCode('')
+    } catch (e) {
+      console.error('Disconnect error:', e)
+    } finally {
+      setLoading(false)
     }
-
-    setCoupled(false)
-    setPartnerName('')
-    setInviteCode('')
-  } catch (e) {
-    console.error('Disconnect error:', e)
-  } finally {
-    setLoading(false)
   }
-}
 
   function copyInviteLink() {
     const link = `https://roamie-nu.vercel.app/connect?code=${inviteCode}`
@@ -166,93 +159,234 @@ async function disconnect() {
     setTimeout(() => setCopyDone(false), 2000)
   }
 
+  // Connected state
   if (coupled) return (
     <div style={{
       minHeight: '100vh',
-      background: '#0a0a0a',
+      background: '#1A1B26',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       padding: '2rem',
       textAlign: 'center',
+      position: 'relative',
+      overflow: 'hidden',
     }}>
-      <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>💑</div>
-      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.8rem', marginBottom: '0.5rem' }}>
-        You're connected
+      <style>{`
+        @keyframes twinkle { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+        @keyframes pulseRing { 0%,100%{box-shadow:0 0 0 0 rgba(34,211,238,0.4)} 50%{box-shadow:0 0 0 15px rgba(34,211,238,0)} }
+      `}</style>
+
+      {/* Stars */}
+      {[...Array(15)].map((_, i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          width: '1px',
+          height: '1px',
+          background: '#fff',
+          borderRadius: '50%',
+          top: `${Math.random() * 100}%`,
+          left: `${Math.random() * 100}%`,
+          opacity: 0.3,
+          animation: `twinkle ${3 + Math.random() * 2}s ease-in-out infinite`,
+        }} />
+      ))}
+
+      {/* Connection visual */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '8px',
+        marginBottom: '1.5rem',
+        animation: 'float 4s ease-in-out infinite',
+      }}>
+        <div style={{
+          width: '56px',
+          height: '56px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #22D3EE, #7C6AEF)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '24px',
+          fontWeight: '600',
+          color: '#fff',
+          boxShadow: '0 0 30px rgba(34,211,238,0.5)',
+          animation: 'pulseRing 2s ease-in-out infinite',
+        }}>
+          {session?.user?.user_metadata?.full_name?.[0] || 'Y'}
+        </div>
+        <svg width="32" height="24" viewBox="0 0 32 24" fill="none">
+          <path d="M4 12H28" stroke="url(#lineGrad)" strokeWidth="2" strokeDasharray="4 4"/>
+          <circle cx="16" cy="12" r="4" fill="#22D3EE"/>
+          <defs>
+            <linearGradient id="lineGrad" x1="4" y1="12" x2="28" y2="12">
+              <stop stopColor="#22D3EE"/>
+              <stop offset="1" stopColor="#F472B6"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div style={{
+          width: '56px',
+          height: '56px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '24px',
+          fontWeight: '600',
+          color: '#fff',
+          boxShadow: '0 0 30px rgba(244,114,182,0.5)',
+          animation: 'pulseRing 2s ease-in-out infinite 0.5s',
+        }}>
+          {partnerName[0] || 'P'}
+        </div>
       </div>
-      <div style={{ fontSize: '15px', color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-        You and <span style={{ color: accent }}>{partnerName}</span> are synced on Roamie
+
+      <div style={{ 
+        fontFamily: "'Geist', sans-serif", 
+        fontSize: '1.8rem', 
+        fontWeight: '600',
+        marginBottom: '0.5rem',
+        color: '#E8E8ED',
+      }}>
+        {"You're connected"}
+      </div>
+      <div style={{ fontSize: '15px', color: '#8B8FA3', marginBottom: '2rem' }}>
+        You and <span style={{ color: '#22D3EE', fontWeight: '500' }}>{partnerName}</span> are synced on Roamie
       </div>
       <button
         onClick={() => navigate('/dashboard')}
         style={{
-          background: accent,
+          background: 'linear-gradient(135deg, #22D3EE, #7C6AEF)',
           border: 'none',
           borderRadius: '100px',
-          padding: '14px 36px',
-          color: '#0a0a0a',
+          padding: '16px 36px',
+          color: '#fff',
           fontSize: '15px',
           fontWeight: '600',
           cursor: 'pointer',
+          boxShadow: '0 0 30px rgba(34,211,238,0.4)',
+          marginBottom: '1rem',
         }}
       >
-        Go to dashboard ✦
+        Go to dashboard
       </button>
-    <button
-  onClick={disconnect}
-  disabled={loading}
-  style={{
-    marginTop: '1rem',
-    background: 'none',
-    border: '1px solid rgba(255,255,255,0.1)',
-    borderRadius: '100px',
-    padding: '10px 24px',
-    color: 'var(--text-muted)',
-    fontSize: '13px',
-    cursor: 'pointer',
-  }}
->
-  Disconnect partner
-</button>
-</div>
+      <button
+        onClick={disconnect}
+        disabled={loading}
+        style={{
+          background: 'none',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '100px',
+          padding: '12px 24px',
+          color: '#8B8FA3',
+          fontSize: '13px',
+          cursor: 'pointer',
+        }}
+      >
+        Disconnect partner
+      </button>
+    </div>
   )
 
+  // Not connected state
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0a0a0a',
+      background: '#1A1B26',
       padding: '2rem 1.5rem',
       maxWidth: '480px',
       margin: '0 auto',
+      position: 'relative',
     }}>
+      <style>{`
+        @keyframes twinkle { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
+      `}</style>
+
+      {/* Stars */}
+      {[...Array(12)].map((_, i) => (
+        <div key={i} style={{
+          position: 'fixed',
+          width: '1px',
+          height: '1px',
+          background: '#fff',
+          borderRadius: '50%',
+          top: `${Math.random() * 100}%`,
+          left: `${Math.random() * 100}%`,
+          opacity: 0.3,
+          animation: `twinkle ${3 + Math.random() * 2}s ease-in-out infinite`,
+        }} />
+      ))}
+
       <button
         onClick={() => navigate('/dashboard')}
-        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '13px', cursor: 'pointer', marginBottom: '2rem', padding: 0 }}
+        style={{ 
+          background: 'none', 
+          border: 'none', 
+          color: '#8B8FA3', 
+          fontSize: '13px', 
+          cursor: 'pointer', 
+          marginBottom: '2rem', 
+          padding: 0,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+        }}
       >
-        ← back
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+        back
       </button>
 
-      <div style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.8rem', marginBottom: '0.5rem' }}>
+      <div style={{ 
+        fontFamily: "'Geist', sans-serif", 
+        fontSize: '1.8rem', 
+        fontWeight: '600',
+        marginBottom: '0.5rem',
+        color: '#E8E8ED',
+      }}>
         Connect with your partner
       </div>
-      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '2.5rem', lineHeight: '1.6' }}>
+      <div style={{ 
+        fontSize: '14px', 
+        color: '#8B8FA3', 
+        marginBottom: '2.5rem', 
+        lineHeight: '1.6' 
+      }}>
         Link your accounts so you can plan trips together, share favorites, and track booking progress.
       </div>
 
-      {/* Generate invite */}
+      {/* Generate invite card */}
       <div style={{
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius)',
+        background: 'rgba(30,32,48,0.6)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(124,106,239,0.2)',
+        borderRadius: '20px',
         padding: '1.5rem',
         marginBottom: '1rem',
       }}>
-        <div style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: accent, marginBottom: '0.75rem', fontWeight: '500' }}>
+        <div style={{ 
+          fontSize: '11px', 
+          letterSpacing: '0.12em', 
+          textTransform: 'uppercase', 
+          color: '#7C6AEF', 
+          marginBottom: '0.75rem', 
+          fontWeight: '600' 
+        }}>
           Step 1 — Send your invite
         </div>
-        <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.6' }}>
-          Generate a link and send it to your partner. They click it and you're connected.
+        <div style={{ 
+          fontSize: '14px', 
+          color: '#8B8FA3', 
+          marginBottom: '1rem', 
+          lineHeight: '1.6' 
+        }}>
+          {"Generate a link and send it to your partner. They click it and you're connected."}
         </div>
 
         {!inviteCode ? (
@@ -262,13 +396,14 @@ async function disconnect() {
             style={{
               width: '100%',
               padding: '14px',
-              background: accent,
+              background: 'linear-gradient(135deg, #7C6AEF, #F472B6)',
               border: 'none',
               borderRadius: '100px',
-              color: '#0a0a0a',
+              color: '#fff',
               fontSize: '14px',
               fontWeight: '600',
               cursor: loading ? 'wait' : 'pointer',
+              boxShadow: '0 0 24px rgba(124,106,239,0.4)',
             }}
           >
             {loading ? 'Generating...' : 'Generate invite link'}
@@ -276,13 +411,14 @@ async function disconnect() {
         ) : (
           <div>
             <div style={{
-              background: 'var(--bg-elevated)',
-              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(124,106,239,0.1)',
+              borderRadius: '12px',
               padding: '12px 14px',
               fontSize: '13px',
-              color: 'var(--text-secondary)',
+              color: '#8B8FA3',
               marginBottom: '10px',
               wordBreak: 'break-all',
+              border: '1px solid rgba(124,106,239,0.2)',
             }}>
               roamie-nu.vercel.app/connect?code={inviteCode}
             </div>
@@ -291,32 +427,56 @@ async function disconnect() {
               style={{
                 width: '100%',
                 padding: '12px',
-                background: copyDone ? 'rgba(255,255,255,0.06)' : 'rgba(255,107,53,0.15)',
-                border: `1px solid ${copyDone ? 'rgba(255,255,255,0.1)' : 'rgba(255,107,53,0.3)'}`,
+                background: copyDone ? 'rgba(34,211,238,0.1)' : 'rgba(124,106,239,0.15)',
+                border: `1px solid ${copyDone ? 'rgba(34,211,238,0.3)' : 'rgba(124,106,239,0.3)'}`,
                 borderRadius: '100px',
-                color: copyDone ? 'rgba(255,255,255,0.4)' : accent,
+                color: copyDone ? '#22D3EE' : '#7C6AEF',
                 fontSize: '13px',
                 fontWeight: '500',
                 cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
               }}
             >
-              {copyDone ? '✓ Copied!' : 'Copy invite link'}
+              {copyDone ? (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M4 8L7 11L12 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                  Copied!
+                </>
+              ) : 'Copy invite link'}
             </button>
           </div>
         )}
       </div>
 
-      {/* Accept invite */}
+      {/* Accept invite card */}
       <div style={{
-        background: 'var(--bg-card)',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius)',
+        background: 'rgba(30,32,48,0.6)',
+        backdropFilter: 'blur(20px)',
+        border: '1px solid rgba(244,114,182,0.2)',
+        borderRadius: '20px',
         padding: '1.5rem',
       }}>
-        <div style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: purple, marginBottom: '0.75rem', fontWeight: '500' }}>
+        <div style={{ 
+          fontSize: '11px', 
+          letterSpacing: '0.12em', 
+          textTransform: 'uppercase', 
+          color: '#F472B6', 
+          marginBottom: '0.75rem', 
+          fontWeight: '600' 
+        }}>
           Step 2 — Got a link from your partner?
         </div>
-        <div style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.6' }}>
+        <div style={{ 
+          fontSize: '14px', 
+          color: '#8B8FA3', 
+          marginBottom: '1rem', 
+          lineHeight: '1.6' 
+        }}>
           Paste their invite code below to connect.
         </div>
         <input
@@ -324,10 +484,27 @@ async function disconnect() {
           placeholder="roamie-xxxxxx"
           value={inputCode}
           onChange={e => setInputCode(e.target.value)}
-          style={{ marginBottom: '10px' }}
+          style={{ 
+            width: '100%',
+            marginBottom: '10px',
+            padding: '14px 18px',
+            background: 'rgba(30,32,48,0.8)',
+            border: '1px solid rgba(244,114,182,0.2)',
+            borderRadius: '100px',
+            color: '#E8E8ED',
+            fontSize: '14px',
+            outline: 'none',
+          }}
         />
         {error && (
-          <div style={{ fontSize: '13px', color: '#ff6b6b', marginBottom: '10px' }}>
+          <div style={{ 
+            fontSize: '13px', 
+            color: '#FF6B6B', 
+            marginBottom: '10px',
+            padding: '8px 12px',
+            background: 'rgba(255,107,107,0.1)',
+            borderRadius: '8px',
+          }}>
             {error}
           </div>
         )}
@@ -337,10 +514,10 @@ async function disconnect() {
           style={{
             width: '100%',
             padding: '14px',
-            background: 'rgba(156,126,196,0.15)',
-            border: '1px solid rgba(156,126,196,0.3)',
+            background: 'rgba(244,114,182,0.15)',
+            border: '1px solid rgba(244,114,182,0.3)',
             borderRadius: '100px',
-            color: purple,
+            color: '#F472B6',
             fontSize: '14px',
             fontWeight: '600',
             cursor: loading ? 'wait' : 'pointer',

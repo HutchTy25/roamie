@@ -8,7 +8,6 @@ export default function Home({ session }) {
   const [visible, setVisible] = useState(false)
   const [tripCount, setTripCount] = useState(0)
 
-
   useEffect(() => {
     fetch('https://roamie-61ib.onrender.com/api/trip-count')
       .then(res => res.json())
@@ -23,12 +22,10 @@ export default function Home({ session }) {
     setTimeout(() => setVisible(true), 100)
   }, [])
 
-  const accent = '#FF6B35'
-
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0a0a0a',
+      background: '#1A1B26',
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -37,15 +34,30 @@ export default function Home({ session }) {
       position: 'relative',
       overflow: 'hidden',
     }}>
-
       <style>{`
         @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:1} }
-        .start-btn:hover { opacity: 0.88; transform: scale(1.02); }
+        @keyframes twinkle { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+        .start-btn:hover { opacity: 0.92; transform: scale(1.02); }
         .start-btn:active { transform: scale(0.98); }
-        .feature-pill { transition: border-color 0.2s; }
-        .feature-pill:hover { border-color: rgba(255,107,53,0.4) !important; }
+        .feature-pill { transition: all 0.2s; }
+        .feature-pill:hover { border-color: rgba(124,106,239,0.5) !important; background: rgba(124,106,239,0.1) !important; }
       `}</style>
+
+      {/* Stars */}
+      {[...Array(25)].map((_, i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          width: i % 4 === 0 ? '2px' : '1px',
+          height: i % 4 === 0 ? '2px' : '1px',
+          background: '#fff',
+          borderRadius: '50%',
+          top: `${Math.random() * 100}%`,
+          left: `${Math.random() * 100}%`,
+          opacity: 0.3,
+          animation: `twinkle ${3 + Math.random() * 3}s ease-in-out infinite ${Math.random() * 2}s`,
+        }} />
+      ))}
 
       {/* Ambient glow */}
       <div style={{
@@ -54,105 +66,108 @@ export default function Home({ session }) {
         left: '50%',
         transform: 'translateX(-50%)',
         width: '600px',
-        height: '400px',
-        background: 'radial-gradient(ellipse, rgba(255,107,53,0.07) 0%, transparent 70%)',
+        height: '500px',
+        background: 'radial-gradient(ellipse, rgba(124,106,239,0.12) 0%, transparent 70%)',
         pointerEvents: 'none',
       }} />
 
-      {/* Floating dots */}
-      <div style={{ position: 'absolute', top: '15%', left: '8%', width: '4px', height: '4px', borderRadius: '50%', background: accent, opacity: 0.3, animation: 'pulse 3s infinite' }} />
-      <div style={{ position: 'absolute', top: '25%', right: '10%', width: '3px', height: '3px', borderRadius: '50%', background: '#9c7ec4', opacity: 0.3, animation: 'pulse 3s infinite 1s' }} />
-      <div style={{ position: 'absolute', bottom: '30%', left: '12%', width: '3px', height: '3px', borderRadius: '50%', background: accent, opacity: 0.2, animation: 'pulse 3s infinite 2s' }} />
-
-     {/* User bar */}
-{session ? (
-  <div style={{
-    position: 'fixed',
-    top: '1rem',
-    right: '1rem',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    zIndex: 100,
-    background: 'rgba(10,10,10,0.8)',
-    backdropFilter: 'blur(8px)',
-    borderRadius: '100px',
-    padding: '4px 12px 4px 4px',
-    border: '1px solid rgba(255,255,255,0.08)',
-  }}>
-    <img
-      src={session.user.user_metadata?.avatar_url}
-      style={{ width: '26px', height: '26px', borderRadius: '50%' }}
-      alt="avatar"
-    />
-    <button
-      onClick={() => navigate('/dashboard')}
-      style={{
-        background: 'none',
-        border: 'none',
-        color: accent,
-        fontSize: '12px',
-        cursor: 'pointer',
-        padding: 0,
-      }}
-    >
-      Dashboard
-    </button>
-    <button
-      onClick={() => supabase.auth.signOut()}
-      style={{
-        background: 'none',
-        border: 'none',
-        color: 'var(--text-muted)',
-        fontSize: '12px',
-        cursor: 'pointer',
-        padding: 0,
-      }}
-    >
-      Sign out
-    </button>
-  </div>
-) : (
-  <div style={{
-    position: 'fixed',
-    top: '1rem',
-    right: '1rem',
-    zIndex: 100,
-  }}>
-    <button
-      onClick={() => navigate('/login')}
-      style={{
-        background: 'rgba(10,10,10,0.8)',
-        backdropFilter: 'blur(8px)',
-        border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: '100px',
-        padding: '6px 14px',
-        color: 'var(--text-muted)',
-        fontSize: '12px',
-        cursor: 'pointer',
-      }}
-    >
-      Sign in
-    </button>
-  </div>
-)}
+      {/* User bar */}
+      {session ? (
+        <div style={{
+          position: 'fixed',
+          top: '1rem',
+          right: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          zIndex: 100,
+          background: 'rgba(30,32,48,0.8)',
+          backdropFilter: 'blur(12px)',
+          borderRadius: '100px',
+          padding: '4px 12px 4px 4px',
+          border: '1px solid rgba(124,106,239,0.2)',
+        }}>
+          <img
+            src={session.user.user_metadata?.avatar_url}
+            style={{ width: '26px', height: '26px', borderRadius: '50%' }}
+            alt="avatar"
+          />
+          <button
+            onClick={() => navigate('/dashboard')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#7C6AEF',
+              fontSize: '12px',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            Dashboard
+          </button>
+          <button
+            onClick={() => supabase.auth.signOut()}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#8B8FA3',
+              fontSize: '12px',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            Sign out
+          </button>
+        </div>
+      ) : (
+        <div style={{
+          position: 'fixed',
+          top: '1rem',
+          right: '1rem',
+          zIndex: 100,
+        }}>
+          <button
+            onClick={() => navigate('/login')}
+            style={{
+              background: 'rgba(30,32,48,0.8)',
+              backdropFilter: 'blur(12px)',
+              border: '1px solid rgba(124,106,239,0.2)',
+              borderRadius: '100px',
+              padding: '8px 16px',
+              color: '#8B8FA3',
+              fontSize: '13px',
+              cursor: 'pointer',
+            }}
+          >
+            Sign in
+          </button>
+        </div>
+      )}
 
       {/* Badge */}
       <div style={{
         opacity: visible ? 1 : 0,
         animation: visible ? 'fadeUp 0.6s ease forwards' : 'none',
         marginBottom: '1.5rem',
-marginTop: '2.5rem',
+        marginTop: '2.5rem',
         display: 'inline-flex',
         alignItems: 'center',
-        gap: '6px',
-        background: 'rgba(255,107,53,0.1)',
-        border: '1px solid rgba(255,107,53,0.25)',
+        gap: '8px',
+        background: 'rgba(244,114,182,0.1)',
+        border: '1px solid rgba(244,114,182,0.25)',
         borderRadius: '100px',
-        padding: '6px 14px',
+        padding: '8px 16px',
       }}>
-        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: accent, animation: 'pulse 2s infinite' }} />
-        <span style={{ fontSize: '12px', color: accent, letterSpacing: '0.08em', fontWeight: '500' }}>Built for long distance couples</span>
+        <div style={{ 
+          width: '8px', 
+          height: '8px', 
+          borderRadius: '50%', 
+          background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
+          animation: 'twinkle 2s infinite' 
+        }} />
+        <span style={{ fontSize: '12px', color: '#F472B6', letterSpacing: '0.05em', fontWeight: '500' }}>
+          Built for long distance couples
+        </span>
       </div>
 
       {/* Main headline */}
@@ -164,15 +179,19 @@ marginTop: '2.5rem',
         maxWidth: '520px',
       }}>
         <h1 style={{
-          fontFamily: "'Playfair Display', serif",
-          fontSize: 'clamp(2.8rem, 9vw, 4.2rem)',
-          fontWeight: '400',
-          lineHeight: '1.05',
+          fontFamily: "'Geist', sans-serif",
+          fontSize: 'clamp(2.4rem, 8vw, 3.8rem)',
+          fontWeight: '600',
+          lineHeight: '1.1',
           margin: 0,
-          color: '#f0ebe4',
+          color: '#E8E8ED',
         }}>
           Stop arguing<br />about where<br />
-          <em style={{ color: accent }}>to go next.</em>
+          <span style={{ 
+            background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}>to go next.</span>
         </h1>
       </div>
 
@@ -186,7 +205,7 @@ marginTop: '2.5rem',
       }}>
         <p style={{
           fontSize: '16px',
-          color: '#8a8278',
+          color: '#8B8FA3',
           lineHeight: '1.7',
           margin: 0,
         }}>
@@ -213,12 +232,13 @@ marginTop: '2.5rem',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
+            background: 'rgba(30,32,48,0.6)',
+            border: '1px solid rgba(124,106,239,0.2)',
             borderRadius: '100px',
-            padding: '7px 14px',
+            padding: '8px 14px',
             fontSize: '13px',
-            color: '#8a8278',
+            color: '#8B8FA3',
+            backdropFilter: 'blur(8px)',
           }}>
             <span style={{ fontSize: '14px' }}>{p.icon}</span>
             {p.text}
@@ -231,11 +251,11 @@ marginTop: '2.5rem',
         opacity: visible ? 1 : 0,
         animation: visible ? 'fadeUp 0.6s ease 0.35s forwards' : 'none',
         fontSize: '13px',
-        color: '#4a4642',
+        color: '#6B6F85',
         marginBottom: '1rem',
         textAlign: 'center',
       }}>
-        Fill it out together on your next FaceTime 🤙
+        Fill it out together on your next FaceTime
       </div>
 
       {/* CTA Button */}
@@ -252,18 +272,18 @@ marginTop: '2.5rem',
           style={{
             width: '100%',
             padding: '18px',
-            background: accent,
-            color: '#0a0a0a',
+            background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
+            color: '#fff',
             fontSize: '16px',
-            fontWeight: '700',
+            fontWeight: '600',
             borderRadius: '100px',
             border: 'none',
             cursor: 'pointer',
             transition: 'all 0.2s',
-            letterSpacing: '0.02em',
+            boxShadow: '0 0 40px rgba(124,106,239,0.4)',
           }}
         >
-          Plan our next trip ✦
+          Plan our next trip
         </button>
       </div>
 
@@ -272,7 +292,7 @@ marginTop: '2.5rem',
         opacity: visible ? 1 : 0,
         animation: visible ? 'fadeUp 0.6s ease 0.5s forwards' : 'none',
         fontSize: '12px',
-        color: '#4a4642',
+        color: '#6B6F85',
         marginBottom: '1rem',
       }}>
         Free to use · No sign up required · Takes 2 minutes
@@ -283,12 +303,14 @@ marginTop: '2.5rem',
         opacity: visible ? 1 : 0,
         animation: visible ? 'fadeUp 0.6s ease 0.6s forwards' : 'none',
         fontSize: '13px',
-        color: accent,
+        background: 'linear-gradient(135deg, #F472B6, #22D3EE)',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
         marginBottom: '2rem',
         fontWeight: '500',
         textAlign: 'center',
       }}>
-        {tripCount > 0 && `✦ ${tripCount} trips planned by couples worldwide`}
+        {tripCount > 0 && `${tripCount} trips planned by couples worldwide`}
       </div>
 
       {/* Social proof */}
@@ -296,28 +318,35 @@ marginTop: '2.5rem',
         opacity: visible ? 1 : 0,
         animation: visible ? 'fadeUp 0.6s ease 0.7s forwards' : 'none',
         maxWidth: '360px',
-        background: '#141414',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: '16px',
+        background: 'rgba(30,32,48,0.6)',
+        border: '1px solid rgba(124,106,239,0.15)',
+        borderRadius: '20px',
         padding: '1.25rem',
         marginBottom: '2rem',
+        backdropFilter: 'blur(20px)',
       }}>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
           <div style={{
-            width: '32px', height: '32px', borderRadius: '50%',
-            background: 'rgba(255,107,53,0.15)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '14px', flexShrink: 0,
-          }}>👤</div>
+            width: '36px', 
+            height: '36px', 
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            fontSize: '14px', 
+            flexShrink: 0,
+            color: '#fff',
+            fontWeight: '600',
+          }}>R</div>
           <div>
-            <div style={{ fontSize: '13px', color: '#f0ebe4', lineHeight: '1.6', marginBottom: '8px' }}>
-              "Having both people input their stuff upfront could definitely cut through decision paralysis. Interface feels pretty clean for a V1"
+            <div style={{ fontSize: '13px', color: '#E8E8ED', lineHeight: '1.6', marginBottom: '8px' }}>
+              {"\"Having both people input their stuff upfront could definitely cut through decision paralysis. Interface feels pretty clean for a V1\""}
             </div>
-            <div style={{ fontSize: '11px', color: '#4a4642' }}>r/SaaS · real user review</div>
+            <div style={{ fontSize: '11px', color: '#6B6F85' }}>r/SaaS · real user review</div>
           </div>
         </div>
       </div>
-
     </div>
   )
 }
