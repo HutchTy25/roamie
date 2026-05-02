@@ -103,7 +103,9 @@ useEffect(() => {
         })
         .eq('id', session.user.id)
       if (err) throw err
-      navigate('/dashboard')
+// Small delay to let Supabase propagate before App.jsx re-fetches
+await new Promise(resolve => setTimeout(resolve, 500))
+navigate('/dashboard')
     } catch (e) {
       setError('Something went wrong. Try again.')
       setSaving(false)
