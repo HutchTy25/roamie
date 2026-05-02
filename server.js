@@ -857,6 +857,8 @@ app.get('/api/nearest-airport', (req, res) => {
     })
 
     // Gemini's snap logic — if large airport within 100km, use it
+    console.log('Closest any:', closestAny?.iata, closestAny?.type, Math.round(minDistAny), 'km')
+console.log('Closest large:', closestLarge?.iata, closestLarge?.type, Math.round(minDistLarge), 'km')
     const result = (closestLarge && minDistLarge < 100) ? closestLarge : closestAny
 
     if (result) {
