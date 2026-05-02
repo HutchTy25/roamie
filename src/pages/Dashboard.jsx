@@ -336,8 +336,12 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
                 <circle cx="12" cy="10" r="3"/>
               </svg>
             </div>
-            <div style={{ fontSize: '14px', fontWeight: '600', color: colors.text }}>Memphis</div>
-<div style={{ fontSize: '11px', color: colors.textMuted }}>TN, USA</div>
+            <div style={{ fontSize: '14px', fontWeight: '600', color: colors.text }}>
+  {myProfile?.home_city && myProfile.home_city !== 'skip' ? myProfile.home_city : myName}
+</div>
+<div style={{ fontSize: '11px', color: colors.textMuted }}>
+  {myProfile?.home_iata || ''}
+</div>
           </div>
 
           {/* Connection line with distance */}

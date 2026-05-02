@@ -73,13 +73,16 @@ useEffect(() => {
         { headers: { 'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET } }
       )
       const data = await res.json()
-      if (data.iata) {
-        setHomeIata(data.iata)
-        setIataFound(true)
-      } else {
-        setHomeIata('')
-        setIataFound(false)
-      }
+     if (data.matches?.length === 1) {
+  setHomeIata(data.matches[0].iata)
+  setIataFound(true)
+} else if (data.matches?.length > 1) {
+  setHomeIata(data.iata)
+  setIataFound(false)
+} else {
+  setHomeIata('')
+  setIataFound(false)
+} 
     } catch {
       setHomeIata('')
       setIataFound(false)
