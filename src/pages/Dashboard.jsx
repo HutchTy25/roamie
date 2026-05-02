@@ -11,6 +11,7 @@ export default function Dashboard({ session }) {
   const [activeTab, setActiveTab] = useState('home')
   const [customAvatar, setCustomAvatar] = useState(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [myProfile, setMyProfile] = useState(null)
 
   // Theme colors - Moonly aesthetic
   const colors = {
@@ -45,18 +46,21 @@ export default function Dashboard({ session }) {
         supabase.from('profiles').select('*').eq('id', session.user.id).single()
       ])
       if (tripsResult.data) setTrips(tripsResult.data)
-      if (profileResult.data?.avatar_url) setCustomAvatar(profileResult.data.avatar_url)
-      if (profileResult.data?.couple_id) {
-        const { data: couple } = await supabase
+if (profileResult.data) {
+  setMyProfile(profileResult.data)
+  if (profileResult.data.avatar_url) setCustomAvatar(profileResult.data.avatar_url)
+  if (profileResult.data.couple_id) {
+    const { data: couple } = await supabase
           .from('couples').select('*').eq('id', profileResult.data.couple_id).single()
         if (couple?.status === 'connected') {
           const partnerId = couple.partner1_id === session.user.id ? couple.partner2_id : couple.partner1_id
           const { data: partner } = await supabase
             .from('profiles').select('*').eq('id', partnerId).single()
           setPartnerProfile(partner)
-        }
       }
-    } catch (e) {
+      }
+    }
+  } catch (e) {
       console.error('Fetch data error:', e)
     } finally {
       setLoading(false)
@@ -93,9 +97,13 @@ export default function Dashboard({ session }) {
   const daysUntil = upcomingTrip
     ? Math.ceil((new Date(upcomingTrip.dates_from) - new Date()) / (1000 * 60 * 60 * 24))
     : null
-  const myName = session?.user?.user_metadata?.full_name?.split(' ')[0] || 'You'
+  const myName = myProfile?.display_name || session?.user?.user_metadata?.full_name?.split(' ')[0] || 'You'
   const myAvatar = customAvatar || session?.user?.user_metadata?.avatar_url
-  const partnerName = partnerProfile?.full_name?.split(' ')[0] || null
+  const partnerName = partnerProfile?.display_name || partnerProfile?.full_name?.split(' ')[0] || null
+  const relationshipDays = myProfile?.relationship_start_date
+  ? Math.floor((new Date() - new Date(myProfile.relationship_start_date)) / (1000 * 60 * 60 * 24))
+  : null
+const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8878) * 100), 100) : null
 
   // SVG Icon component
   const Icon = ({ path, size = 22, color = 'currentColor' }) => (
@@ -329,7 +337,7 @@ export default function Dashboard({ session }) {
               </svg>
             </div>
             <div style={{ fontSize: '14px', fontWeight: '600', color: colors.text }}>Memphis</div>
-            <div style={{ fontSize: '11px', color: colors.textMuted }}>TN, USA</div>
+<div style={{ fontSize: '11px', color: colors.textMuted }}>TN, USA</div>
           </div>
 
           {/* Connection line with distance */}
@@ -353,7 +361,9 @@ export default function Dashboard({ session }) {
               fontFamily: 'monospace',
               color: colors.text
             }}>
-              4,347 mi
+              {myProfile?.home_iata && partnerProfile?.home_iata
+  ? `${myProfile.home_iata} ↔ ${partnerProfile.home_iata}`
+  : '— mi'}
             </div>
           </div>
 
@@ -375,8 +385,12 @@ export default function Dashboard({ session }) {
                 <circle cx="12" cy="10" r="3"/>
               </svg>
             </div>
-            <div style={{ fontSize: '14px', fontWeight: '600', color: colors.text }}>Manchester</div>
-            <div style={{ fontSize: '11px', color: colors.textMuted }}>UK</div>
+           <div style={{ fontSize: '14px', fontWeight: '600', color: colors.text }}>
+  {partnerProfile?.home_city && partnerProfile.home_city !== 'skip' ? partnerProfile.home_city : partnerName || 'Partner'}
+</div>
+<div style={{ fontSize: '11px', color: colors.textMuted }}>
+  {partnerProfile?.home_iata || ''}
+</div> 
           </div>
         </div>
       </div>
@@ -396,7 +410,7 @@ export default function Dashboard({ session }) {
                   <p style={{ fontSize: '13px', color: colors.textMuted, margin: '4px 0 0 0' }}>Our Time Together</p>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '24px', fontWeight: '700', color: colors.pink }}>10%</div>
+                <div style={{ fontSize: '24px', fontWeight: '700', color: colors.pink }}>{moonPercent ? `${moonPercent}%` : '—'}</div>  
                   <div style={{ fontSize: '11px', color: colors.textMuted }}>to the Moon</div>
                 </div>
               </div>
@@ -463,7 +477,7 @@ export default function Dashboard({ session }) {
                     {/* Rocket at 10% */}
                     <div style={{
                       position: 'absolute',
-                      left: '10%',
+                      left: `${moonPercent || 0}%`,
                       top: '50%',
                       transform: 'translate(-50%, -50%)',
                       fontSize: '20px'
@@ -515,12 +529,12 @@ export default function Dashboard({ session }) {
                 borderTop: `1px solid ${colors.border}`
               }}>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', fontWeight: '700', color: colors.text }}>893</div>
+                  <div style={{ fontSize: '24px', fontWeight: '700', color: colors.text }}>{relationshipDays || '—'}</div>
                   <div style={{ fontSize: '11px', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Days</div>
                 </div>
                 <div style={{ fontSize: '20px', color: colors.textMuted }}>=</div>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', fontWeight: '700', color: colors.pink }}>10%</div>
+                  <div style={{ fontSize: '24px', fontWeight: '700', color: colors.pink }}>{moonPercent ? `${moonPercent}%` : '—'}</div>
                   <div style={{ fontSize: '11px', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>To Moon</div>
                 </div>
               </div>
@@ -558,7 +572,7 @@ export default function Dashboard({ session }) {
                   WebkitTextFillColor: 'transparent',
                   letterSpacing: '-2px'
                 }}>
-                  147,798
+                  {myProfile?.total_miles ? myProfile.total_miles.toLocaleString() : '0'}
                 </div>
                 <div style={{ fontSize: '13px', color: colors.textMuted }}>Total Miles Flown</div>
               </div>
@@ -584,8 +598,8 @@ export default function Dashboard({ session }) {
                   <circle cx="280" cy="50" r="6" fill={colors.cyan} />
                 </svg>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
-                  <span style={{ fontSize: '12px', color: colors.textMuted }}>MEM</span>
-                  <span style={{ fontSize: '12px', color: colors.textMuted }}>MAN</span>
+                  <span style={{ fontSize: '12px', color: colors.textMuted }}>{myProfile?.home_iata || '—'}</span>
+<span style={{ fontSize: '12px', color: colors.textMuted }}>{partnerProfile?.home_iata || '—'}</span>
                 </div>
               </div>
 
@@ -620,17 +634,21 @@ export default function Dashboard({ session }) {
                 borderTop: `1px solid ${colors.border}`
               }}>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '18px', fontWeight: '600', color: colors.text }}>17</div>
+                <div style={{ fontSize: '18px', fontWeight: '600', color: colors.text }}>{trips.length}</div>  
                   <div style={{ fontSize: '11px', color: colors.textMuted }}>Trips</div>
                 </div>
                 <div style={{ width: '1px', background: colors.border }} />
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '18px', fontWeight: '600', color: colors.pink }}>34</div>
+                  <div style={{ fontSize: '18px', fontWeight: '600', color: colors.pink }}>{trips.length * 2}</div>
                   <div style={{ fontSize: '11px', color: colors.textMuted }}>Flights</div>
                 </div>
                 <div style={{ width: '1px', background: colors.border }} />
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '18px', fontWeight: '600', color: colors.cyan }}>Since '23</div>
+                  <div style={{ fontSize: '18px', fontWeight: '600', color: colors.cyan }}>
+  {myProfile?.relationship_start_date 
+    ? `Since '${new Date(myProfile.relationship_start_date).getFullYear().toString().slice(2)}`
+    : '—'}
+</div>
                   <div style={{ fontSize: '11px', color: colors.textMuted }}>Together</div>
                 </div>
               </div>

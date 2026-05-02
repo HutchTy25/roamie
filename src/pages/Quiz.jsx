@@ -265,7 +265,7 @@ function CalendarPicker({ label, selected, onChange, minDate }) {
   )
 }
 
-export default function Quiz() {
+export default function Quiz({ session }) {
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
   const [data, setData] = useState({
@@ -395,42 +395,62 @@ export default function Quiz() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', marginBottom: '2rem' }}>
-          {[
-            { id: 'visit', icon: '💑', label: 'Visit each other', desc: 'Find the best price for one partner to visit the other', routing: 'visit' },
-            { id: 'meet', icon: '🛬', label: 'Meet somewhere new', desc: 'Both fly independently to a destination you choose together', routing: 'meet' },
-            { id: 'explore', icon: '✈️', label: 'Explore together', desc: 'AI finds destinations and figures out the smartest way to get there', routing: 'fly_together' },
-          ].map(m => (
-            <div
-              key={m.id}
-              onClick={() => setData(d => ({ ...d, tripMode: m.id, routing: m.routing }))}
-              style={{
-                padding: '1.25rem',
-                borderRadius: '16px',
-                border: `1px solid ${data.tripMode === m.id ? THEME.accent : THEME.border}`,
-                background: data.tripMode === m.id ? 'rgba(244, 114, 182, 0.1)' : THEME.card,
-                backdropFilter: 'blur(20px)',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '14px',
-                boxShadow: data.tripMode === m.id ? `0 0 30px rgba(244, 114, 182, 0.2)` : 'none',
-              }}
-            >
-              <div style={{ fontSize: '2rem', flexShrink: 0 }}>{m.icon}</div>
-              <div>
-                <div style={{
-                  fontSize: '15px',
-                  fontWeight: '600',
-                  color: data.tripMode === m.id ? THEME.accent : THEME.text,
-                  marginBottom: '3px',
-                }}>
-                  {m.label}
-                </div>
-                <div style={{ fontSize: '12px', color: THEME.muted, lineHeight: '1.5' }}>{m.desc}</div>
-              </div>
-            </div>
-          ))}
+        {[
+  { id: 'visit', icon: '💑', label: 'Visit each other', desc: 'Find the best price for one partner to visit the other', routing: 'visit', locked: !session },
+  { id: 'meet', icon: '🛬', label: 'Meet somewhere new', desc: 'Both fly independently to a destination you choose together', routing: 'meet', locked: !session },
+  { id: 'explore', icon: '✈️', label: 'Explore together', desc: 'AI finds destinations and figures out the smartest way to get there', routing: 'fly_together', locked: false },
+].map(m => (
+  <div
+    key={m.id}
+    onClick={() => {
+      if (m.locked) { navigate('/login'); return }
+      setData(d => ({ ...d, tripMode: m.id, routing: m.routing }))
+    }}
+    style={{
+      padding: '1.25rem',
+      borderRadius: '16px',
+      border: `1px solid ${data.tripMode === m.id ? THEME.accent : m.locked ? 'rgba(124,106,239,0.1)' : THEME.border}`,
+      background: data.tripMode === m.id ? 'rgba(244, 114, 182, 0.1)' : THEME.card,
+      backdropFilter: 'blur(20px)',
+      cursor: m.locked ? 'pointer' : 'pointer',
+      transition: 'all 0.2s',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '14px',
+      opacity: m.locked ? 0.6 : 1,
+      boxShadow: data.tripMode === m.id ? `0 0 30px rgba(244, 114, 182, 0.2)` : 'none',
+      position: 'relative',
+    }}
+  >
+    <div style={{ fontSize: '2rem', flexShrink: 0 }}>{m.icon}</div>
+    <div style={{ flex: 1 }}>
+      <div style={{
+        fontSize: '15px',
+        fontWeight: '600',
+        color: data.tripMode === m.id ? THEME.accent : m.locked ? THEME.muted : THEME.text,
+        marginBottom: '3px',
+      }}>
+        {m.label}
+      </div>
+      <div style={{ fontSize: '12px', color: THEME.muted, lineHeight: '1.5' }}>{m.desc}</div>
+    </div>
+    {m.locked && (
+      <div style={{
+        fontSize: '11px',
+        fontWeight: '600',
+        color: THEME.primary,
+        background: 'rgba(124,106,239,0.15)',
+        border: `1px solid rgba(124,106,239,0.3)`,
+        borderRadius: '100px',
+        padding: '4px 10px',
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+      }}>
+        Sign in
+      </div>
+    )}
+  </div>
+))}  
         </div>
 
         <button

@@ -775,9 +775,16 @@ priceResults[destName] = {
   }
 })
 
+app.get('/api/iata-lookup', (req, res) => {
+  const city = req.query.city
+  if (!city) return res.status(400).json({ error: 'Missing city' })
+  const iata = getCityIATA(city)
+  res.json({ iata: iata || null })
+})
 
 app.get('/api/trip-count', (req, res) => {
   res.json({ count: globalTripCount })
 })
+
 
 app.listen(3001, () => console.log('Server running on port 3001'))
