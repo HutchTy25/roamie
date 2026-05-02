@@ -7,15 +7,18 @@ roamie-nu.vercel.app — fully working
 - Landing page with live trip counter
 - Google Sign In + Magic Link auth (Supabase)
 - Three mode quiz — Visit Partner, Meet Somewhere, Explore Together
+- Quiz mode gating — Visit + Meet locked behind sign in
 - AI recommendations (two-call Claude architecture)
 - Real flight prices via FlightAPI.io (11,602 airport IATA database)
 - Real exchange rates via ExchangeRate-API
 - Per-partner cost breakdown in their own currency
 - Reality strip — crowd, weather, fairness, budget stretch
-- Paid breakdown + Trip Basics (Perplexity + Claude)
+- Paid breakdown + Trip Basics (now baked into Call 2, no third API call)
 - Stripe payments ($3.99 one-time)
 - Partner Sync — invite system, connected state, disconnect
 - Dashboard with countdown, bottom nav, saved trips
+- Dashboard wired to real profile data (home city, IATA, relationship days, moon %)
+- Onboarding flow — display name, home city + IATA lookup, anniversary date
 - Profile photo upload via Supabase Storage
 - Save trips to Supabase manually
 - Usage gate — 3 free searches then email capture
@@ -31,6 +34,7 @@ roamie-nu.vercel.app — fully working
 - Auto profile creation trigger
 - Supabase Storage bucket: avatars
 - Google OAuth + Magic Link
+- New profile columns: home_city, home_iata, relationship_start_date, total_miles, display_name
 
 ### Environment Variables
 **Vercel (frontend):**
@@ -60,25 +64,25 @@ roamie-nu.vercel.app — fully working
 
 ### How it works
 1. User submits quiz with mode (Visit/Meet/Explore) and cities
-2. **Call 1** — Claude picks 3 destinations only (fast, no prices)
-3. **FlightAPI** called with real routes based on routing mode
-4. Real prices extracted using retry polling (up to 3 attempts, 2s delay)
-5. **Call 2** — Claude gets real prices injected, returns full breakdown
-6. User sees accurate costs
+2. **Call 1 + Flight API run in parallel** — Claude picks 3 destinations while flight API warms up
+3. Real prices extracted using retry polling (up to 3 attempts, 2s delay)
+4. **Call 2** — Claude gets real prices injected, returns full breakdown + trip basics
+5. User sees accurate costs, trip basics instant on expand
 
 ### Three modes
 **Visit Partner:**
-- No AI destination discovery
+- Locked behind sign in
 - FlightAPI searches P1→P2 and P2→P1 independently
 - Shows VisitResults.jsx — clean two-card flight price display
-- Real prices confirmed: MEM↔MAN $1,214 / £1,128
 
 **Meet Somewhere:**
+- Locked behind sign in
 - Claude picks destinations
 - FlightAPI searches both partners independently to destination
 - fetchWithRetry polling handles async API responses
 
 **Explore Together:**
+- Free to use
 - Claude picks destinations AND determines optimal hub
 - FlightAPI searches based on fly_together routing logic
 - P1 total = leg1 (P1→P2) + leg2 (P2→destination)
@@ -89,59 +93,58 @@ roamie-nu.vercel.app — fully working
 - `extractLowestPrice()` — parses FlightAPI response structure
 - `fetchWithRetry()` — polls FlightAPI up to 3x with 2s delay
 - `/api/flight-prices` — dedicated endpoint for all flight searches
+- `/api/iata-lookup` — exposes getCityIATA for frontend onboarding
 
 ---
 
-## April 29, 2026
+## May 1, 2026
 
 ### What we built
-- Three mode quiz flow ✅
-- VisitResults.jsx — dedicated visit partner results page ✅
-- Real FlightAPI prices with retry polling ✅
-- Two-call Claude architecture complete ✅
-- Airport database integration (11,602 entries) ✅
-- fetchWithRetry polling function ✅
-- Price extraction working correctly ✅
-- fuzzy IATA matching (handles typos, punctuation, state suffixes) ✅
+- Onboarding flow (4 steps: welcome, name, home city, anniversary) ✅
+- App.jsx profile fetch + onboarding redirect logic ✅
+- Supabase migration — 5 new profile columns ✅
+- Dashboard wired to real data — cities, IATA, relationship days, moon %, miles ✅
+- display_name fixes magic link "You" bug ✅
+- Quiz mode locking — Visit + Meet require sign in ✅
+- Results speed improvement — Call 1 + flight API now parallel ✅
+- Trip basics folded into Call 2 — no third API call ✅
+- /api/iata-lookup endpoint added to server.js ✅
 
-### Known issues / next fixes
-- Magic link users show "You" instead of their name — need name edit field
-- fly_together routing needs fetchWithRetry applied (currently only meet has it)
-- Debug logs need cleanup before push
-- airports.dat added to .gitignore
+### Known bugs to fix tomorrow
+- MEM→MAN (and similar indirect routes) returns no flights — FlightAPI struggles with connections
+- Onboarding restart — race condition between profile save and App.jsx fetch
+- No airport found — frontend IATA lookup depends on Render being warm, needs bundled city list
+- Back button missing from quiz mode select screen
+- Post-login flow needs cleaner redirect to dashboard
 
-### Next up
-1. Apply fetchWithRetry to fly_together routing block
-2. Name edit field in Profile tab
-3. Shared trip visibility between partners
-4. Pricing update ($3.99 → $4.99, $5.99 → $9.99/month per couple)
-5. Favorites/matching system (yellow = one likes, green = both like)
-6. Miles flown legacy card
-7. Onboarding flow with nearest airport detection
-8. Orbit system (shared couple space between trips)
-9. iOS PWA home screen setup
-10. UI redesign with V0
+### Orbit Feature — Architecture Locked
+- Two rings: inner (confirmed, 140px, clockwise 35s) + outer (ideas, 240px, counter-clockwise 50s)
+- Sun states: dormant (no confirmed trip) → active (trip confirmed, glows)
+- Planets counter-spin to stay upright
+- Tap → card slides up with name/note/who added
+- Hold → confirm, moves to inner ring
+- Swipe back → returns to outer ring
+- Realtime sync via Supabase realtime (built in from day one)
+- DB table: orbit_items (id, couple_id, trip_destination, name, note, added_by, confirmed, color, created_at)
+
+### Tomorrow build order
+1. Fix MEM→MAN indirect flight routing
+2. Fix onboarding race condition
+3. Bundle top cities IATA frontend
+4. Back button + post login flow polish
+5. Supabase migration — orbit_items table + RLS
+6. Orbit sun component (dormant/active states, layered glow)
+7. Two ring orbit with counter-spinning planets
+8. Tap interaction + bottom sheet card
+9. Add bubble form
+10. Wire to Supabase with realtime subscription
 
 ### Pricing strategy (locked)
-- Free: 3 trip searches
-- $4.99 one-time: Full breakdown + trip basics
-- $9.99/month per couple: Partner Sync, unlimited searches, Monthly Getaway, regens
-- $79.99/year per couple: Annual discount
+- Free: Explore Together only, 3 searches then email gate
+- Sign in (free): saved trips, dashboard, onboarding profile
+- $9.99/month per couple: Visit Partner, Meet Somewhere, Partner Sync, unlimited searches
+- $79.99/year per couple: annual discount
 - First 25 couples: $5.99/month locked forever
-
-### Product roadmap
-1. Name edit ← next
-2. Shared trips
-3. Pricing update in Stripe
-4. Favorites matching
-5. Miles legacy card
-6. Onboarding flow
-7. Orbit system
-8. Monthly Getaway
-9. UI redesign
-10. PWA setup
-11. Privacy Policy + Terms
-12. LLC formation
 
 ### Notes
 - New job started Monday April 28 — build time limited to evenings + weekends
@@ -150,3 +153,5 @@ roamie-nu.vercel.app — fully working
 - Beta bypass: roamie-nu.vercel.app?beta=true
 - Design inspiration: Moonly + Klima apps
 - Logo: lowercase 'r' in Playfair + orange heart (girl's design)
+- Orbit is the viral feature — visual, intimate, no competitor has it
+- Long term: LDR wedge → same-city couples naturally discover it

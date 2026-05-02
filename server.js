@@ -778,13 +778,76 @@ priceResults[destName] = {
 app.get('/api/iata-lookup', (req, res) => {
   const city = req.query.city
   if (!city) return res.status(400).json({ error: 'Missing city' })
-  const iata = getCityIATA(city)
-  res.json({ iata: iata || null })
+  
+  const db = loadAirportDB()
+  const query = city.toLowerCase().split(/[,\.]/)[0].trim()
+  
+  const matches = []
+  const seen = new Set()
+  
+  Object.entries(db).forEach(([key, iata]) => {
+    if (key.startsWith(query) && !seen.has(iata)) {
+      seen.add(iata)
+      matches.push({ city: key, iata })
+    }
+  })
+  
+  // Sort by shortest name first (most relevant)
+  matches.sort((a, b) => a.city.length - b.city.length)
+  
+  res.json({ 
+    iata: matches[0]?.iata || null,
+    matches: matches.slice(0, 5)
+  })
 })
 
 app.get('/api/trip-count', (req, res) => {
   res.json({ count: globalTripCount })
 })
 
+app.get('/api/nearest-airport', (req, res) => {
+  const lat = parseFloat(req.query.lat)
+  const lng = parseFloat(req.query.lng)
+  if (isNaN(lat) || isNaN(lng)) return res.status(400).json({ error: 'Invalid coordinates' })
+
+  try {
+    const data = readFileSync(resolve('./airports.dat'), 'utf8')
+    let closest = null
+    let minDist = Infinity
+
+    data.split('\n').forEach(line => {
+      const parts = line.split(',').map(p => p.replace(/"/g, '').trim())
+      if (parts.length < 8) return
+      const city = parts[2]
+      const iata = parts[4]
+      const airLat = parseFloat(parts[6])
+      const airLng = parseFloat(parts[7])
+      if (!iata || iata === '\\N' || iata.length !== 3) return
+      if (isNaN(airLat) || isNaN(airLng)) return
+
+      // Haversine
+      const R = 6371
+      const dLat = (airLat - lat) * Math.PI / 180
+      const dLng = (airLng - lng) * Math.PI / 180
+      const a = Math.sin(dLat/2) ** 2 +
+        Math.cos(lat * Math.PI / 180) * Math.cos(airLat * Math.PI / 180) *
+        Math.sin(dLng/2) ** 2
+      const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+
+      if (dist < minDist) {
+        minDist = dist
+        closest = { iata, city }
+      }
+    })
+
+    if (closest) {
+      res.json({ iata: closest.iata, city: closest.city })
+    } else {
+      res.status(404).json({ error: 'No airport found' })
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+})
 
 app.listen(3001, () => console.log('Server running on port 3001'))
