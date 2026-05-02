@@ -330,63 +330,7 @@ Return ONLY this JSON, no markdown, no explanation:
 
     try {
       setMessageIndex(0)
-      const res1 = await fetch('https://roamie-61ib.onrender.com/api/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 2000,
-          messages: [{ role: 'user', content: destinationPrompt }]
-        })
-      })
 
-      const raw1 = await res1.text()
-      const json1 = JSON.parse(raw1)
-      const text1 = Array.isArray(json1.content)
-        ? json1.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
-        : raw1.replace(/```json|```/g, '').trim()
-
-      // Run Claude call 1 AND flight prices in parallel
-setMessageIndex(0)
-
-const [res1, earlyFlightPrices] = await Promise.all([
-  fetch('https://roamie-61ib.onrender.com/api/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 2000,
-      messages: [{ role: 'user', content: destinationPrompt }]
-    })
-  }),
-  fetchRealFlightPrices([
-    data.p1.city,
-    data.p2.city,
-  ]).catch(() => ({}))
-])
-
-const raw1 = await res1.text()
-const json1 = JSON.parse(raw1)
-const text1 = Array.isArray(json1.content)
-  ? json1.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
-  : raw1.replace(/```json|```/g, '').trim()
-
-const destinations = JSON.parse(text1)
-const destNames = destinations.destinations?.map(d => d.name) || []
-
-setMessageIndex(2)
-
-// Now fetch destination-specific prices, but we already warmed up the API
-const flightPrices = await fetchRealFlightPrices(destNames)
-
-setMessageIndex(4)
-const breakdownPrompt = buildBreakdownPrompt(destinations, flightPrices, p1sym, p2sym)
 
       const res2 = await fetch('https://roamie-61ib.onrender.com/api/messages', {
         method: 'POST',
