@@ -98,18 +98,20 @@ let airportDB = null
 function loadAirportDB() {
   if (airportDB) return airportDB
   try {
-    const data = readFileSync(resolve('./airports.dat'), 'utf8')
+    const data = readFileSync(resolve('./airports.csv'), 'utf8')
     airportDB = {}
-    data.split('\n').forEach(line => {
+    const lines = data.split('\n').slice(1) // skip header
+    lines.forEach(line => {
       const parts = line.split(',').map(p => p.replace(/"/g, '').trim())
-      if (parts.length < 5) return
-      const name = parts[1]?.toLowerCase()
-      const city = parts[2]?.toLowerCase()
-      const iata = parts[4]
-      if (iata && iata !== '\\N' && iata.length === 3) {
-        if (city) airportDB[city] = iata
-        if (name) airportDB[name] = iata
-      }
+      if (parts.length < 14) return
+      const type = parts[2]
+      const city = parts[10]?.toLowerCase()
+      const scheduled = parts[11]
+      const iata = parts[13]
+      if (!iata || iata === '' || iata.length !== 3) return
+      if (type === 'heliport' || type === 'closed' || type === 'seaplane_base') return
+      if (scheduled !== 'yes' && type === 'small_airport') return
+      if (city) airportDB[city] = iata
     })
     console.log(`Airport DB loaded: ${Object.keys(airportDB).length} entries`)
     return airportDB
@@ -811,21 +813,28 @@ app.get('/api/nearest-airport', (req, res) => {
   if (isNaN(lat) || isNaN(lng)) return res.status(400).json({ error: 'Invalid coordinates' })
 
   try {
-    const data = readFileSync(resolve('./airports.dat'), 'utf8')
-    let closest = null
-    let minDist = Infinity
+    const data = readFileSync(resolve('./airports.csv'), 'utf8')
+    const lines = data.split('\n').slice(1)
+    
+    let closestAny = null
+    let closestLarge = null
+    let minDistAny = Infinity
+    let minDistLarge = Infinity
 
-    data.split('\n').forEach(line => {
+    lines.forEach(line => {
       const parts = line.split(',').map(p => p.replace(/"/g, '').trim())
-      if (parts.length < 8) return
-      const city = parts[2]
-      const iata = parts[4]
-      const airLat = parseFloat(parts[6])
-      const airLng = parseFloat(parts[7])
-      if (!iata || iata === '\\N' || iata.length !== 3) return
-      if (isNaN(airLat) || isNaN(airLng)) return
+      if (parts.length < 14) return
+      const type = parts[2]
+      const city = parts[10]
+      const scheduled = parts[11]
+      const iata = parts[13]
+      const airLat = parseFloat(parts[4])
+      const airLng = parseFloat(parts[5])
 
-      // Haversine
+      if (!iata || iata.length !== 3) return
+      if (isNaN(airLat) || isNaN(airLng)) return
+      if (type === 'heliport' || type === 'closed') return
+
       const R = 6371
       const dLat = (airLat - lat) * Math.PI / 180
       const dLng = (airLng - lng) * Math.PI / 180
@@ -834,14 +843,24 @@ app.get('/api/nearest-airport', (req, res) => {
         Math.sin(dLng/2) ** 2
       const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
 
-      if (dist < minDist) {
-        minDist = dist
-        closest = { iata, city }
+      if (dist < minDistAny) {
+        minDistAny = dist
+        closestAny = { iata, city, dist, type }
+      }
+
+      if ((type === 'large_airport' || type === 'medium_airport') && scheduled === 'yes') {
+        if (dist < minDistLarge) {
+          minDistLarge = dist
+          closestLarge = { iata, city, dist, type }
+        }
       }
     })
 
-    if (closest) {
-      res.json({ iata: closest.iata, city: closest.city })
+    // Gemini's snap logic — if large airport within 100km, use it
+    const result = (closestLarge && minDistLarge < 100) ? closestLarge : closestAny
+
+    if (result) {
+      res.json({ iata: result.iata, city: result.city })
     } else {
       res.status(404).json({ error: 'No airport found' })
     }
