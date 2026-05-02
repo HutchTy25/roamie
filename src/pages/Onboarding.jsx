@@ -43,7 +43,7 @@ function Starfield() {
 
 const STEPS = ['Welcome', 'Your name', 'Home city', 'Anniversary']
 
-export default function Onboarding({ session }) {
+export default function Onboarding({ session, onComplete }) {
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -103,8 +103,7 @@ useEffect(() => {
         })
         .eq('id', session.user.id)
       if (err) throw err
-// Small delay to let Supabase propagate before App.jsx re-fetches
-await new Promise(resolve => setTimeout(resolve, 500))
+await onComplete()
 navigate('/dashboard')
     } catch (e) {
       setError('Something went wrong. Try again.')
