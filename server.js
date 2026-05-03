@@ -123,41 +123,40 @@ function loadAirportDB() {
 
 function getCityIATA(cityName) {
   const db = loadAirportDB()
-  
-  // Clean input — strip everything after comma OR period, lowercase, trim
   const city = cityName.toLowerCase().split(/[,\.]/)[0].trim()
-  
-  // 1. Direct match
+
+  // Check overrides FIRST
+  const overrides = {
+    'london': 'LHR', 'new york': 'JFK', 'paris': 'CDG',
+    'chicago': 'ORD', 'los angeles': 'LAX', 'tokyo': 'NRT',
+    'washington': 'IAD', 'san francisco': 'SFO', 'miami': 'MIA',
+    'dubai': 'DXB', 'amsterdam': 'AMS', 'frankfurt': 'FRA',
+    'manchester': 'MAN', 'birmingham': 'BHX', 'edinburgh': 'EDI',
+    'glasgow': 'GLA', 'dublin': 'DUB', 'sydney': 'SYD',
+    'melbourne': 'MEL', 'toronto': 'YYZ', 'vancouver': 'YVR',
+    'reykjavik': 'KEF', 'lisbon': 'LIS', 'barcelona': 'BCN',
+    'madrid': 'MAD', 'rome': 'FCO', 'milan': 'MXP',
+    'munich': 'MUC', 'zurich': 'ZRH', 'vienna': 'VIE',
+    'athens': 'ATH', 'istanbul': 'IST', 'bangkok': 'BKK',
+    'singapore': 'SIN', 'hong kong': 'HKG', 'seoul': 'ICN',
+    'osaka': 'KIX', 'shanghai': 'PVG', 'beijing': 'PEK',
+    'cairo': 'CAI', 'cape town': 'CPT', 'nairobi': 'NBO',
+    'mexico city': 'MEX', 'buenos aires': 'EZE', 'rio de janeiro': 'GIG',
+    'sao paulo': 'GRU', 'bogota': 'BOG', 'lima': 'LIM',
+  }
+
+  if (overrides[city]) return overrides[city]
+
+  // Then DB lookups
   if (db[city]) return db[city]
-  
-  // 2. Starts with match (handles "Manchester UK" → "manchester")
+
   const startsMatch = Object.keys(db).find(key => key.startsWith(city) || city.startsWith(key))
   if (startsMatch) return db[startsMatch]
 
-  // 3. Word match — first word of city name
   const firstWord = city.split(' ')[0]
   if (firstWord.length > 3 && db[firstWord]) return db[firstWord]
 
-  const overrides = {
-  'london': 'LHR', 'new york': 'JFK', 'paris': 'CDG',
-  'chicago': 'ORD', 'los angeles': 'LAX', 'tokyo': 'NRT',
-  'washington': 'IAD', 'san francisco': 'SFO', 'miami': 'MIA',
-  'dubai': 'DXB', 'amsterdam': 'AMS', 'frankfurt': 'FRA',
-  'manchester': 'MAN', 'birmingham': 'BHX', 'edinburgh': 'EDI',
-  'glasgow': 'GLA', 'dublin': 'DUB', 'sydney': 'SYD',
-  'melbourne': 'MEL', 'toronto': 'YYZ', 'vancouver': 'YVR',
-  'reykjavik': 'KEF', 'lisbon': 'LIS', 'barcelona': 'BCN',
-  'madrid': 'MAD', 'rome': 'FCO', 'milan': 'MXP',
-  'munich': 'MUC', 'zurich': 'ZRH', 'vienna': 'VIE',
-  'athens': 'ATH', 'istanbul': 'IST', 'bangkok': 'BKK',
-  'singapore': 'SIN', 'hong kong': 'HKG', 'seoul': 'ICN',
-  'osaka': 'KIX', 'shanghai': 'PVG', 'beijing': 'PEK',
-  'cairo': 'CAI', 'cape town': 'CPT', 'nairobi': 'NBO',
-  'mexico city': 'MEX', 'buenos aires': 'EZE', 'rio de janeiro': 'GIG',
-  'sao paulo': 'GRU', 'bogota': 'BOG', 'lima': 'LIM',
-}
-  
-  return overrides[city] || overrides[firstWord] || null
+  return overrides[firstWord] || null
 }
 
 const searchCache = new Map()
@@ -660,11 +659,35 @@ async function searchDuffelFlights(originIata, destIata, departDate, returnDate)
       body
     })
 
-    const data = await res.json()
-    console.log('Duffel response status:', res.status)
-    console.log('Duffel offers count:', data.data?.offers?.length)
+   if (res.status === 429) {
+  console.log('Duffel rate limited, waiting 2s...')
+  await new Promise(r => setTimeout(r, 2000))
+  const retry = await fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=15000', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.DUFFEL_API_KEY}`,
+      'Duffel-Version': 'v2',
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body
+  })
+  const retryData = await retry.json()
+  console.log('Duffel retry status:', retry.status)
+  console.log('Duffel retry offers:', retryData.data?.offers?.length)
+  if (!retryData.data?.offers?.length) return null
+  const retryPrices = retryData.data.offers
+    .map(o => parseFloat(o.total_amount))
+    .filter(p => !isNaN(p) && p > 0)
+    .sort((a, b) => a - b)
+  return retryPrices.length > 0 ? Math.round(retryPrices[0]) : null
+}
 
-    if (!data.data?.offers?.length) return null
+const data = await res.json()
+console.log('Duffel response status:', res.status)
+console.log('Duffel offers count:', data.data?.offers?.length)
+
+if (!data.data?.offers?.length) return null
 
     const prices = data.data.offers
       .map(o => parseFloat(o.total_amount))
