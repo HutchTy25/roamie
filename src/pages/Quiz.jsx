@@ -458,7 +458,15 @@ export default function Quiz({ session }) {
   style={{ background: 'none', border: 'none', color: THEME.muted, fontSize: '13px', cursor: 'pointer', marginBottom: '1rem', display: 'block', width: '100%' }}
 >
   ← Back to home
-</button>  
+</button>
+
+<button
+  style={{ ...btnStyle, ...(!data.tripMode ? btnDisabledStyle : {}) }}
+  disabled={!data.tripMode}
+  onClick={next}
+>
+  Continue
+</button>
       </div>
     </div>
   )
