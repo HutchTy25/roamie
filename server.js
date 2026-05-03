@@ -625,37 +625,46 @@ app.post('/api/accept-invite', async (req, res) => {
   }
 })
 
-function extractLowestPrice(response) {
-  if (!response || response.message) return null
+async function searchDuffelFlights(originIata, destIata, departDate, returnDate) {
   try {
-    const itineraries = response.itineraries || []
-    if (itineraries.length === 0) return null
-    const prices = itineraries
-      .map(i => i.cheapest_price?.amount || i.pricing_options?.[0]?.price?.amount || null)
-      .filter(p => p !== null)
-      .map(p => parseFloat(p))
+    const body = JSON.stringify({
+      data: {
+        slices: [
+          { origin: originIata, destination: destIata, departure_date: departDate },
+          { origin: destIata, destination: originIata, departure_date: returnDate }
+        ],
+        passengers: [{ type: 'adult' }],
+        cabin_class: 'economy'
+      }
+    })
+
+    const res = await fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=15000', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.DUFFEL_API_KEY}`,
+        'Duffel-Version': 'v2',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body
+    })
+
+    const data = await res.json()
+    console.log('Duffel response status:', res.status)
+    console.log('Duffel offers count:', data.data?.offers?.length)
+
+    if (!data.data?.offers?.length) return null
+
+    const prices = data.data.offers
+      .map(o => parseFloat(o.total_amount))
       .filter(p => !isNaN(p) && p > 0)
       .sort((a, b) => a - b)
+
     return prices.length > 0 ? Math.round(prices[0]) : null
   } catch (e) {
-    console.error('Price extraction error:', e)
+    console.error('Duffel search error:', e)
     return null
   }
-}
-
-async function fetchWithRetry(url, maxRetries = 3, delay = 2000) {
-  for (let i = 0; i < maxRetries; i++) {
-    const res = await fetch(url).then(r => r.json()).catch(() => null)
-    if (res?.itineraries?.length > 0) {
-      console.log(`Got results on attempt ${i + 1}`)
-      return res
-    }
-    if (i < maxRetries - 1) {
-      console.log(`Empty results attempt ${i + 1}, retrying in ${delay}ms...`)
-      await new Promise(resolve => setTimeout(resolve, delay))
-    }
-  }
-  return null
 }
 
 app.post('/api/flight-prices', [
@@ -688,77 +697,47 @@ app.post('/api/flight-prices', [
       console.log(`Destination: ${destName} → IATA: ${destIATA}`)
 
       if (!destIATA) {
-        console.log(`No IATA for ${destName} skipping FlightAPI`)
+        console.log(`No IATA for ${destName}, skipping`)
         priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
         continue
       }
 
       try {
         if (sameCity) {
-          // Same city — one search split 50/50
-          const flights = await fetch(
-            `https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p1IATA}/${destIATA}/${departDate}/${returnDate}/2/0/0/Economy/USD`
-          ).then(r => r.json()).catch(() => null)
-
-          const totalPrice = extractLowestPrice(flights)
+          const price = await searchDuffelFlights(p1IATA, destIATA, departDate, returnDate)
           priceResults[destName] = {
-            p1: totalPrice ? Math.round(totalPrice / 2) : null,
-            p2: totalPrice ? Math.round(totalPrice / 2) : null,
-            source: totalPrice ? 'flightapi' : 'estimate'
+            p1: price ? Math.round(price / 2) : null,
+            p2: price ? Math.round(price / 2) : null,
+            source: price ? 'duffel' : 'estimate'
           }
 
         } else if (routing === 'meet') {
-// Meet at destination — independent searches with retry
-const [p1Flights, p2Flights] = await Promise.all([
-  p1IATA ? fetchWithRetry(
-    `https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p1IATA}/${destIATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`
-  ) : null,
-  p2IATA ? fetchWithRetry(
-    `https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p2IATA}/${destIATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`
-  ) : null,
-])
-
-console.log('P1 itineraries count:', p1Flights?.itineraries?.length)
-console.log('P2 itineraries count:', p2Flights?.itineraries?.length)
-
-priceResults[destName] = {
-  p1: extractLowestPrice(p1Flights),
-  p2: extractLowestPrice(p2Flights),
-  source: 'flightapi'
-}
+          const [p1Price, p2Price] = await Promise.all([
+            p1IATA ? searchDuffelFlights(p1IATA, destIATA, departDate, returnDate) : null,
+            p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
+          ])
+          console.log(`Meet prices for ${destName} — P1: ${p1Price}, P2: ${p2Price}`)
+          priceResults[destName] = {
+            p1: p1Price,
+            p2: p2Price,
+            source: 'duffel'
+          }
 
         } else if (routing === 'fly_together') {
-          // P1 flies to P2 first, then both fly to destination
-          const [p1ToP2, bothToDestP1, p2ToDest] = await Promise.all([
-            // P1 round trip to P2 city
-            p1IATA && p2IATA ? fetch(
-              `https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p1IATA}/${p2IATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`
-            ).then(r => r.json()).catch(() => null) : null,
-            // Both fly from P2 city to destination (P1 share)
-            p2IATA ? fetch(
-              `https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p2IATA}/${destIATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`
-            ).then(r => r.json()).catch(() => null) : null,
-            // P2 flies to destination
-            p2IATA ? fetch(
-              `https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p2IATA}/${destIATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`
-            ).then(r => r.json()).catch(() => null) : null,
+          const [p1ToP2Price, bothToDestPrice, p2ToDestPrice] = await Promise.all([
+            p1IATA && p2IATA ? searchDuffelFlights(p1IATA, p2IATA, departDate, returnDate) : null,
+            p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
+            p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
           ])
-
-          console.log('P1ToP2 full:', JSON.stringify(p1ToP2)?.substring(0, 800))
-          console.log('First itinerary:', JSON.stringify(p1ToP2?.itineraries?.[0]))
-
-          const p1ToP2Price = extractLowestPrice(p1ToP2) || 0
-          const bothToDestPrice = extractLowestPrice(bothToDestP1) || 0
-          const p2ToDestPrice = extractLowestPrice(p2ToDest) || 0
-
+          console.log(`Fly together prices for ${destName} — P1toP2: ${p1ToP2Price}, BothToDest: ${bothToDestPrice}, P2toDest: ${p2ToDestPrice}`)
           priceResults[destName] = {
-            p1: p1ToP2Price + bothToDestPrice,
-            p2: p2ToDestPrice,
+            p1: (p1ToP2Price || 0) + (bothToDestPrice || 0),
+            p2: p2ToDestPrice || 0,
             p1_breakdown: {
-              leg1: p1ToP2Price,
-              leg2: bothToDestPrice,
+              leg1: p1ToP2Price || 0,
+              leg2: bothToDestPrice || 0,
             },
-            source: 'flightapi'
+            source: 'duffel'
           }
         }
 
@@ -776,6 +755,7 @@ priceResults[destName] = {
     res.status(500).json({ error: err.message })
   }
 })
+
 
 app.get('/api/iata-lookup', (req, res) => {
   const city = req.query.city
