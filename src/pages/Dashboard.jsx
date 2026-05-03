@@ -468,27 +468,18 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
                   </div>
 
                   {/* Flight path with rocket */}
-                  <div style={{ flex: 1, position: 'relative', height: '40px', margin: '0 16px' }}>
-                    <div style={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: 0,
-                      right: 0,
-                      height: '2px',
-                      background: `repeating-linear-gradient(90deg, ${colors.pink} 0, ${colors.pink} 4px, transparent 4px, transparent 8px)`,
-                      opacity: 0.6
-                    }} />
-                    {/* Rocket at 10% */}
-                    <div style={{
-                      position: 'absolute',
-                      left: `${moonPercent || 0}%`,
-                      top: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      fontSize: '20px'
-                    }}>
-                      🚀
-                    </div>
-                  </div>
+<div style={{ flex: 1, position: 'relative', height: '40px', margin: '0 16px' }}>
+  <div style={{
+    position: 'absolute',
+    left: `${moonPercent || 0}%`,
+    top: '50%',
+    transform: 'translate(-50%, -50%) rotate(90deg)',
+    fontSize: '24px',
+    filter: 'drop-shadow(0 0 8px rgba(244,114,182,0.6))',
+  }}>
+    🚀
+  </div>
+</div>
 
                   {/* Moon */}
                   <div style={{ textAlign: 'center' }}>
@@ -607,27 +598,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
                 </div>
               </div>
 
-              {/* Year bars */}
-              <div style={{ display: 'flex', justifyContent: 'space-around', marginBottom: '20px' }}>
-                {[
-                  { year: '2023', trips: 4 },
-                  { year: '2024', trips: 6 },
-                  { year: '2025', trips: 5 },
-                  { year: '2026', trips: 2 },
-                ].map(item => (
-                  <div key={item.year} style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: colors.text, marginBottom: '8px' }}>{item.trips}</div>
-                    <div style={{ 
-                      width: '36px', 
-                      height: `${item.trips * 12}px`,
-                      background: `linear-gradient(180deg, ${colors.primary}, ${colors.pink})`,
-                      borderRadius: '8px 8px 4px 4px',
-                      opacity: item.year === '2026' ? 0.5 : 1
-                    }} />
-                    <div style={{ fontSize: '11px', color: colors.textMuted, marginTop: '8px' }}>{item.year}</div>
-                  </div>
-                ))}
-              </div>
+              
 
               {/* Stats row */}
               <div style={{ 
@@ -637,16 +608,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
                 paddingTop: '16px',
                 borderTop: `1px solid ${colors.border}`
               }}>
-                <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: '18px', fontWeight: '600', color: colors.text }}>{trips.length}</div>  
-                  <div style={{ fontSize: '11px', color: colors.textMuted }}>Trips</div>
-                </div>
-                <div style={{ width: '1px', background: colors.border }} />
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '18px', fontWeight: '600', color: colors.pink }}>{trips.length * 2}</div>
-                  <div style={{ fontSize: '11px', color: colors.textMuted }}>Flights</div>
-                </div>
-                <div style={{ width: '1px', background: colors.border }} />
+                
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontSize: '18px', fontWeight: '600', color: colors.cyan }}>
   {myProfile?.relationship_start_date 
