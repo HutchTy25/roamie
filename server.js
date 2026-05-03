@@ -138,13 +138,24 @@ function getCityIATA(cityName) {
   const firstWord = city.split(' ')[0]
   if (firstWord.length > 3 && db[firstWord]) return db[firstWord]
 
-  // 4. Known major city overrides — only for cities with multiple airports
   const overrides = {
-    'london': 'LHR', 'new york': 'JFK', 'paris': 'CDG',
-    'chicago': 'ORD', 'los angeles': 'LAX', 'tokyo': 'NRT',
-    'washington': 'IAD', 'san francisco': 'SFO', 'miami': 'MIA',
-    'dubai': 'DXB', 'amsterdam': 'AMS', 'frankfurt': 'FRA',
-  }
+  'london': 'LHR', 'new york': 'JFK', 'paris': 'CDG',
+  'chicago': 'ORD', 'los angeles': 'LAX', 'tokyo': 'NRT',
+  'washington': 'IAD', 'san francisco': 'SFO', 'miami': 'MIA',
+  'dubai': 'DXB', 'amsterdam': 'AMS', 'frankfurt': 'FRA',
+  'manchester': 'MAN', 'birmingham': 'BHX', 'edinburgh': 'EDI',
+  'glasgow': 'GLA', 'dublin': 'DUB', 'sydney': 'SYD',
+  'melbourne': 'MEL', 'toronto': 'YYZ', 'vancouver': 'YVR',
+  'reykjavik': 'KEF', 'lisbon': 'LIS', 'barcelona': 'BCN',
+  'madrid': 'MAD', 'rome': 'FCO', 'milan': 'MXP',
+  'munich': 'MUC', 'zurich': 'ZRH', 'vienna': 'VIE',
+  'athens': 'ATH', 'istanbul': 'IST', 'bangkok': 'BKK',
+  'singapore': 'SIN', 'hong kong': 'HKG', 'seoul': 'ICN',
+  'osaka': 'KIX', 'shanghai': 'PVG', 'beijing': 'PEK',
+  'cairo': 'CAI', 'cape town': 'CPT', 'nairobi': 'NBO',
+  'mexico city': 'MEX', 'buenos aires': 'EZE', 'rio de janeiro': 'GIG',
+  'sao paulo': 'GRU', 'bogota': 'BOG', 'lima': 'LIM',
+}
   
   return overrides[city] || overrides[firstWord] || null
 }
@@ -692,60 +703,60 @@ app.post('/api/flight-prices', [
 
     const priceResults = {}
 
-    for (const destName of destinations) {
-      const destIATA = getCityIATA(destName)
-      console.log(`Destination: ${destName} → IATA: ${destIATA}`)
+  await Promise.allSettled(destinations.map(async (destName) => {
+  const destIATA = getCityIATA(destName)
+  console.log(`Destination: ${destName} → IATA: ${destIATA}`)
 
-      if (!destIATA) {
-        console.log(`No IATA for ${destName}, skipping`)
-        priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
-        continue
+  if (!destIATA) {
+    console.log(`No IATA for ${destName}, skipping`)
+    priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
+    return
+  }
+
+  try {
+    if (sameCity) {
+      const price = await searchDuffelFlights(p1IATA, destIATA, departDate, returnDate)
+      priceResults[destName] = {
+        p1: price ? Math.round(price / 2) : null,
+        p2: price ? Math.round(price / 2) : null,
+        source: price ? 'duffel' : 'estimate'
       }
 
-      try {
-        if (sameCity) {
-          const price = await searchDuffelFlights(p1IATA, destIATA, departDate, returnDate)
-          priceResults[destName] = {
-            p1: price ? Math.round(price / 2) : null,
-            p2: price ? Math.round(price / 2) : null,
-            source: price ? 'duffel' : 'estimate'
-          }
+    } else if (routing === 'meet') {
+      const [p1Price, p2Price] = await Promise.all([
+        p1IATA ? searchDuffelFlights(p1IATA, destIATA, departDate, returnDate) : null,
+        p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
+      ])
+      console.log(`Meet prices for ${destName} — P1: ${p1Price}, P2: ${p2Price}`)
+      priceResults[destName] = {
+        p1: p1Price,
+        p2: p2Price,
+        source: 'duffel'
+      }
 
-        } else if (routing === 'meet') {
-          const [p1Price, p2Price] = await Promise.all([
-            p1IATA ? searchDuffelFlights(p1IATA, destIATA, departDate, returnDate) : null,
-            p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
-          ])
-          console.log(`Meet prices for ${destName} — P1: ${p1Price}, P2: ${p2Price}`)
-          priceResults[destName] = {
-            p1: p1Price,
-            p2: p2Price,
-            source: 'duffel'
-          }
-
-        } else if (routing === 'fly_together') {
-          const [p1ToP2Price, bothToDestPrice, p2ToDestPrice] = await Promise.all([
-            p1IATA && p2IATA ? searchDuffelFlights(p1IATA, p2IATA, departDate, returnDate) : null,
-            p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
-            p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
-          ])
-          console.log(`Fly together prices for ${destName} — P1toP2: ${p1ToP2Price}, BothToDest: ${bothToDestPrice}, P2toDest: ${p2ToDestPrice}`)
-          priceResults[destName] = {
-            p1: (p1ToP2Price || 0) + (bothToDestPrice || 0),
-            p2: p2ToDestPrice || 0,
-            p1_breakdown: {
-              leg1: p1ToP2Price || 0,
-              leg2: bothToDestPrice || 0,
-            },
-            source: 'duffel'
-          }
-        }
-
-      } catch (e) {
-        console.error(`Flight price error for ${destName}:`, e)
-        priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
+    } else if (routing === 'fly_together') {
+      const [p1ToP2Price, bothToDestPrice, p2ToDestPrice] = await Promise.all([
+        p1IATA && p2IATA ? searchDuffelFlights(p1IATA, p2IATA, departDate, returnDate) : null,
+        p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
+        p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
+      ])
+      console.log(`Fly together prices for ${destName} — P1toP2: ${p1ToP2Price}, BothToDest: ${bothToDestPrice}, P2toDest: ${p2ToDestPrice}`)
+      priceResults[destName] = {
+        p1: (p1ToP2Price || 0) + (bothToDestPrice || 0),
+        p2: p2ToDestPrice || 0,
+        p1_breakdown: {
+          leg1: p1ToP2Price || 0,
+          leg2: bothToDestPrice || 0,
+        },
+        source: 'duffel'
       }
     }
+
+  } catch (e) {
+    console.error(`Flight price error for ${destName}:`, e)
+    priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
+  }
+}))  
 
     console.log('Final price results:', JSON.stringify(priceResults))
     res.json(priceResults)
