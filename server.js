@@ -764,11 +764,9 @@ app.post('/api/flight-prices', [
       }
 
     } else if (routing === 'fly_together') {
-      const [p1ToP2Price, bothToDestPrice, p2ToDestPrice] = await Promise.all([
-        p1IATA && p2IATA ? searchDuffelFlights(p1IATA, p2IATA, departDate, returnDate) : null,
-        p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
-        p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
-      ])
+      const p1ToP2Price = (p1IATA && p2IATA) ? await searchDuffelFlights(p1IATA, p2IATA, departDate, returnDate) : null
+      const bothToDestPrice = p2IATA ? await searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null
+      const p2ToDestPrice = bothToDestPrice
       console.log(`Fly together prices for ${destName} — P1toP2: ${p1ToP2Price}, BothToDest: ${bothToDestPrice}, P2toDest: ${p2ToDestPrice}`)
       priceResults[destName] = {
         p1: (p1ToP2Price || 0) + (bothToDestPrice || 0),
@@ -786,7 +784,7 @@ app.post('/api/flight-prices', [
     priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
   }
 
-  await new Promise(r => setTimeout(r, 300))
+  await new Promise(r => setTimeout(r, 1000))
   }
     console.log('Final price results:', JSON.stringify(priceResults))
     res.json(priceResults)
