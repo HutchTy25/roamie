@@ -1015,13 +1015,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
                 {dest.fairness_note}
               </div>
 
-              {/* Trip Basics */}
-              {loadingBasics && (
-                <div style={{ textAlign: 'center', padding: '1rem', fontSize: '13px', color: THEME.muted }}>
-                  Loading trip basics...
-                </div>
-              )}
-
+             
               {tripBasics && (
   <div style={{ marginBottom: '1.5rem' }}>
     <div style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: THEME.accent, marginBottom: '1rem', fontWeight: '500' }}>
