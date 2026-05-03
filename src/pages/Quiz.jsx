@@ -396,8 +396,8 @@ export default function Quiz({ session }) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', width: '100%', marginBottom: '2rem' }}>
         {[
-  { id: 'visit', icon: '💑', label: 'Visit each other', desc: 'Find the best price for one partner to visit the other', routing: 'visit', locked: !session },
-  { id: 'meet', icon: '🛬', label: 'Meet somewhere new', desc: 'Both fly independently to a destination you choose together', routing: 'meet', locked: !session },
+  { id: 'visit', icon: '💑', label: 'Visit each other', desc: 'Find the best price for one partner to visit the other', routing: 'visit', locked: false },
+  { id: 'meet', icon: '🛬', label: 'Meet somewhere new', desc: 'Both fly independently to a destination you choose together', routing: 'meet', locked: false },
   { id: 'explore', icon: '✈️', label: 'Explore together', desc: 'AI finds destinations and figures out the smartest way to get there', routing: 'fly_together', locked: false },
 ].map(m => (
   <div
@@ -409,7 +409,7 @@ export default function Quiz({ session }) {
     style={{
       padding: '1.25rem',
       borderRadius: '16px',
-      border: `1px solid ${data.tripMode === m.id ? THEME.accent : m.locked ? 'rgba(124,106,239,0.1)' : THEME.border}`,
+      border: `1px solid ${data.tripMode === m.id ? THEME.accent : THEME.border}`,
       background: data.tripMode === m.id ? 'rgba(244, 114, 182, 0.1)' : THEME.card,
       backdropFilter: 'blur(20px)',
       cursor: m.locked ? 'pointer' : 'pointer',
@@ -417,7 +417,7 @@ export default function Quiz({ session }) {
       display: 'flex',
       alignItems: 'center',
       gap: '14px',
-      opacity: m.locked ? 0.6 : 1,
+      
       boxShadow: data.tripMode === m.id ? `0 0 30px rgba(244, 114, 182, 0.2)` : 'none',
       position: 'relative',
     }}
@@ -434,21 +434,8 @@ export default function Quiz({ session }) {
       </div>
       <div style={{ fontSize: '12px', color: THEME.muted, lineHeight: '1.5' }}>{m.desc}</div>
     </div>
-    {m.locked && (
-      <div style={{
-        fontSize: '11px',
-        fontWeight: '600',
-        color: THEME.primary,
-        background: 'rgba(124,106,239,0.15)',
-        border: `1px solid rgba(124,106,239,0.3)`,
-        borderRadius: '100px',
-        padding: '4px 10px',
-        whiteSpace: 'nowrap',
-        flexShrink: 0,
-      }}>
-        Sign in
-      </div>
-    )}
+    
+    
   </div>
 ))}  
         </div>
