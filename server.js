@@ -82,8 +82,13 @@ async function getExchangeRates(baseCurrency) {
     const res = await fetch(
       `https://v6.exchangerate-api.com/v6/${process.env.EXCHANGERATE_API_KEY}/latest/${baseCurrency}`
     )
-    const data = await res.json()
-    if (data.result === 'success') {
+    const text = await res.text()
+if (!text.startsWith('{')) {
+  console.error('ExchangeRate API returned non-JSON:', text.substring(0, 100))
+  return null
+}
+const data = JSON.parse(text)
+if (data.result === 'success') {
       return data.conversion_rates
     }
     return null
@@ -142,7 +147,7 @@ function getCityIATA(cityName) {
     'osaka': 'KIX', 'shanghai': 'PVG', 'beijing': 'PEK',
     'cairo': 'CAI', 'cape town': 'CPT', 'nairobi': 'NBO',
     'mexico city': 'MEX', 'buenos aires': 'EZE', 'rio de janeiro': 'GIG',
-    'sao paulo': 'GRU', 'bogota': 'BOG', 'lima': 'LIM',
+    'sao paulo': 'GRU', 'bogota': 'BOG', 'lima': 'LIM', 'nice': 'NCE',
   }
 
   if (overrides[city]) return overrides[city]
@@ -726,15 +731,16 @@ app.post('/api/flight-prices', [
 
     const priceResults = {}
 
-  await Promise.allSettled(destinations.map(async (destName) => {
+  for (const destName of destinations) {
   const destIATA = getCityIATA(destName)
   console.log(`Destination: ${destName} → IATA: ${destIATA}`)
 
-  if (!destIATA) {
+ if (!destIATA) {
     console.log(`No IATA for ${destName}, skipping`)
     priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
-    return
+    continue
   }
+
 
   try {
     if (sameCity) {
@@ -775,12 +781,13 @@ app.post('/api/flight-prices', [
       }
     }
 
-  } catch (e) {
+} catch (e) {
     console.error(`Flight price error for ${destName}:`, e)
     priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
   }
-}))  
 
+  await new Promise(r => setTimeout(r, 300))
+  }
     console.log('Final price results:', JSON.stringify(priceResults))
     res.json(priceResults)
 
