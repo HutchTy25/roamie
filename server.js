@@ -77,26 +77,42 @@ function httpsPost(hostname, path, headers, body) {
   })
 }
 
+// Cache exchange rates for 6 hours to avoid hitting rate limits
+let ratesCache = null
+let ratesCacheTime = 0
+
 async function getExchangeRates(baseCurrency) {
+  const now = Date.now()
+  const sixHours = 6 * 60 * 60 * 1000
+  
+  if (ratesCache && (now - ratesCacheTime) < sixHours) {
+    console.log('Exchange rates from cache')
+    return ratesCache
+  }
+
   try {
     const res = await fetch(
       `https://v6.exchangerate-api.com/v6/${process.env.EXCHANGERATE_API_KEY}/latest/${baseCurrency}`
     )
     const text = await res.text()
-if (!text.startsWith('{')) {
-  console.error('ExchangeRate API returned non-JSON:', text.substring(0, 100))
-  return null
-}
-const data = JSON.parse(text)
-if (data.result === 'success') {
-      return data.conversion_rates
+    if (!text.startsWith('{')) {
+      console.error('ExchangeRate API returned non-JSON:', text.substring(0, 100))
+      return ratesCache || null
     }
-    return null
+    const data = JSON.parse(text)
+    if (data.result === 'success') {
+      ratesCache = data.conversion_rates
+      ratesCacheTime = now
+      console.log('Exchange rates refreshed')
+      return ratesCache
+    }
+    return ratesCache || null
   } catch (e) {
     console.error('Exchange rate error:', e)
-    return null
+    return ratesCache || null
   }
 }
+
 
 let airportDB = null
 
