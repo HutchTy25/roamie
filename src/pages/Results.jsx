@@ -961,14 +961,13 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
 
               {dest.cost_breakdown && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px', marginBottom: '1.25rem' }}>
-                  {[
-                    { label: 'P1 Leg 1', value: dest.cost_breakdown.flights_p1_leg1 || dest.cost_breakdown.flights_p1, sym: p1sym, color: THEME.accent },
-                    { label: 'P1 Leg 2', value: dest.cost_breakdown.flights_p1_leg2 || null, sym: p1sym, color: THEME.accent },
-                    { label: 'P2 Flight', value: dest.cost_breakdown.flights_p2, sym: p2sym, color: THEME.primary },
-                    { label: 'Lodging', value: dest.cost_breakdown.lodging_total, sym: '$', color: THEME.text },
-                    { label: 'Food', value: dest.cost_breakdown.food_total, sym: '$', color: THEME.text },
-                    { label: 'Activities', value: dest.cost_breakdown.activities_total, sym: '$', color: THEME.text },
-                  ].filter(item => item.value != null).map(item => (
+                 {[
+  { label: 'P1 Flights', value: dest.cost_breakdown.flights_p1_total || ((dest.cost_breakdown.flights_p1_leg1 || 0) + (dest.cost_breakdown.flights_p1_leg2 || 0)) || dest.cost_breakdown.flights_p1, sym: p1sym, color: THEME.accent },
+  { label: 'P2 Flight', value: dest.cost_breakdown.flights_p2, sym: p2sym, color: THEME.primary },
+  { label: 'Lodging', value: dest.cost_breakdown.lodging_total, sym: '$', color: THEME.text },
+  { label: 'Food', value: dest.cost_breakdown.food_total, sym: '$', color: THEME.text },
+  { label: 'Activities', value: dest.cost_breakdown.activities_total, sym: '$', color: THEME.text },
+].filter(item => item.value != null).map(item => (
                     <div key={item.label} style={{
                       background: 'rgba(255,255,255,0.04)',
                       borderRadius: '12px',
