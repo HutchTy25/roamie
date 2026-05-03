@@ -279,16 +279,16 @@ export default function Results() {
     startX.current = null
   }
 
-  async function fetchRecommendations() {
-    if (data.tripMode === 'visit') {
-      await fetchVisitPrices()
-      return
-    }
+async function fetchRecommendations() {
+  if (data.tripMode === 'visit') {
+    await fetchVisitPrices()
+    return
+  }
 
-    const p1sym = CURR_SYMBOLS[data.p1.currency] || data.p1.currency
-    const p2sym = CURR_SYMBOLS[data.p2.currency] || data.p2.currency
+  const p1sym = CURR_SYMBOLS[data.p1.currency] || data.p1.currency
+  const p2sym = CURR_SYMBOLS[data.p2.currency] || data.p2.currency
 
-    const destinationPrompt = `You are Roamie, a couples travel planner. Based on these details suggest exactly 3 destinations.
+  const destinationPrompt = `You are Roamie, a couples travel planner. Based on these details suggest exactly 3 destinations.
 
 PARTNER DETAILS:
 - Partner 1: Lives in ${data.p1.city} | Currency: ${data.p1.currency} (${p1sym}) | Max budget: ${p1sym}${data.p1.maxSpend.toLocaleString()} TOTAL
@@ -328,11 +328,12 @@ Return ONLY this JSON, no markdown, no explanation:
   "couple_summary": "2 warm sentences about what kind of travelers they are together"
 }`
 
-    try {
-      setMessageIndex(0)
+  try {
+    setMessageIndex(0)
 
-
-      const res2 = await fetch('https://roamie-61ib.onrender.com/api/messages', {
+    // Run Claude Call 1 AND flight prices in parallel
+    const [res1, earlyFlightPrices] = await Promise.all([
+      fetch('https://roamie-61ib.onrender.com/api/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -340,27 +341,57 @@ Return ONLY this JSON, no markdown, no explanation:
         },
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
-          max_tokens: 3000,
-          messages: [{ role: 'user', content: breakdownPrompt }]
+          max_tokens: 2000,
+          messages: [{ role: 'user', content: destinationPrompt }]
         })
+      }),
+      fetchRealFlightPrices([data.p1.city, data.p2.city]).catch(() => ({}))
+    ])
+
+    const raw1 = await res1.text()
+    const json1 = JSON.parse(raw1)
+    const text1 = Array.isArray(json1.content)
+      ? json1.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
+      : raw1.replace(/```json|```/g, '').trim()
+
+    const destinations = JSON.parse(text1)
+    const destNames = destinations.destinations?.map(d => d.name) || []
+
+    setMessageIndex(2)
+    const flightPrices = await fetchRealFlightPrices(destNames)
+
+    setMessageIndex(4)
+    const breakdownPrompt = buildBreakdownPrompt(destinations, flightPrices, p1sym, p2sym)
+
+    const res2 = await fetch('https://roamie-61ib.onrender.com/api/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 3000,
+        messages: [{ role: 'user', content: breakdownPrompt }]
       })
+    })
 
-      const raw2 = await res2.text()
-      const json2 = JSON.parse(raw2)
-      const text2 = Array.isArray(json2.content)
-        ? json2.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
-        : raw2.replace(/```json|```/g, '').trim()
+    const raw2 = await res2.text()
+    const json2 = JSON.parse(raw2)
+    const text2 = Array.isArray(json2.content)
+      ? json2.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
+      : raw2.replace(/```json|```/g, '').trim()
 
-      const fullResult = JSON.parse(text2)
-      setResult(fullResult)
+    const fullResult = JSON.parse(text2)
+    setResult(fullResult)
 
-    } catch (e) {
-      console.error('Error:', e)
-      setError(true)
-    } finally {
-      setLoading(false)
-    }
+  } catch (e) {
+    console.error('Error:', e)
+    setError(true)
+  } finally {
+    setLoading(false)
   }
+}
 
   async function fetchVisitPrices() {
     try {
