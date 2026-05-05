@@ -967,12 +967,14 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
               <button
                 key={item.id}
                 onClick={() => {
-                  if (item.id === 'home') {
-                    navigate('/quiz')
-                  } else {
-                    setActiveTab(item.id)
-                  }
-                }}
+  if (item.id === 'home') {
+    navigate('/quiz')
+  } else if (item.id === 'orbit') {
+    navigate('/orbit')
+  } else {
+    setActiveTab(item.id)
+  }
+}}
                 style={{ 
                   background: 'none', 
                   border: isActive ? `1.5px solid ${colors.pink}` : '1.5px solid transparent',
