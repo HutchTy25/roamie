@@ -265,6 +265,7 @@ const [newMoonLabel, setNewMoonLabel] = useState('')
               height: planet.orbitRadius * 2,
               animation: `orbit ${planet.orbitDuration}s linear infinite`,
               animationDelay: `${-(planet.startAngle / 360) * planet.orbitDuration}s`,
+              pointerEvents: 'none',
             }}
           >
             <motion.div
@@ -276,6 +277,7 @@ const [newMoonLabel, setNewMoonLabel] = useState('')
                 right: -24, top: '50%',
                 animation: `counter-orbit ${planet.orbitDuration}s linear infinite`,
                 animationDelay: `${-(planet.startAngle / 360) * planet.orbitDuration}s`,
+                pointerEvents: 'none',
               }}
             >
               {/* Moons */}
@@ -320,6 +322,7 @@ const [newMoonLabel, setNewMoonLabel] = useState('')
                   borderRadius: '50%',
                   border: 'none',
                   cursor: 'pointer',
+                  pointerEvents: 'auto',
                   background: `radial-gradient(circle at 25% 25%, ${planet.texture.highlight} 0%, transparent 50%), radial-gradient(circle at 70% 60%, ${planet.texture.accent} 0%, transparent 40%), radial-gradient(circle at 50% 50%, ${planet.texture.base} 0%, ${planet.texture.base} 100%)`,
                   boxShadow: `0 0 24px ${planet.glow}, 0 0 48px ${planet.glow}, inset -8px -8px 20px rgba(0,0,0,0.4)`,
                 }}
