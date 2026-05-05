@@ -32,6 +32,8 @@ export default function Orbit({ session }) {
   const [newPlanetName, setNewPlanetName] = useState('')
   const [adding, setAdding] = useState(false)
   const [partnerName, setPartnerName] = useState('')
+  const [showAddMoon, setShowAddMoon] = useState(false)
+const [newMoonLabel, setNewMoonLabel] = useState('')
 
   useEffect(() => {
     if (!session) return
@@ -99,6 +101,36 @@ export default function Orbit({ session }) {
       setAdding(false)
     }
   }
+
+  async function addMoon() {
+  if (!newMoonLabel.trim() || !selectedPlanet) return
+  setAdding(true)
+  try {
+    const { data, error } = await supabase
+      .from('moons')
+      .insert({
+        planet_id: selectedPlanet.id,
+        couple_id: coupleId,
+        trip_label: newMoonLabel.trim(),
+      })
+      .select()
+      .single()
+    if (error) throw error
+    // Update local state
+    setPlanets(prev => prev.map(p =>
+      p.id === selectedPlanet.id
+        ? { ...p, moons: [...(p.moons || []), data] }
+        : p
+    ))
+    setSelectedPlanet(prev => ({ ...prev, moons: [...(prev.moons || []), data] }))
+    setNewMoonLabel('')
+    setShowAddMoon(false)
+  } catch (e) {
+    console.error('Add moon error:', e)
+  } finally {
+    setAdding(false)
+  }
+}
 
   const visualPlanets = planets.map((p, i) => ({
     ...p,
@@ -324,7 +356,7 @@ export default function Orbit({ session }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowAddPlanet(false)}
+            onClick={() => { if (!showAddMoon) setSelectedPlanet(null) }}
             style={{ position: 'absolute', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
           >
             <motion.div
@@ -376,6 +408,67 @@ export default function Orbit({ session }) {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+  {showAddMoon && selectedPlanet && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={() => setShowAddMoon(false)}
+      style={{ position: 'absolute', inset: 0, zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
+    >
+      <motion.div
+        initial={{ scale: 0.8 }}
+        animate={{ scale: 1 }}
+        exit={{ scale: 0.8 }}
+        onClick={e => e.stopPropagation()}
+        style={{ width: '100%', maxWidth: '360px', borderRadius: '24px', padding: '24px', background: 'rgba(25,25,30,0.95)', border: `1px solid ${THEME.border}` }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: '600', color: THEME.text, margin: 0 }}>Add a memory</h2>
+          <button onClick={() => setShowAddMoon(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+            <X size={20} color="rgba(255,255,255,0.5)" />
+          </button>
+        </div>
+        <p style={{ fontSize: '13px', color: THEME.muted, marginBottom: '16px' }}>
+          A trip or moment in {selectedPlanet.display_name}
+        </p>
+        <input
+          type="text"
+          placeholder="e.g. Christmas '26, First Visit, Summer Trip..."
+          value={newMoonLabel}
+          onChange={e => setNewMoonLabel(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && addMoon()}
+          autoFocus
+          style={{
+            width: '100%', padding: '12px 16px',
+            background: 'rgba(255,255,255,0.05)',
+            border: `1px solid ${THEME.border}`,
+            borderRadius: '12px', color: THEME.text,
+            fontSize: '14px', outline: 'none',
+            marginBottom: '16px', fontFamily: 'Inter, sans-serif',
+            boxSizing: 'border-box',
+          }}
+        />
+        <button
+          onClick={addMoon}
+          disabled={adding || !newMoonLabel.trim()}
+          style={{
+            width: '100%', padding: '14px',
+            background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`,
+            border: 'none', borderRadius: '100px',
+            color: '#fff', fontSize: '14px', fontWeight: '600',
+            cursor: adding ? 'wait' : 'pointer',
+            opacity: !newMoonLabel.trim() ? 0.4 : 1,
+          }}
+        >
+          {adding ? 'Adding...' : 'Add Memory'}
+        </button>
+      </motion.div>
+    </motion.div>
+  )}
+</AnimatePresence>
+
       {/* Planet Modal */}
       <AnimatePresence>
         {selectedPlanet && (
@@ -383,7 +476,7 @@ export default function Orbit({ session }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setSelectedPlanet(null)}
+            onClick={() => { setSelectedPlanet(null); setShowAddMoon(false) }}
             style={{ position: 'absolute', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)' }}
           >
             <motion.div
@@ -423,11 +516,17 @@ export default function Orbit({ session }) {
               )}
 
               <button
-                onClick={() => setSelectedPlanet(null)}
-                style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: THEME.muted, fontSize: '13px', cursor: 'pointer' }}
-              >
-                Close
-              </button>
+  onClick={(e) => { e.stopPropagation(); setShowAddMoon(true) }}
+  style={{ width: '100%', padding: '12px', borderRadius: '12px', background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`, border: 'none', color: '#fff', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '8px' }}
+>
+  + Add Memory
+</button>
+<button
+  onClick={() => setSelectedPlanet(null)}
+  style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: THEME.muted, fontSize: '13px', cursor: 'pointer' }}
+>
+  Close
+</button>
             </motion.div>
           </motion.div>
         )}
