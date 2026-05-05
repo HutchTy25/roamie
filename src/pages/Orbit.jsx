@@ -569,6 +569,20 @@ useEffect(() => {
 >
   + Add Memory
 </button>
+
+<button
+  onClick={async () => {
+    if (!confirm(`Delete ${selectedPlanet.display_name} and all its memories?`)) return
+    await supabase.from('moons').delete().eq('planet_id', selectedPlanet.id)
+    await supabase.from('planets').delete().eq('id', selectedPlanet.id)
+    setPlanets(prev => prev.filter(p => p.id !== selectedPlanet.id))
+    setSelectedPlanet(null)
+  }}
+  style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,50,50,0.1)', border: '1px solid rgba(255,50,50,0.2)', color: '#FF6B6B', fontSize: '13px', cursor: 'pointer', marginBottom: '8px' }}
+>
+  Delete planet
+</button>
+
 <button
   onClick={() => setSelectedPlanet(null)}
   style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: THEME.muted, fontSize: '13px', cursor: 'pointer' }}
