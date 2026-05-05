@@ -40,6 +40,51 @@ const [newMoonLabel, setNewMoonLabel] = useState('')
     fetchCoupleAndPlanets()
   }, [session])
 
+useEffect(() => {
+  if (!coupleId) return
+
+  // Subscribe to planet changes
+  const planetSub = supabase
+    .channel('planets-changes')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'planets',
+      filter: `couple_id=eq.${coupleId}`
+    }, async (payload) => {
+      // Fetch with moons included
+      const { data } = await supabase
+        .from('planets')
+        .select('*, moons(*)')
+        .eq('id', payload.new.id)
+        .single()
+      if (data) setPlanets(prev => [...prev, data])
+    })
+    .subscribe()
+
+  // Subscribe to moon changes
+  const moonSub = supabase
+    .channel('moons-changes')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'moons',
+      filter: `couple_id=eq.${coupleId}`
+    }, (payload) => {
+      setPlanets(prev => prev.map(p =>
+        p.id === payload.new.planet_id
+          ? { ...p, moons: [...(p.moons || []), payload.new] }
+          : p
+      ))
+    })
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(planetSub)
+    supabase.removeChannel(moonSub)
+  }
+}, [coupleId])
+
   async function fetchCoupleAndPlanets() {
     try {
       const { data: profile } = await supabase
