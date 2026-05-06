@@ -12,7 +12,7 @@ roamie-nu.vercel.app — fully working
 - Real flight prices via Duffel API (live mode, handles connecting flights)
 - Real exchange rates via ExchangeRate-API (6hr cache, rate limit protected)
 - Per-partner cost breakdown in their own currency
-- Reality strip — crowd, weather, fairness, budget stretch
+- Reality strip — crowd, weather, fairness, budget strip
 - Paid breakdown + Trip Basics (baked into Call 2, no third API call)
 - P1 Flights combined (leg 1 + leg 2) in cost breakdown UI
 - Stripe payments ($3.99 one-time)
@@ -34,14 +34,20 @@ roamie-nu.vercel.app — fully working
 - Secret header protection
 - Rate limiting
 - PostHog analytics
+- **Orbit 2.0 — Galaxy view live** ✅
+- **Orbit Realtime sync — partner additions appear instantly** ✅
+- **Planet add + delete** ✅
+- **Moon add** ✅
+- **All planets tappable (pointer events fixed)** ✅
 
 ### Auth & Database
-- Supabase tables: profiles, trips, couples
+- Supabase tables: profiles, trips, couples, planets, moons
 - Row Level Security on all tables
 - Auto profile creation trigger
 - Supabase Storage bucket: avatars
 - Google OAuth + Magic Link
 - Profile columns: home_city, home_iata, relationship_start_date, total_miles, display_name
+- Supabase Realtime enabled on planets + moons tables
 
 ### Environment Variables
 **Vercel (frontend):**
@@ -101,130 +107,84 @@ roamie-nu.vercel.app — fully working
 
 ---
 
-## May 3, 2026
+## May 4, 2026
 
 ### What we built
-- All quiz modes unlocked — no paywall during data collection phase ✅
-- Post-login redirect to dashboard — new users hit onboarding automatically ✅
-- Back button + Continue button on quiz step 0 ✅
-- Exchange rate 6hr cache — no more rate limit errors ✅
-- fly_together sequential internal calls — 6 Duffel calls not 9 ✅
-- 1s delay between destinations — 429s eliminated ✅
-- P1 Leg 1 + Leg 2 combined into P1 Flights in results UI ✅
-- Rocket animation cleaned up — dotted line removed, faces moon, glow ✅
-- Love in Miles year bars removed — card cleaned up ✅
-- Dashboard plan trip button fixed ✅
+- Orbit 2.0 galaxy view — sun, orbiting planets, orbiting moons ✅
+- Planets wired to Supabase — add, delete, persist across sessions ✅
+- Moons wired to Supabase — add memories to planets ✅
+- Supabase Realtime sync — partner additions appear instantly without refresh ✅
+- Pointer events fixed — all planets tappable regardless of orbit overlap ✅
+- Planet modal — shows memories list, add memory button, delete planet ✅
+- framer-motion + lucide-react installed ✅
+- Orbit route added to App.jsx ✅
+- Dashboard Orbit tab navigates to full galaxy page ✅
 
-### Known issues / small fixes remaining
-- Partner city sometimes showing wrong on dashboard (home_city display edge case)
-- Weather widget for partner city — add to dashboard (uses existing home_city data)
-- Total miles seeding — onboarding question "how many times visited" × distance
+### Known issues / next session
+- Manchester UK still resolving to MHT instead of MAN in some flows
+- Planet labels missing — city name not shown below orbiting planet
+- Back button missing on Orbit screen
+- PWA setup — install to home screen (Gemini: do early)
+- Presence Pulse — Realtime ping when partner opens app (save for later)
+- Weather widget for partner city on dashboard (save for later)
+
+### Tomorrow priority order
+1. Fix Manchester MHT → MAN
+2. Planet labels below orbiting planets
+3. Back button on Orbit
+4. PWA setup
 
 ---
 
-## Orbit 2.0 — The Relationship Galaxy ✅ ARCHITECTURE LOCKED
+## Orbit 2.0 — The Relationship Galaxy ✅ LIVE
 
-### Core Philosophy
-Roamie is transitioning from a quarterly utility tool to an emotional accumulation moat. A couple with 5 planets and 15 moons cannot leave without deleting their relationship history. This is the retention mechanic — not daily pings but irreplaceable emotional data that compounds over time.
+### Current State
+- Galaxy renders with sun + orbiting planets + orbiting moons
+- Add planet → saves to Supabase → appears in orbit instantly
+- Add moon → saves to Supabase → orbits the planet
+- Realtime sync — both partners see changes without refresh
+- Delete planet — removes planet and all its moons
+- All planets tappable via pointer events fix
 
 ### Entity Hierarchy
-**The Sun** — the relationship itself. Always visible. Glows with Presence Pulse activity. Never changes.
+**The Sun** — the relationship itself. Always visible. Glows with Presence Pulse activity.
 
-**Planets** — unique destinations visited together. One planet per city, ever. Created on first confirmed trip to that location. Labeled by user display name (e.g. "Manchester"), backed by IATA code for flight logic.
+**Planets** — unique destinations visited together. One planet per city, ever.
 
-**Moons** — individual trips to a planet plus side-quest locations. Every trip to Manchester gets a new moon (Christmas '26, Summer '24). A side trip to Bath during a Manchester visit = a secondary moon orbiting the Manchester planet. `is_side_quest` flag distinguishes main trip moons from side-quest moons.
+**Moons** — individual trips to a planet plus side-quest locations. `is_side_quest` flag distinguishes main trip moons from side-quest moons.
 
-### Functional States
-**State A — Planning Orbit (Active Ring)**
-Triggered when couple confirms a trip. A dashed orbital ring appears around the sun. Both partners drop activity bubbles onto the ring — date ideas, restaurants, things to do. Low friction, no API calls, user-defined strings only. Ring stays active until trip end date.
+### Functional States (planned)
+**State A — Planning Orbit** — dashed ring + activity bubbles when trip confirmed
+**State B — Crystallization** — planning ring collapses into permanent planet/moon with particle animation
+**State C — Memory Galaxy** — current live state, tap planet → memories list
 
-**State B — Crystallization (The Transition)**
-Triggered when trip marked complete + at least one photo uploaded. The planning ring collapses with a particle animation into a permanent planet or moon. If destination is new → planet born. If destination is repeat → existing planet gains a new moon. This animation is the viral TikTok moment.
+### Remaining Orbit build
+- Planning orbit ring + activity bubbles
+- Crystallization animation
+- Photo upload to moons
+- Memory Capsule detail view
+- Offline cache for memory capsules
+- Planet labels on galaxy view
 
-**State C — Memory Galaxy (The Dashboard)**
-Top-down solar system view. All planets orbit the sun. Tapping a planet zooms in to show its moons. Tapping a moon opens the Memory Capsule — photos, activity logs, trip stats. Key data cached locally for offline access.
-
-### Technical Guardrails
-- IATA codes used for flight search backend only — display names are user-defined
-- No auto-suggested side quests — users define their own moons (reduces API costs, increases personalization)
-- Offline cache on crystallization — memory capsules accessible without internet
-- `iata_code` nullable on planets — allows manually created planets for cities without airports
-- Unique constraint: `couple_id + iata_code` when IATA present, `couple_id + display_name` when not
-
-### Database Schema (ready to run in Supabase)
+### Database Schema ✅ LIVE
 ```sql
-CREATE TABLE planets (
-  id uuid primary key default gen_random_uuid(),
-  couple_id uuid references couples(id) on delete cascade,
-  display_name text not null,
-  iata_code text null,
-  created_at timestamp default now(),
-  UNIQUE NULLS NOT DISTINCT (couple_id, iata_code),
-  UNIQUE (couple_id, display_name)
-);
-
-CREATE TABLE moons (
-  id uuid primary key default gen_random_uuid(),
-  planet_id uuid references planets(id) on delete cascade,
-  couple_id uuid references couples(id) on delete cascade,
-  trip_label text not null,
-  start_date date,
-  end_date date,
-  completed boolean default false,
-  is_side_quest boolean default false,
-  parent_moon_id uuid references moons(id) null,
-  photos jsonb default '[]',
-  activity_bubbles jsonb default '[]',
-  created_at timestamp default now()
-);
-
-alter table planets enable row level security;
-alter table moons enable row level security;
-
-create policy "Couple members can access planets"
-  on planets for all
-  using (
-    couple_id in (
-      select id from couples
-      where partner1_id = auth.uid()
-      or partner2_id = auth.uid()
-    )
-  );
-
-create policy "Couple members can access moons"
-  on moons for all
-  using (
-    couple_id in (
-      select id from couples
-      where partner1_id = auth.uid()
-      or partner2_id = auth.uid()
-    )
-  );
+-- planets and moons tables live in Supabase
+-- RLS enabled on both
+-- Realtime enabled on both
+-- planets_couple_id_iata_code_key constraint removed (nullable IATA)
 ```
 
 ### Business Defensibility
 - Psychological switching cost: 5 planets + 15 moons = deleting a physical scrapbook
 - No competitor combines real flight pricing + persistent relationship memory + shared planning
-- Repeat visit problem solved — planets evolve with moons instead of duplicating
-- Viral mechanic: Crystallization animation is a screenshot/TikTok moment
-
-### Next session Orbit build order
-1. Run planets + moons SQL migration in Supabase
-2. Sun component — dormant vs active states, layered glow animation
-3. Galaxy view — planets orbiting sun, tap to zoom
-4. Planning orbit ring — activity bubble add flow
-5. Moon detail view — Memory Capsule with photos
-6. Crystallization animation — planning ring → planet/moon transition
-7. Supabase Realtime sync for activity bubbles
-8. Offline cache for Memory Capsules
+- Viral mechanic: Crystallization animation is the TikTok moment
 
 ---
 
 ### Retention Strategy — Daily Infrastructure Layer (Planned)
-Based on market research (Paired, Between, Cupla, Duolingo churn data):
-- **Presence Pulse** — Supabase Realtime passive ping when partner opens app. Zero input required.
-- **Weather Widget** — partner's city weather on dashboard. Uses existing home_city data. Conversation starter.
-- **Golden Window** — algorithmic overlap detection for FaceTime scheduling (Month 2 feature)
+- **Presence Pulse** — Supabase Realtime passive ping when partner opens app
+- **Weather Widget** — partner's city weather on dashboard
+- **Golden Window** — algorithmic overlap detection for FaceTime scheduling (Month 2)
 - Primary retention mechanic is emotional accumulation (Orbit 2.0), not daily habits
 
 ### Pricing strategy (locked, paywall paused during data collection)
@@ -240,7 +200,7 @@ Based on market research (Paired, Between, Cupla, Duolingo churn data):
 - Base: $6,500-8,500
 - High: $33,000-48,000
 
-**Post-Orbit 2.0 forecast pending** — Perplexity analysis running with full Relationship Galaxy architecture factored in. Expected churn reduction to 6-10% with emotional accumulation moat. LTV improvement estimated 3-4x per couple.
+**Post-Orbit 2.0 forecast pending** — expected churn reduction to 6-10% with emotional accumulation moat. LTV improvement estimated 3-4x per couple.
 
 ### Notes
 - New job started Monday April 28 — build time limited to evenings + weekends
@@ -253,3 +213,4 @@ Based on market research (Paired, Between, Cupla, Duolingo churn data):
 - Long term: LDR wedge → same-city couples → anyone who travels together
 - Gemini and Perplexity used for architecture analysis, market research, SQL review
 - Build with Claude evenings/weekends — surgical, efficient, no over-engineering
+- Strategic sprint week — aiming for beta testers by end of week
