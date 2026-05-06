@@ -830,7 +830,13 @@ app.get('/api/iata-lookup', (req, res) => {
   })
   
   // Sort by shortest name first (most relevant)
-  matches.sort((a, b) => a.city.length - b.city.length)
+ const majorAirports = ['MAN', 'LHR', 'JFK', 'LAX', 'CDG', 'SYD', 'DXB', 'SIN', 'HKG', 'NRT', 'MEM']
+matches.sort((a, b) => {
+  const aIsMajor = majorAirports.includes(a.iata) ? 0 : 1
+  const bIsMajor = majorAirports.includes(b.iata) ? 0 : 1
+  if (aIsMajor !== bIsMajor) return aIsMajor - bIsMajor
+  return a.city.length - b.city.length
+})
   
   res.json({ 
     iata: matches[0]?.iata || null,
