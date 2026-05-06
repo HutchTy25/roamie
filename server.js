@@ -165,7 +165,7 @@ function getCityIATA(cityName) {
     'mexico city': 'MEX', 'buenos aires': 'EZE', 'rio de janeiro': 'GIG',
     'sao paulo': 'GRU', 'bogota': 'BOG', 'lima': 'LIM', 'nice': 'NCE',
   }
-
+  console.log('getCityIATA input:', cityName, '→ cleaned:', city)
   if (overrides[city]) return overrides[city]
 
   // Then DB lookups
