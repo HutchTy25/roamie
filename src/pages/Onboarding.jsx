@@ -73,16 +73,14 @@ useEffect(() => {
         { headers: { 'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET } }
       )
       const data = await res.json()
-     if (data.matches?.length === 1) {
-  setHomeIata(data.matches[0].iata)
-  setIataFound(true)
-} else if (data.matches?.length > 1) {
-  setHomeIata(data.iata)
-  setIataFound(false)
-} else {
-  setHomeIata('')
-  setIataFound(false)
-} 
+     if (data.matches?.length > 0) {
+  setSuggestions(data.matches)
+  // Only auto-confirm if exact match
+  if (data.matches[0]?.city === query.toLowerCase()) {
+    setHomeIata(data.matches[0].iata)
+    setIataFound(true)
+  }
+}
     } catch {
       setHomeIata('')
       setIataFound(false)
