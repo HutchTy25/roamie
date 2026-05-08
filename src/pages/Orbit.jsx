@@ -35,6 +35,7 @@ export default function Orbit({ session }) {
   const [partnerName, setPartnerName] = useState('')
   const [showAddMoon, setShowAddMoon] = useState(false)
 const [newMoonLabel, setNewMoonLabel] = useState('')
+const [partnerOnline, setPartnerOnline] = useState(false)
 
   useEffect(() => {
     if (!session) return
@@ -85,6 +86,31 @@ useEffect(() => {
     supabase.removeChannel(moonSub)
   }
 }, [coupleId])
+
+useEffect(() => {
+  if (!coupleId || !session) return
+
+  // Broadcast my presence
+  const presenceChannel = supabase.channel(`presence:${coupleId}`)
+  
+  presenceChannel
+    .on('presence', { event: 'sync' }, () => {
+      const state = presenceChannel.presenceState()
+      const others = Object.values(state).flat().filter(
+        (p) => p.user_id !== session.user.id
+      )
+      setPartnerOnline(others.length > 0)
+    })
+    .subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await presenceChannel.track({ user_id: session.user.id })
+      }
+    })
+
+  return () => {
+    supabase.removeChannel(presenceChannel)
+  }
+}, [coupleId, session])
 
   async function fetchCoupleAndPlanets() {
     try {
@@ -239,8 +265,15 @@ useEffect(() => {
           {session?.user?.user_metadata?.full_name?.split(' ')[0] || 'You'} & {partnerName}
         </span>
         <div style={{ position: 'relative', width: '12px', height: '12px' }}>
-          <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#22C55E', boxShadow: '0 0 12px #22C55E' }} />
-          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22C55E', opacity: 0.4, animation: 'ping 1.5s ease-out infinite' }} />
+        <div style={{ 
+  width: '12px', height: '12px', borderRadius: '50%', 
+  background: partnerOnline ? '#22C55E' : '#4B5563',
+  boxShadow: partnerOnline ? '0 0 12px #22C55E' : 'none',
+  transition: 'all 0.5s ease'
+}} />  
+         {partnerOnline && (
+  <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: '#22C55E', opacity: 0.4, animation: 'ping 1.5s ease-out infinite' }} />
+)}
         </div>
       </div>
 

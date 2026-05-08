@@ -346,7 +346,7 @@ export default function VisitResults() {
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M14 8H2M14 8L10 4M14 8L10 12" stroke="#22D3EE" strokeWidth="2" strokeLinecap="round"/>
               </svg>
-              Real price from FlightAPI
+              Real price from Duffel
             </div>
 
             {/* Money saver */}
@@ -426,7 +426,7 @@ export default function VisitResults() {
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                 <path d="M14 8H2M14 8L10 4M14 8L10 12" stroke="#22D3EE" strokeWidth="2" strokeLinecap="round"/>
               </svg>
-              Real price from FlightAPI
+              Real price from Duffel
             </div>
 
             {/* Money saver */}
