@@ -12,7 +12,7 @@ roamie-nu.vercel.app — fully working
 - Real flight prices via Duffel API (live mode, handles connecting flights)
 - Real exchange rates via ExchangeRate-API (6hr cache, rate limit protected)
 - Per-partner cost breakdown in their own currency
-- Reality strip — crowd, weather, fairness, budget strip
+- Reality strip — crowd, weather, fairness, budget stretch
 - Paid breakdown + Trip Basics (baked into Call 2, no third API call)
 - P1 Flights combined (leg 1 + leg 2) in cost breakdown UI
 - Stripe payments ($3.99 one-time)
@@ -34,11 +34,13 @@ roamie-nu.vercel.app — fully working
 - Secret header protection
 - Rate limiting
 - PostHog analytics
-- **Orbit 2.0 — Galaxy view live** ✅
-- **Orbit Realtime sync — partner additions appear instantly** ✅
-- **Planet add + delete** ✅
-- **Moon add** ✅
-- **All planets tappable (pointer events fixed)** ✅
+- PWA configured — vite-plugin-pwa, manifest, icons ✅
+- Orbit 2.0 — Galaxy view live ✅
+- Orbit Realtime sync — partner additions appear instantly ✅
+- Planet add + delete ✅
+- Moon add ✅
+- All planets tappable (pointer events fixed) ✅
+- Manchester UK → MAN fix (iata-lookup ambiguous city injection) ✅
 
 ### Auth & Database
 - Supabase tables: profiles, trips, couples, planets, moons
@@ -101,38 +103,31 @@ roamie-nu.vercel.app — fully working
 - `getCityIATA()` — overrides first (50+ major cities), then OurAirports DB lookup (4,792 entries)
 - `searchDuffelFlights()` — live Duffel API with 429 retry logic
 - `/api/flight-prices` — sequential destination loop, sequential internal fly_together calls
-- `/api/iata-lookup` — autocomplete with multi-match for onboarding
+- `/api/iata-lookup` — autocomplete with multi-match, ambiguous city injection (MAN before MHT), major airport priority sort
 - `/api/nearest-airport` — Haversine + large airport snap within 100km
 - `getExchangeRates()` — 6hr in-memory cache, returns last known rates on API failure
 
 ---
 
-## May 4, 2026
+## May 5, 2026
 
 ### What we built
-- Orbit 2.0 galaxy view — sun, orbiting planets, orbiting moons ✅
-- Planets wired to Supabase — add, delete, persist across sessions ✅
-- Moons wired to Supabase — add memories to planets ✅
-- Supabase Realtime sync — partner additions appear instantly without refresh ✅
-- Pointer events fixed — all planets tappable regardless of orbit overlap ✅
-- Planet modal — shows memories list, add memory button, delete planet ✅
-- framer-motion + lucide-react installed ✅
-- Orbit route added to App.jsx ✅
-- Dashboard Orbit tab navigates to full galaxy page ✅
-
-### Known issues / next session
-- Manchester UK still resolving to MHT instead of MAN in some flows
-- Planet labels missing — city name not shown below orbiting planet
-- Back button missing on Orbit screen
-- PWA setup — install to home screen (Gemini: do early)
-- Presence Pulse — Realtime ping when partner opens app (save for later)
-- Weather widget for partner city on dashboard (save for later)
+- Manchester MHT → MAN fixed — ambiguous city injection in iata-lookup ✅
+- Major airport priority sort in iata-lookup — MAN, LHR, JFK etc sort first ✅
+- Onboarding dropdown always shows multiple options for ambiguous cities ✅
+- PWA setup — vite-plugin-pwa installed, manifest configured ✅
+- PWA icons — icon-192.png + icon-512.png in public/ ✅
+- Back button on Orbit — navigate back to dashboard (tomorrow)
 
 ### Tomorrow priority order
-1. Fix Manchester MHT → MAN
-2. Planet labels below orbiting planets
-3. Back button on Orbit
-4. PWA setup
+1. Confirm PWA icon shows correctly on iPhone (delete + re-add shortcut)
+2. Back button on Orbit screen
+3. Orbit planning mode — active ring + activity bubbles for upcoming trips
+4. Photo upload on moons — memory capsule photos
+5. Crystallization animation — planning ring → planet/moon transition
+6. Weather widget on dashboard — partner city weather
+7. Presence Pulse — Supabase Realtime ping when partner opens app
+8. First beta testers in
 
 ---
 
@@ -146,33 +141,32 @@ roamie-nu.vercel.app — fully working
 - Delete planet — removes planet and all its moons
 - All planets tappable via pointer events fix
 
-### Entity Hierarchy
-**The Sun** — the relationship itself. Always visible. Glows with Presence Pulse activity.
-
-**Planets** — unique destinations visited together. One planet per city, ever.
-
-**Moons** — individual trips to a planet plus side-quest locations. `is_side_quest` flag distinguishes main trip moons from side-quest moons.
-
-### Functional States (planned)
-**State A — Planning Orbit** — dashed ring + activity bubbles when trip confirmed
-**State B — Crystallization** — planning ring collapses into permanent planet/moon with particle animation
-**State C — Memory Galaxy** — current live state, tap planet → memories list
+### Two Modes Still Needed
+**Memory Mode** (current) — planets and moons represent past trips
+**Planning Mode** (next) — active dashed ring around sun for upcoming trip, activity bubbles both partners can add
 
 ### Remaining Orbit build
 - Planning orbit ring + activity bubbles
-- Crystallization animation
-- Photo upload to moons
+- Crystallization animation — planning ring collapses into permanent planet
+- Photo upload to moons — memory capsule
 - Memory Capsule detail view
 - Offline cache for memory capsules
-- Planet labels on galaxy view
+
+### Entity Hierarchy
+**The Sun** — the relationship itself. Always visible.
+**Planets** — unique destinations visited together. One per city, ever.
+**Moons** — individual trips + side-quest locations. `is_side_quest` flag for styling.
+
+### Functional States
+**State A — Planning Orbit** — dashed ring + activity bubbles when trip confirmed
+**State B — Crystallization** — planning ring collapses into permanent planet/moon with particle animation
+**State C — Memory Galaxy** — current live state
 
 ### Database Schema ✅ LIVE
-```sql
--- planets and moons tables live in Supabase
--- RLS enabled on both
--- Realtime enabled on both
--- planets_couple_id_iata_code_key constraint removed (nullable IATA)
-```
+- planets + moons tables live in Supabase
+- RLS enabled on both
+- Realtime enabled on both
+- iata_code nullable, display_name unique per couple
 
 ### Business Defensibility
 - Psychological switching cost: 5 planets + 15 moons = deleting a physical scrapbook
@@ -208,7 +202,7 @@ roamie-nu.vercel.app — fully working
 - Marketing: LDR TikTok creators, authentic organic content — Crystallization animation is the hook
 - Beta bypass: roamie-nu.vercel.app?beta=true
 - Design inspiration: Moonly + Klima apps
-- Logo: lowercase 'r' in Playfair + orange heart (girl's design)
+- Logo: lowercase 'r' in Playfair Display, purple #7C6AEF, pink heart #F472B6, dark bg #1A1B26
 - Orbit 2.0 is the moat — no competitor has persistent relationship memory + real flight pricing
 - Long term: LDR wedge → same-city couples → anyone who travels together
 - Gemini and Perplexity used for architecture analysis, market research, SQL review

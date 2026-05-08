@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, X, Plus } from 'lucide-react'
 import { supabase } from '../supabase'
+import { useNavigate } from 'react-router-dom'
 
 const THEME = {
   primary: '#7C6AEF',
@@ -258,6 +259,24 @@ useEffect(() => {
       >
         <Plus size={20} color="rgba(255,255,255,0.7)" />
       </button>
+
+      <button
+  onClick={() => navigate('/dashboard')}
+  style={{
+    position: 'absolute', top: '24px', left: '72px', zIndex: 30,
+    height: '40px', borderRadius: '12px',
+    display: 'flex', alignItems: 'center', gap: '6px',
+    padding: '0 14px',
+    background: 'rgba(255,255,255,0.05)',
+    backdropFilter: 'blur(12px)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    cursor: 'pointer',
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: '13px',
+  }}
+>
+  ← Dashboard
+</button>
 
       {/* Galaxy Container */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
