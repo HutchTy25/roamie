@@ -473,7 +473,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
     position: 'absolute',
     left: `${moonPercent || 0}%`,
     top: '50%',
-    transform: 'translate(-50%, -50%) rotate(0deg)',
+    transform: 'translate(-50%, -50%) rotate(45deg)',
     fontSize: '24px',
     filter: 'drop-shadow(0 0 8px rgba(244,114,182,0.6))',
   }}>
