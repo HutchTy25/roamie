@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
+import { generateAffiliateLink } from '../utils/affiliateLinks'
 import { useState, useEffect } from 'react'
 
 const CURR_SYMBOLS = {
@@ -481,6 +482,14 @@ export default function VisitResults() {
       </div>
 
       {/* Actions */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px' }}>
+        <button onClick={() => window.open(generateAffiliateLink('booking', { city: data.p2.city }), '_blank')} style={{ width: '100%', padding: '14px', background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '100px', color: '#22D3EE', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
+          🏨 Book your stay in {data.p2.city}
+        </button>
+        <button onClick={() => window.open(generateAffiliateLink('wise'), '_blank')} style={{ width: '100%', padding: '14px', background: 'rgba(244,114,182,0.1)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: '100px', color: '#F472B6', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
+          💸 Send money fee-free with Wise
+        </button>
+      </div>
       <button
         onClick={() => navigate('/quiz')}
         style={{
