@@ -873,7 +873,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
               }}>
                 <span style={{ color: THEME.muted, marginRight: '6px' }}>P1</span>
                 <span style={{ color: THEME.accent, fontWeight: '600', fontSize: '16px' }}>{p1sym}{dest.p1_cost?.toLocaleString()}</span>
-                {dest.p1_days_income && <span style={{ color: THEME.muted, marginLeft: '6px', fontSize: '11px' }}>{dest.p1_days_income}d</span>}
+                
               </div>
               <div style={{
                 background: 'rgba(124,106,239,0.12)',
@@ -886,7 +886,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
               }}>
                 <span style={{ color: THEME.muted, marginRight: '6px' }}>P2</span>
                 <span style={{ color: THEME.primary, fontWeight: '600', fontSize: '16px' }}>{p2sym}{dest.p2_cost?.toLocaleString()}</span>
-                {dest.p2_days_income && <span style={{ color: THEME.muted, marginLeft: '6px', fontSize: '11px' }}>{dest.p2_days_income}d</span>}
+                
               </div>
             </div>
           )}

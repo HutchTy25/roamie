@@ -231,7 +231,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
             </div>
 
             {partnerProfile ? (
-              <div style={{ marginLeft: '-12px', zIndex: 1 }}>
+              <div style={{ marginLeft: '-8px', zIndex: 1 }}>
                 {partnerProfile.avatar_url ? (
                   <img 
                     src={partnerProfile.avatar_url} 
@@ -473,7 +473,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
     position: 'absolute',
     left: `${moonPercent || 0}%`,
     top: '50%',
-    transform: 'translate(-50%, -50%) rotate(90deg)',
+    transform: 'translate(-50%, -50%) rotate(0deg)',
     fontSize: '24px',
     filter: 'drop-shadow(0 0 8px rgba(244,114,182,0.6))',
   }}>
