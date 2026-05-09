@@ -6,11 +6,11 @@ const AFFILIATE_IDS = {
 
 export function generateAffiliateLink(type, params = {}) {
   switch (type) {
+    case 'booking':
+      return `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(params.city || '')}&checkin=${params.checkin || ''}&checkout=${params.checkout || ''}&aid=${AFFILIATE_IDS.travelpayouts}`
+
     case 'wayaway':
       return `https://wayaway.io/?marker=${AFFILIATE_IDS.travelpayouts}`
-
-    case 'booking':
-      return `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(params.city || '')}&aid=${AFFILIATE_IDS.travelpayouts}`
 
     case 'viator':
       return `https://www.viator.com/en-US/search?text=${encodeURIComponent(params.city || '')}&pid=${AFFILIATE_IDS.viator}&mcid=42383&medium=api`

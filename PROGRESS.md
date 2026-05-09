@@ -109,24 +109,30 @@ roamie-nu.vercel.app — fully working
 
 ---
 
-## May 5, 2026
+## May 9, 2026
 
 ### What we built
-- Manchester MHT → MAN fixed — ambiguous city injection in iata-lookup ✅
-- Major airport priority sort in iata-lookup — MAN, LHR, JFK etc sort first ✅
-- Onboarding dropdown always shows multiple options for ambiguous cities ✅
-- PWA setup — vite-plugin-pwa installed, manifest configured ✅
-- PWA icons — icon-192.png + icon-512.png in public/ ✅
-- Back button on Orbit — navigate back to dashboard (tomorrow)
+- Affiliate revenue layer — src/utils/affiliateLinks.js gateway function ✅
+- Travelpayouts marker ID live — 526993 ✅
+- Booking.com deep links — city + checkin/checkout dates prefilled ✅
+- Affiliate buttons in Results.jsx — shows in expanded breakdown (paid users) ✅
+- Affiliate buttons in VisitResults.jsx — shows above Plan a trip together ✅
+- Viator placeholder wired — awaiting approval (14 days) ✅
+- Wise placeholder wired — awaiting approval (14 days) ✅
+
+### Affiliate programs status
+- Travelpayouts/Booking.com — LIVE ✅
+- Viator — pending approval, swap YOUR_VIATOR_ID in affiliateLinks.js
+- Wise — pending approval, swap YOUR_WISE_ID in affiliateLinks.js
 
 ### Tomorrow priority order
-1. Confirm PWA icon shows correctly on iPhone (delete + re-add shortcut)
+1. Speed up Explore/Meet results — Duffel call chain optimisation
 2. Back button on Orbit screen
-3. Orbit planning mode — active ring + activity bubbles for upcoming trips
-4. Photo upload on moons — memory capsule photos
-5. Crystallization animation — planning ring → planet/moon transition
-6. Weather widget on dashboard — partner city weather
-7. Presence Pulse — Supabase Realtime ping when partner opens app
+3. Orbit planning mode — active ring + activity bubbles
+4. Photo upload on moons — memory capsule
+5. Crystallization animation
+6. Weather widget on dashboard
+7. Presence Pulse
 8. First beta testers in
 
 ---

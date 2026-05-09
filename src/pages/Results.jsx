@@ -1053,7 +1053,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
   </div>
 )}
  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1rem' }}>
-  <button onClick={() => window.open(generateAffiliateLink('booking', { city: dest.name }), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '100px', color: THEME.cyan, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
+  <button onClick={() => window.open(generateAffiliateLink('booking', { city: dest.name, checkin: data.dates.from, checkout: data.dates.to }), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '100px', color: THEME.cyan, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
     🏨 Book your stay in {dest.name?.split(',')[0]}
   </button>
   <button onClick={() => window.open(generateAffiliateLink('viator', { city: dest.name }), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(124,106,239,0.1)', border: '1px solid rgba(124,106,239,0.3)', borderRadius: '100px', color: THEME.primary, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
