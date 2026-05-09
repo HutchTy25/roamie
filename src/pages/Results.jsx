@@ -261,20 +261,22 @@ export default function Results() {
     }
   }
 
-  function handleTouchStart(e) {
+function handleTouchStart(e) {
     startX.current = e.touches[0].clientX
+    startX.startY = e.touches[0].clientY
   }
 
-  function handleTouchEnd(e) {
+function handleTouchEnd(e) {
     if (!startX.current) return
-    const diff = startX.current - e.changedTouches[0].clientX
-    if (Math.abs(diff) > 50) {
-      if (diff > 0) {
-        setActiveCard(c => Math.min(c + 1, allCardsLength - 1))
-        setExpanded(false)
-      } else {
-        setActiveCard(c => Math.max(c - 1, 0))
-        setExpanded(false)
+    const diffX = startX.current - e.changedTouches[0].clientX
+    const diffY = startX.startY - e.changedTouches[0].clientY
+    if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY) * 2) {
+      if (!expanded) {
+        if (diffX > 0) {
+          setActiveCard(c => Math.min(c + 1, allCardsLength - 1))
+        } else {
+          setActiveCard(c => Math.max(c - 1, 0))
+        }
       }
     }
     startX.current = null
