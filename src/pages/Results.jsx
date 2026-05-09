@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
+import { generateAffiliateLink } from '../utils/affiliateLinks'
 import { useState, useEffect, useRef } from 'react'
 import posthog from 'posthog-js'
 import { supabase } from '../supabase'
@@ -1051,7 +1052,17 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
     </div>
   </div>
 )}
-
+ <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1rem' }}>
+  <button onClick={() => window.open(generateAffiliateLink('booking', { city: dest.name }), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '100px', color: THEME.cyan, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
+    🏨 Book your stay in {dest.name?.split(',')[0]}
+  </button>
+  <button onClick={() => window.open(generateAffiliateLink('viator', { city: dest.name }), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(124,106,239,0.1)', border: '1px solid rgba(124,106,239,0.3)', borderRadius: '100px', color: THEME.primary, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
+    🎯 Find things to do in {dest.name?.split(',')[0]}
+  </button>
+  <button onClick={() => window.open(generateAffiliateLink('wise'), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(244,114,182,0.1)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: '100px', color: THEME.accent, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
+    💸 Send money fee-free with Wise
+  </button>
+</div>
               <button
                 onClick={() => navigate('/quiz')}
                 style={{
@@ -1066,6 +1077,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
               >
                 Plan another trip
               </button>
+
             </div>
           )}
 
