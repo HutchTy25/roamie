@@ -27,18 +27,33 @@ export default function Login() {
     }
   }
 
-  async function sendMagicLink() {
+async function sendMagicLink() {
     if (!email.includes('@')) return
     setLoading(true)
     setError('')
     const { error } = await supabase.auth.signInWithOtp({
-  email,
-  options: { emailRedirectTo: `${window.location.origin}/dashboard` }
-})
+      email,
+      options: { shouldCreateUser: true }
+    })
     if (error) {
       setError(error.message)
     } else {
       setSent(true)
+    }
+    setLoading(false)
+  }
+
+async function verifyOtp() {
+    if (otp.length !== 6) return
+    setLoading(true)
+    setError('')
+    const { error } = await supabase.auth.verifyOtp({
+      email,
+      token: otp,
+      type: 'email'
+    })
+    if (error) {
+      setError(error.message)
     }
     setLoading(false)
   }
@@ -173,30 +188,70 @@ export default function Login() {
 
       {/* Magic Link */}
       {sent ? (
-        <div style={{
-          background: 'rgba(124,106,239,0.1)',
-          border: '1px solid rgba(124,106,239,0.3)',
-          borderRadius: '16px',
-          padding: '1.5rem',
-          maxWidth: '320px',
-          width: '100%',
-          backdropFilter: 'blur(20px)',
-          textAlign: 'center',
-        }}>
-          <div style={{ marginBottom: '12px' }}>
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-              <rect width="32" height="32" rx="8" fill="rgba(124,106,239,0.2)"/>
-              <path d="M8 12L16 17L24 12" stroke="#7C6AEF" strokeWidth="2" strokeLinecap="round"/>
-              <rect x="6" y="10" width="20" height="14" rx="2" stroke="#7C6AEF" strokeWidth="2"/>
-            </svg>
+        <div style={{ width: '100%', maxWidth: '320px' }}>
+          <div style={{
+            background: 'rgba(124,106,239,0.1)',
+            border: '1px solid rgba(124,106,239,0.3)',
+            borderRadius: '16px',
+            padding: '1.5rem',
+            marginBottom: '1rem',
+            textAlign: 'center',
+          }}>
+            <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '6px', color: '#E8E8ED' }}>
+              Check your email
+            </div>
+            <div style={{ fontSize: '13px', color: '#8B8FA3', lineHeight: '1.6' }}>
+              We sent a 6-digit code to <strong style={{ color: '#F472B6' }}>{email}</strong>
+            </div>
           </div>
-          <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '6px', color: '#E8E8ED' }}>
-            Check your email
-          </div>
-          <div style={{ fontSize: '13px', color: '#8B8FA3', lineHeight: '1.6' }}>
-            We sent a magic link to <strong style={{ color: '#F472B6' }}>{email}</strong>. Click it to sign in.
-          </div>
+          <input
+            type="number"
+            placeholder="000000"
+            value={otp}
+            onChange={e => setOtp(e.target.value.slice(0, 6))}
+            onKeyDown={e => e.key === 'Enter' && verifyOtp()}
+            autoFocus
+            style={{
+              width: '100%',
+              padding: '14px 18px',
+              background: 'rgba(30,32,48,0.8)',
+              border: '1px solid rgba(124,106,239,0.2)',
+              borderRadius: '100px',
+              fontSize: '22px',
+              color: '#E8E8ED',
+              marginBottom: '12px',
+              outline: 'none',
+              textAlign: 'center',
+              letterSpacing: '0.3em',
+            }}
+          />
+          <button
+            onClick={verifyOtp}
+            disabled={loading || otp.length !== 6}
+            style={{
+              width: '100%',
+              padding: '14px',
+              background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
+              border: 'none',
+              borderRadius: '100px',
+              fontSize: '15px',
+              fontWeight: '600',
+              color: '#fff',
+              cursor: loading ? 'wait' : 'pointer',
+              opacity: otp.length !== 6 ? 0.4 : 1,
+              boxShadow: '0 0 30px rgba(124,106,239,0.4)',
+            }}
+          >
+            {loading ? 'Verifying...' : 'Verify code'}
+          </button>
+          <button
+            onClick={() => { setSent(false); setOtp('') }}
+            style={{ background: 'none', border: 'none', color: '#8B8FA3', fontSize: '13px', cursor: 'pointer', marginTop: '1rem', display: 'block', width: '100%' }}
+          >
+            Use a different email
+          </button>
         </div>
+        
       ) : (
         <div style={{ width: '100%', maxWidth: '320px' }}>
           <input
@@ -236,7 +291,7 @@ export default function Login() {
               transition: 'all 0.2s',
             }}
           >
-            {loading ? 'Sending...' : 'Send magic link'}
+            {loading ? 'Sending...' : 'Send code'}
           </button>
         </div>
       )}
