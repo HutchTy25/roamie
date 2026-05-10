@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom'
+import { supabase } from '../supabase'
 import { generateAffiliateLink } from '../utils/affiliateLinks'
 import { useState, useEffect } from 'react'
 
@@ -19,6 +20,7 @@ export default function VisitResults() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [messageIndex, setMessageIndex] = useState(0)
+  const [tripSaved, setTripSaved] = useState(false)
 
   const loadingMessages = [
     'Checking real flight prices...',
@@ -68,6 +70,34 @@ export default function VisitResults() {
       setError(true)
     } finally {
       setLoading(false)
+    }
+  }
+
+async function saveTripToSupabase() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('couple_id')
+        .eq('id', session.user.id)
+        .single()
+      await supabase.from('trips').insert({
+        user_id: session.user.id,
+        couple_id: profile?.couple_id || null,
+        p1_city: data.p1.city,
+        p2_city: data.p2.city,
+        p1_currency: data.p1.currency,
+        p2_currency: data.p2.currency,
+        p1_budget: data.p1.maxSpend,
+        p2_budget: data.p2.maxSpend,
+        dates_from: data.dates.from,
+        dates_to: data.dates.to,
+        routing: 'visit',
+      })
+      setTripSaved(true)
+    } catch (e) {
+      console.error('Save trip error:', e)
     }
   }
 
@@ -482,6 +512,22 @@ export default function VisitResults() {
       </div>
 
       {/* Actions */}
+      <button
+  onClick={saveTripToSupabase}
+  disabled={tripSaved}
+  style={{
+    width: '100%', padding: '14px',
+    background: tripSaved ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)',
+    border: `1px solid ${tripSaved ? 'rgba(124,106,239,0.2)' : 'rgba(255,255,255,0.1)'}`,
+    borderRadius: '100px',
+    color: tripSaved ? '#8B8FA3' : '#E8E8ED',
+    fontSize: '13px', fontWeight: '500',
+    cursor: tripSaved ? 'default' : 'pointer',
+    marginBottom: '10px',
+  }}
+>
+  {tripSaved ? 'Saved to dashboard' : 'Save to dashboard'}
+</button>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px' }}>
         <button onClick={() => window.open(generateAffiliateLink('booking', { city: data.p2.city, checkin: data.dates.from, checkout: data.dates.to }), '_blank')} style={{ width: '100%', padding: '14px', background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '100px', color: '#22D3EE', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
           🏨 Book your stay in {data.p2.city}
@@ -490,14 +536,7 @@ export default function VisitResults() {
           💸 Send money fee-free with Wise
         </button>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px' }}>
-        <button onClick={() => window.open(generateAffiliateLink('booking', { city: data.p2.city }), '_blank')} style={{ width: '100%', padding: '14px', background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '100px', color: '#22D3EE', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
-          🏨 Book your stay in {data.p2.city}
-        </button>
-        <button onClick={() => window.open(generateAffiliateLink('wise'), '_blank')} style={{ width: '100%', padding: '14px', background: 'rgba(244,114,182,0.1)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: '100px', color: '#F472B6', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
-          💸 Send money fee-free with Wise
-        </button>
-      </div>
+      
       <button
         onClick={() => navigate('/quiz')}
         style={{
