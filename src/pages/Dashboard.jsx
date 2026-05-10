@@ -42,7 +42,7 @@ export default function Dashboard({ session }) {
   async function fetchData() {
     try {
       const [tripsResult, profileResult] = await Promise.all([
-        supabase.from('trips').select('*').order('created_at', { ascending: false }).limit(10),
+        supabase.from('trips').select('*').or(`user_id.eq.${session.user.id},couple_id.eq.${profileResult.data?.couple_id}`).order('created_at', { ascending: false }).limit(10),
         supabase.from('profiles').select('*').eq('id', session.user.id).single()
       ])
       if (tripsResult.data) setTrips(tripsResult.data)

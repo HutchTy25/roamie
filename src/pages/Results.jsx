@@ -233,13 +233,18 @@ export default function Results() {
     return () => clearInterval(interval)
   }, [loading])
 
-  async function saveTripToSupabase() {
+async function saveTripToSupabase() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
-      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('couple_id')
+        .eq('id', session.user.id)
+        .single()
       await supabase.from('trips').insert({
         user_id: session.user.id,
+        couple_id: profile?.couple_id || null,
         p1_city: data.p1.city,
         p2_city: data.p2.city,
         p1_currency: data.p1.currency,
