@@ -621,16 +621,42 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
             </div>
 
             {/* Upcoming trip or CTA */}
-            {upcomingTrip && (
-              <div className="glass-card" style={{ padding: '20px', marginTop: '16px', textAlign: 'center' }}>
-                <div style={{ fontSize: '11px', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px' }}>Next Adventure</div>
-                <div style={{ fontSize: '48px', fontWeight: '700', color: colors.text }}>{daysUntil}</div>
-                <div style={{ fontSize: '13px', color: colors.textMuted }}>days until</div>
-                <div style={{ fontSize: '18px', fontWeight: '600', color: colors.pink, marginTop: '8px' }}>
-                  {upcomingTrip.destinations?.[0]?.name || 'your trip'}
-                </div>
-              </div>
-            )}
+            {trips.find(t => t.committed) && (() => {
+  const committedTrip = trips.find(t => t.committed)
+  const daysUntilCommitted = committedTrip.dates_from
+    ? Math.ceil((new Date(committedTrip.dates_from) - new Date()) / (1000 * 60 * 60 * 24))
+    : null
+  return (
+    <div className="glass-card" style={{ padding: '20px', marginTop: '16px' }}>
+      <div style={{ fontSize: '11px', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', textAlign: 'center' }}>🚀 Next Adventure</div>
+      <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+        <div style={{ fontSize: '56px', fontWeight: '700', background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          {daysUntilCommitted > 0 ? daysUntilCommitted : '🎉'}
+        </div>
+        <div style={{ fontSize: '13px', color: colors.textMuted }}>
+          {daysUntilCommitted > 0 ? 'days until' : 'trip time!'}
+        </div>
+        <div style={{ fontSize: '18px', fontWeight: '600', color: colors.pink, marginTop: '8px' }}>
+          {committedTrip.destinations?.[0]?.name || `${committedTrip.p1_city} → ${committedTrip.p2_city}`}
+        </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', borderTop: `1px solid ${colors.border}` }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '13px', fontWeight: '600', color: colors.text }}>{committedTrip.dates_from}</div>
+          <div style={{ fontSize: '11px', color: colors.textMuted }}>Departure</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '13px', fontWeight: '600', color: colors.text }}>{committedTrip.dates_to}</div>
+          <div style={{ fontSize: '11px', color: colors.textMuted }}>Return</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '13px', fontWeight: '600', color: colors.cyan }}>{committedTrip.p1_city} → {committedTrip.p2_city}</div>
+          <div style={{ fontSize: '11px', color: colors.textMuted }}>Route</div>
+        </div>
+      </div>
+    </div>
+  )
+})()}
 
             {!coupleLoading && !partnerProfile && (
               <button 
@@ -743,22 +769,39 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
                   </div>
                 ))}
                 
-                <button 
-                  onClick={() => navigate('/quiz', { state: { prefill: trip } })} 
-                  style={{ 
-                    marginTop: '12px', 
-                    width: '100%',
-                    padding: '10px',
-                    background: 'none', 
-                    border: `1px solid ${colors.border}`, 
-                    borderRadius: '100px', 
-                    color: colors.textMuted, 
-                    fontSize: '12px', 
-                    cursor: 'pointer'
-                  }}
-                >
-                  Plan again with same cities →
-                </button>
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+  <button
+    onClick={async () => {
+      if (trip.committed) return
+      await supabase.from('trips').update({ committed: true, committed_at: new Date().toISOString() }).eq('id', trip.id)
+      setTrips(trips.map(t => t.id === trip.id ? { ...t, committed: true, committed_at: new Date().toISOString() } : t))
+    }}
+    style={{
+      width: '100%', padding: '10px',
+      background: trip.committed ? 'rgba(52,211,153,0.1)' : `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`,
+      border: trip.committed ? '1px solid rgba(52,211,153,0.3)' : 'none',
+      borderRadius: '100px',
+      color: trip.committed ? '#34D399' : '#fff',
+      fontSize: '12px', fontWeight: '600',
+      cursor: trip.committed ? 'default' : 'pointer',
+    }}
+  >
+    {trip.committed ? '✅ Trip committed' : '🚀 Commit to this trip'}
+  </button>
+  <button
+    onClick={() => navigate('/quiz', { state: { prefill: trip } })}
+    style={{
+      width: '100%', padding: '10px',
+      background: 'none',
+      border: `1px solid ${colors.border}`,
+      borderRadius: '100px',
+      color: colors.textMuted,
+      fontSize: '12px', cursor: 'pointer'
+    }}
+  >
+    Plan again with same cities →
+  </button>
+</div> 
               </div>
             ))}
           </div>
