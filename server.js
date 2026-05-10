@@ -665,7 +665,8 @@ async function searchDuffelFlights(originIata, destIata, departDate, returnDate)
           { origin: destIata, destination: originIata, departure_date: returnDate }
         ],
         passengers: [{ type: 'adult' }],
-        cabin_class: 'economy'
+cabin_class: 'economy',
+max_connections: 2
       }
     })
 

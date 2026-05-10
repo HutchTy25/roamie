@@ -65,7 +65,10 @@ if (profileResult.data) {
     .eq('couple_id', profileResult.data.couple_id)
     .order('created_at', { ascending: false })
     .limit(10)
-  if (partnerTrips) setTrips(partnerTrips)
+  if (partnerTrips) setTrips(prev => {
+  const ids = new Set(prev.map(t => t.id))
+  return [...prev, ...partnerTrips.filter(t => !ids.has(t.id))]
+})
 }
   if (profileResult.data.avatar_url) setCustomAvatar(profileResult.data.avatar_url)
   if (profileResult.data.couple_id) {
