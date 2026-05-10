@@ -52,12 +52,21 @@ useEffect(() => {
   async function fetchData() {
     try {
       const [tripsResult, profileResult] = await Promise.all([
-        supabase.from('trips').select('*').or(`user_id.eq.${session.user.id},couple_id.eq.${profileResult.data?.couple_id}`).order('created_at', { ascending: false }).limit(10),
+        supabase.from('trips').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(10),
         supabase.from('profiles').select('*').eq('id', session.user.id).single()
       ])
       if (tripsResult.data) setTrips(tripsResult.data)
 if (profileResult.data) {
   setMyProfile(profileResult.data)
+  if (profileResult.data?.couple_id) {
+  const { data: partnerTrips } = await supabase
+    .from('trips')
+    .select('*')
+    .eq('couple_id', profileResult.data.couple_id)
+    .order('created_at', { ascending: false })
+    .limit(10)
+  if (partnerTrips) setTrips(partnerTrips)
+}
   if (profileResult.data.avatar_url) setCustomAvatar(profileResult.data.avatar_url)
   if (profileResult.data.couple_id) {
     const { data: couple } = await supabase
