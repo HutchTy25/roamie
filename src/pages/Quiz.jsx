@@ -305,28 +305,29 @@ const [p2Iata, setP2Iata] = useState('')
   }
 
   async function lookupIata(city, partner) {
-  if (city.length < 3) {
-    partner === 'p1' ? (setP1Suggestions([]), setP1IataFound(false)) : (setP2Suggestions([]), setP2IataFound(false))
+  if (city.length < 2) {
+    if (partner === 'p1') { setP1Suggestions([]); setP1IataFound(false) }
+    else { setP2Suggestions([]); setP2IataFound(false) }
     return
   }
   try {
     const res = await fetch(
-      `https://roamie-61ib.onrender.com/api/iata-lookup?city=${encodeURIComponent(city)}`,
+      `https://roamie-61ib.onrender.com/api/airport-search?q=${encodeURIComponent(city)}`,
       { headers: { 'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET } }
     )
     const json = await res.json()
     if (partner === 'p1') {
-      setP1Suggestions(json.matches || [])
+      setP1Suggestions(json.suggestions || [])
       setP1IataFound(false)
     } else {
-      setP2Suggestions(json.matches || [])
+      setP2Suggestions(json.suggestions || [])
       setP2IataFound(false)
     }
   } catch {
     // silent fail
   }
 }
-
+  
   function next() { setStep(s => s + 1) }
   function back() { setStep(s => s - 1) }
 
@@ -584,7 +585,10 @@ const [p2Iata, setP2Iata] = useState('')
 }}
           style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', borderBottom: i < p1Suggestions.length - 1 ? `1px solid ${THEME.border}` : 'none', fontSize: '14px', color: THEME.text }}
         >
-          <span style={{ textTransform: 'capitalize' }}>{s.city}</span>
+          <div>
+  <div style={{ textTransform: 'capitalize', fontSize: '14px', color: THEME.text }}>{s.city}</div>
+  <div style={{ fontSize: '11px', color: THEME.muted }}>{s.airport}</div>
+</div>
           <span style={{ fontSize: '12px', fontWeight: '600', color: THEME.cyan, background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '6px', padding: '2px 8px' }}>{s.iata}</span>
         </div>
       ))}
@@ -628,7 +632,10 @@ const [p2Iata, setP2Iata] = useState('')
 }}
           style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', borderBottom: i < p2Suggestions.length - 1 ? `1px solid ${THEME.border}` : 'none', fontSize: '14px', color: THEME.text }}
         >
-          <span style={{ textTransform: 'capitalize' }}>{s.city}</span>
+          <div>
+  <div style={{ textTransform: 'capitalize', fontSize: '14px', color: THEME.text }}>{s.city}</div>
+  <div style={{ fontSize: '11px', color: THEME.muted }}>{s.airport}</div>
+</div>
           <span style={{ fontSize: '12px', fontWeight: '600', color: THEME.cyan, background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '6px', padding: '2px 8px' }}>{s.iata}</span>
         </div>
       ))}

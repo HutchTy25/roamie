@@ -829,6 +829,38 @@ app.get('/api/iata-lookup', (req, res) => {
       matches.push({ city: key, iata })
     }
   })
+
+  app.get('/api/airport-search', async (req, res) => {
+  const query = req.query.q
+  if (!query || query.length < 2) return res.json({ suggestions: [] })
+
+  try {
+    const response = await fetch(
+      `https://api.duffel.com/places/suggestions?query=${encodeURIComponent(query)}&rad=200`,
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.DUFFEL_API_KEY}`,
+          'Duffel-Version': 'v2',
+          'Accept': 'application/json',
+        }
+      }
+    )
+    const data = await response.json()
+    const suggestions = (data.data || [])
+      .filter(p => p.type === 'airport' && p.iata_code)
+      .map(p => ({
+        city: p.city_name || p.name,
+        airport: p.name,
+        iata: p.iata_code,
+        country: p.country_name,
+      }))
+      .slice(0, 6)
+    res.json({ suggestions })
+  } catch (e) {
+    console.error('Airport search error:', e)
+    res.json({ suggestions: [] })
+  }
+})
   
 // Inject major airport for ambiguous cities
 const ambiguous = {
