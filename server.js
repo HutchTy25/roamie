@@ -164,6 +164,12 @@ function getCityIATA(cityName) {
     'cairo': 'CAI', 'cape town': 'CPT', 'nairobi': 'NBO',
     'mexico city': 'MEX', 'buenos aires': 'EZE', 'rio de janeiro': 'GIG',
     'sao paulo': 'GRU', 'bogota': 'BOG', 'lima': 'LIM', 'nice': 'NCE',
+    'atlanta': 'ATL', 'memphis': 'MEM', 'san diego': 'SAN',
+    'las vegas': 'LAS', 'orlando': 'MCO', 'denver': 'DEN',
+    'seattle': 'SEA', 'boston': 'BOS', 'nashville': 'BNA',
+    'charlotte': 'CLT', 'detroit': 'DTW', 'minneapolis': 'MSP',
+    'portland': 'PDX', 'phoenix': 'PHX', 'dallas': 'DFW',
+    'houston': 'IAH', 'new orleans': 'MSY', 'tampa': 'TPA',
   }
  
   if (overrides[city]) return overrides[city]
@@ -749,7 +755,7 @@ app.post('/api/flight-prices', [
     const priceResults = {}
 
   for (const destName of destinations) {
-  const destIATA = getCityIATA(destName)
+  const destIATA = getCityIATA(destName.split(',')[0].trim())
   console.log(`Destination: ${destName} → IATA: ${destIATA}`)
 
  if (!destIATA) {
