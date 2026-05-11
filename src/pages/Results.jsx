@@ -412,6 +412,8 @@ Return ONLY this JSON, no markdown, no explanation:
         body: JSON.stringify({
           p1City: data.p1.city,
           p2City: data.p2.city,
+          p1Iata: data.p1.iata || '',
+          p2Iata: data.p2.iata || '',
           destinations: [data.p2.city, data.p1.city],
           dates: `${data.dates.from} to ${data.dates.to}`,
           routing: 'meet',
