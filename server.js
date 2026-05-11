@@ -863,7 +863,7 @@ app.get('/api/airport-search', async (req, res) => {
 
   try {
     const response = await fetch(
-      `https://api.duffel.com/places/suggestions?query=${encodeURIComponent(query)}&rad=200`,
+      `https://api.duffel.com/places/suggestions?query=${encodeURIComponent(query)}`,
       {
         headers: {
           'Authorization': `Bearer ${process.env.DUFFEL_API_KEY}`,
@@ -873,8 +873,9 @@ app.get('/api/airport-search', async (req, res) => {
       }
     )
     const data = await response.json()
+    console.log('Duffel places:', JSON.stringify(data).substring(0, 500))
     const suggestions = (data.data || [])
-      .filter(p => p.type === 'airport' && p.iata_code)
+      .filter(p => p.iata_code)
       .map(p => ({
         city: p.city_name || p.name,
         airport: p.name,
