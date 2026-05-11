@@ -464,13 +464,15 @@ Return ONLY this JSON, no markdown, no explanation:
           'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
         },
         body: JSON.stringify({
-          p1City: data.p1.city,
-          p2City: data.p2.city,
-          destinations: destNames,
-          dates: `${data.dates.from} to ${data.dates.to}`,
-          routing: data.routing,
-          sameCity: data.sameCity,
-        })
+  p1City: data.p1.city,
+  p2City: data.p2.city,
+  p1Iata: data.p1.iata || '',
+  p2Iata: data.p2.iata || '',
+  destinations: destNames,
+  dates: `${data.dates.from} to ${data.dates.to}`,
+  routing: data.routing,
+  sameCity: data.sameCity,
+})
       })
       return await res.json()
     } catch (e) {

@@ -208,8 +208,8 @@ function setCache(key, data) {
 
 async function getFlightPrices(p1City, p2City, dates, destinations) {
   try {
-    const p1IATA = getCityIATA(p1City)
-    const p2IATA = getCityIATA(p2City)
+    const p1IATA = req.body.p1Iata || getCityIATA(p1City)
+const p2IATA = req.body.p2Iata || getCityIATA(p2City)
 
     if (!p1IATA || !p2IATA) {
       console.log(`IATA not found for ${p1City} or ${p2City}, falling back to Perplexity`)
@@ -661,10 +661,10 @@ async function searchDuffelFlights(originIata, destIata, departDate, returnDate)
     const body = JSON.stringify({
       data: {
         slices: [
-          { origin: originIata, destination: destIata, departure_date: departDate },
-          { origin: destIata, destination: originIata, departure_date: returnDate }
-        ],
-        passengers: [{ type: 'adult' }],
+  { origin: originIata, destination: destIata, departure_date: departDate, max_connections: 2 },
+  { origin: destIata, destination: originIata, departure_date: returnDate, max_connections: 2 }
+],
+passengers: [{ type: 'adult' }],
 cabin_class: 'economy',
 max_connections: 2
       }

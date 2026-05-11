@@ -268,9 +268,15 @@ function CalendarPicker({ label, selected, onChange, minDate }) {
 export default function Quiz({ session }) {
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
+  const [p1Suggestions, setP1Suggestions] = useState([])
+const [p2Suggestions, setP2Suggestions] = useState([])
+const [p1IataFound, setP1IataFound] = useState(false)
+const [p2IataFound, setP2IataFound] = useState(false)
+const [p1Iata, setP1Iata] = useState('')
+const [p2Iata, setP2Iata] = useState('')
   const [data, setData] = useState({
-    p1: { city: '', currency: 'USD', maxSpend: 1500 },
-    p2: { city: '', currency: 'GBP', maxSpend: 1200 },
+    p1: { city: '', iata: '', currency: 'USD', maxSpend: 1500 },
+    p2: { city: '', iata: '', currency: 'GBP', maxSpend: 1200 },
     vibes: [],
     dates: { from: '', to: '' },
     routing: 'fly_together',
@@ -297,6 +303,29 @@ export default function Quiz({ session }) {
   function toggleVibe(id) {
     setData(d => ({ ...d, vibes: d.vibes.includes(id) ? d.vibes.filter(v => v !== id) : [...d.vibes, id] }))
   }
+
+  async function lookupIata(city, partner) {
+  if (city.length < 3) {
+    partner === 'p1' ? (setP1Suggestions([]), setP1IataFound(false)) : (setP2Suggestions([]), setP2IataFound(false))
+    return
+  }
+  try {
+    const res = await fetch(
+      `https://roamie-61ib.onrender.com/api/iata-lookup?city=${encodeURIComponent(city)}`,
+      { headers: { 'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET } }
+    )
+    const json = await res.json()
+    if (partner === 'p1') {
+      setP1Suggestions(json.matches || [])
+      setP1IataFound(false)
+    } else {
+      setP2Suggestions(json.matches || [])
+      setP2IataFound(false)
+    }
+  } catch {
+    // silent fail
+  }
+}
 
   function next() { setStep(s => s + 1) }
   function back() { setStep(s => s - 1) }
@@ -524,26 +553,88 @@ export default function Quiz({ session }) {
             <div style={{ fontSize: '11px', color: THEME.accent, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '500' }}>
               {data.sameCity ? 'Your city' : data.tripMode === 'visit' ? 'Your city' : 'Partner 1'}
             </div>
-            <input
-              type="text"
-              placeholder="e.g. Memphis"
-              value={data.p1.city}
-              onChange={e => setData(d => ({ ...d, p1: { ...d.p1, city: e.target.value }, p2: d.sameCity ? { ...d.p2, city: e.target.value } : d.p2 }))}
-              style={inputStyle}
-            />
+           <div style={{ position: 'relative' }}>
+  <input
+    type="text"
+    placeholder="e.g. Memphis"
+    value={data.p1.city}
+    onChange={e => {
+      const val = e.target.value
+      setData(d => ({ ...d, p1: { ...d.p1, city: val }, p2: d.sameCity ? { ...d.p2, city: val } : d.p2 }))
+      setP1IataFound(false)
+      lookupIata(val, 'p1')
+    }}
+    style={{ ...inputStyle, border: `1px solid ${p1IataFound ? 'rgba(34,211,238,0.5)' : THEME.border}` }}
+  />
+  {p1IataFound && (
+    <div style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', fontWeight: '600', color: THEME.cyan, background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '6px', padding: '2px 8px' }}>
+      {p1Iata}
+    </div>
+  )}
+  {p1Suggestions.length > 0 && !p1IataFound && (
+    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'rgba(30,32,48,0.98)', border: `1px solid ${THEME.border}`, borderRadius: '14px', overflow: 'hidden', zIndex: 100 }}>
+      {p1Suggestions.map((s, i) => (
+        <div
+          key={s.iata}
+          onClick={() => {
+  setData(d => ({ ...d, p1: { ...d.p1, city: s.city.charAt(0).toUpperCase() + s.city.slice(1), iata: s.iata }, p2: d.sameCity ? { ...d.p2, city: s.city.charAt(0).toUpperCase() + s.city.slice(1), iata: s.iata } : d.p2 }))
+  setP1Iata(s.iata)
+  setP1IataFound(true)
+  setP1Suggestions([])
+}}
+          style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', borderBottom: i < p1Suggestions.length - 1 ? `1px solid ${THEME.border}` : 'none', fontSize: '14px', color: THEME.text }}
+        >
+          <span style={{ textTransform: 'capitalize' }}>{s.city}</span>
+          <span style={{ fontSize: '12px', fontWeight: '600', color: THEME.cyan, background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '6px', padding: '2px 8px' }}>{s.iata}</span>
+        </div>
+      ))}
+    </div>
+  )}
+</div> 
           </div>
           {!data.sameCity && (
             <div>
               <div style={{ fontSize: '11px', color: THEME.primary, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '500' }}>
                 {data.tripMode === 'visit' ? "Partner's city" : 'Partner 2'}
               </div>
-              <input
-                type="text"
-                placeholder="e.g. Manchester"
-                value={data.p2.city}
-                onChange={e => setData(d => ({ ...d, p2: { ...d.p2, city: e.target.value } }))}
-                style={inputStyle}
-              />
+            <div style={{ position: 'relative' }}>
+  <input
+    type="text"
+    placeholder="e.g. Manchester"
+    value={data.p2.city}
+    onChange={e => {
+      const val = e.target.value
+      setData(d => ({ ...d, p2: { ...d.p2, city: val } }))
+      setP2IataFound(false)
+      lookupIata(val, 'p2')
+    }}
+    style={{ ...inputStyle, border: `1px solid ${p2IataFound ? 'rgba(34,211,238,0.5)' : THEME.border}` }}
+  />
+  {p2IataFound && (
+    <div style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', fontWeight: '600', color: THEME.cyan, background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '6px', padding: '2px 8px' }}>
+      {p2Iata}
+    </div>
+  )}
+  {p2Suggestions.length > 0 && !p2IataFound && (
+    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'rgba(30,32,48,0.98)', border: `1px solid ${THEME.border}`, borderRadius: '14px', overflow: 'hidden', zIndex: 100 }}>
+      {p2Suggestions.map((s, i) => (
+        <div
+          key={s.iata}
+          onClick={() => {
+  setData(d => ({ ...d, p2: { ...d.p2, city: s.city.charAt(0).toUpperCase() + s.city.slice(1), iata: s.iata } }))
+  setP2Iata(s.iata)
+  setP2IataFound(true)
+  setP2Suggestions([])
+}}
+          style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', borderBottom: i < p2Suggestions.length - 1 ? `1px solid ${THEME.border}` : 'none', fontSize: '14px', color: THEME.text }}
+        >
+          <span style={{ textTransform: 'capitalize' }}>{s.city}</span>
+          <span style={{ fontSize: '12px', fontWeight: '600', color: THEME.cyan, background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '6px', padding: '2px 8px' }}>{s.iata}</span>
+        </div>
+      ))}
+    </div>
+  )}
+</div>  
             </div>
           )}
         </div>
