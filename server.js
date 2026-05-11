@@ -736,13 +736,13 @@ app.post('/api/flight-prices', [
   }
 
   try {
-    const { p1City, p2City, destinations, dates, routing, sameCity } = req.body
+    const { p1City, p2City, p1Iata, p2Iata, destinations, dates, routing, sameCity } = req.body
     const dateParts = dates.split(' to ')
     const departDate = dateParts[0]?.trim()
     const returnDate = dateParts[1]?.trim()
 
-    const p1IATA = getCityIATA(p1City)
-    const p2IATA = getCityIATA(p2City)
+    const p1IATA = req.body.p1Iata || getCityIATA(p1City)
+    const p2IATA = req.body.p2Iata || getCityIATA(p2City)
 
     console.log('Flight prices request:', { p1City, p2City, p1IATA, p2IATA, departDate, returnDate, routing })
 
