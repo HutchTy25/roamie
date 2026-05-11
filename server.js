@@ -10,9 +10,6 @@ import { resolve } from 'path'
 import Stripe from 'stripe'
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
-console.log('Anthropic Key:', process.env.ANTHROPIC_API_KEY ? 'YES' : 'NO')
-console.log('Perplexity Key:', process.env.PERPLEXITY_API_KEY ? 'YES' : 'NO')
-
 const app = express()
 app.use(cors({
   origin: [
@@ -36,7 +33,7 @@ app.set('trust proxy', 1)
 
 const apiLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // max 10 requests per IP per hour
+  max: 25, // max 25 requests per IP per hour
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -236,7 +233,6 @@ const [p1Flights, p2Flights] = await Promise.all([
 
 console.log('P1 IATA:', p1IATA, 'P2 IATA:', p2IATA)
 console.log('Depart:', departDate, 'Return:', returnDate)
-console.log('FlightAPI URL:', `https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p1IATA}/${p2IATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`)
 
     console.log('FlightAPI P1 response:', JSON.stringify(p1Flights)?.substring(0, 200))
     console.log('FlightAPI P2 response:', JSON.stringify(p2Flights)?.substring(0, 200))
@@ -382,7 +378,6 @@ const enhancedMessages = messages.map((msg, i) => {
       messages: enhancedMessages
     })
 
-console.log('ANTHROPIC KEY CHECK:', process.env.ANTHROPIC_API_KEY?.substring(0, 15))
     const claudeResult = await httpsPost(
       'api.anthropic.com',
       '/v1/messages',

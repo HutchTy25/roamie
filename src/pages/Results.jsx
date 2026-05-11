@@ -16,6 +16,10 @@ const THEME = {
   border: 'rgba(124, 106, 239, 0.25)',
 }
 
+function cleanDestName(name) {
+  return name?.replace(/^[A-Z]{2,3}\s+/, '') ?? ''
+}
+
 // Starfield
 function Starfield() {
   const stars = Array.from({ length: 40 }, (_, i) => ({
@@ -77,7 +81,7 @@ function EmailCapture() {
       borderTop: `1px solid ${THEME.border}`,
       background: 'rgba(124, 106, 239, 0.05)',
     }}>
-      <div style={{ fontSize: '1.5rem', marginBottom: '8px', color: THEME.accent }}>&#10022;</div>
+      <div style={{ fontSize: '1.5rem', marginBottom: '8px', color: THEME.accent }}>✦</div>
       <div style={{ fontSize: '1.1rem', marginBottom: '6px', color: THEME.text, fontWeight: '500' }}>
         You&apos;re in.
       </div>
@@ -761,7 +765,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
           fontWeight: '500',
           textAlign: 'center',
         }}>
-          {isStretch ? '&#10022; Stretch goal' : activeCard === 0 ? '&#10022; Best match' : `Option ${activeCard + 1}`}
+          {isStretch ? '✦ Stretch goal' : activeCard === 0 ? '✦ Best match' : `Option ${activeCard + 1}`}
         </div>
 
         {/* ======================== */}
@@ -843,7 +847,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
                 textShadow: '0 2px 20px rgba(0,0,0,0.5)',
                 marginBottom: '6px',
               }}>
-                {dest.country_emoji} {dest.name}
+                {dest.country_emoji} {cleanDestName(dest.name)}
               </div>
               <div style={{
                 fontSize: '14px',
@@ -1030,7 +1034,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
               {tripBasics && (
   <div style={{ marginBottom: '1.5rem' }}>
     <div style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: THEME.accent, marginBottom: '1rem', fontWeight: '500' }}>
-      &#10022; Trip basics
+      ✦ Trip basics
     </div>
 
     <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '12px', padding: '12px 14px', marginBottom: '8px', border: `1px solid ${THEME.border}` }}>
@@ -1065,10 +1069,10 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
 )}
  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1rem' }}>
   <button onClick={() => window.open(generateAffiliateLink('booking', { city: dest.name, checkin: data.dates.from, checkout: data.dates.to }), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '100px', color: THEME.cyan, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
-    🏨 Book your stay in {dest.name?.split(',')[0]}
+    🏨 Book your stay in {cleanDestName(dest.name)?.split(',')[0]}
   </button>
   <button onClick={() => window.open(generateAffiliateLink('viator', { city: dest.name }), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(124,106,239,0.1)', border: '1px solid rgba(124,106,239,0.3)', borderRadius: '100px', color: THEME.primary, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
-    🎯 Find things to do in {dest.name?.split(',')[0]}
+    🎯 Find things to do in {cleanDestName(dest.name)?.split(',')[0]}
   </button>
   <button onClick={() => window.open(generateAffiliateLink('wise'), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(244,114,182,0.1)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: '100px', color: THEME.accent, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
     💸 Send money fee-free with Wise
@@ -1210,9 +1214,9 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
             }}
           >
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-              <div style={{ fontSize: '13px', color: THEME.accent, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '500' }}>&#10022; Roamie</div>
+              <div style={{ fontSize: '13px', color: THEME.accent, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '8px', fontWeight: '500' }}>✦ Roamie</div>
               <div style={{ fontSize: '2rem', lineHeight: '1.1', marginBottom: '8px', color: THEME.text, fontWeight: '600' }}>
-                {dest.country_emoji} {dest.name}
+                {dest.country_emoji} {cleanDestName(dest.name)}
               </div>
               <div style={{ fontSize: '13px', color: THEME.muted, lineHeight: '1.5' }}>
                 {dest.tagline}
