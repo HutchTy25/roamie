@@ -1,6 +1,6 @@
 const AFFILIATE_IDS = {
   travelpayouts: '526993',
-  viator: 'YOUR_VIATOR_ID',
+  viator: 'P00300467',
   wise: 'YOUR_WISE_ID',
 }
 

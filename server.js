@@ -79,10 +79,23 @@ function httpsPost(hostname, path, headers, body) {
 let ratesCache = null
 let ratesCacheTime = 0
 
+const FALLBACK_RATES = {
+  USD: 1,
+  GBP: 0.79,
+  EUR: 0.92,
+  CAD: 1.36,
+  AUD: 1.53,
+  NZD: 1.66,
+  JPY: 149.50,
+  SGD: 1.34,
+  INR: 83.50,
+  ZAR: 18.63,
+}
+
 async function getExchangeRates(baseCurrency) {
   const now = Date.now()
   const sixHours = 6 * 60 * 60 * 1000
-  
+
   if (ratesCache && (now - ratesCacheTime) < sixHours) {
     console.log('Exchange rates from cache')
     return ratesCache
@@ -90,24 +103,19 @@ async function getExchangeRates(baseCurrency) {
 
   try {
     const res = await fetch(
-      `https://v6.exchangerate-api.com/v6/${process.env.EXCHANGERATE_API_KEY}/latest/${baseCurrency}`
+      `https://api.frankfurter.app/latest?from=${baseCurrency}`
     )
-    const text = await res.text()
-    if (!text.startsWith('{')) {
-      console.error('ExchangeRate API returned non-JSON:', text.substring(0, 100))
-      return ratesCache || null
-    }
-    const data = JSON.parse(text)
-    if (data.result === 'success') {
-      ratesCache = data.conversion_rates
+    const data = await res.json()
+    if (data.rates) {
+      ratesCache = { [baseCurrency]: 1, ...data.rates }
       ratesCacheTime = now
-      console.log('Exchange rates refreshed')
+      console.log('Exchange rates refreshed from Frankfurter')
       return ratesCache
     }
-    return ratesCache || null
+    return ratesCache || FALLBACK_RATES
   } catch (e) {
     console.error('Exchange rate error:', e)
-    return ratesCache || null
+    return ratesCache || FALLBACK_RATES
   }
 }
 
@@ -212,8 +220,8 @@ function setCache(key, data) {
 
 async function getFlightPrices(p1City, p2City, dates, destinations) {
   try {
-    const p1IATA = req.body.p1Iata || getCityIATA(p1City)
-const p2IATA = req.body.p2Iata || getCityIATA(p2City)
+    const p1IATA = getCityIATA(p1City)
+    const p2IATA = getCityIATA(p2City)
 
     if (!p1IATA || !p2IATA) {
       console.log(`IATA not found for ${p1City} or ${p2City}, falling back to Perplexity`)
