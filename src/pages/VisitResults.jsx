@@ -531,6 +531,17 @@ async function saveTripToSupabase() {
   {tripSaved ? 'Saved to dashboard' : 'Save to dashboard'}
 </button>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px' }}>
+        <div>
+          <button
+            onClick={() => window.open(generateAffiliateLink('booking_flights', { from: data.p1.iata, to: data.p2.iata, depart: data.dates.from, return: data.dates.to }), '_blank')}
+            style={{ width: '100%', padding: '14px', background: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.3)', borderRadius: '100px', color: '#FB923C', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+          >
+            ✈️ Search flights on Booking.com
+          </button>
+          <div style={{ textAlign: 'center', fontSize: '11px', color: '#6B7280', marginTop: '6px' }}>
+            Opens in browser · complete booking there to confirm your price
+          </div>
+        </div>
         <button onClick={() => window.open(generateAffiliateLink('booking', { city: data.p2.city, checkin: data.dates.from, checkout: data.dates.to }), '_blank')} style={{ width: '100%', padding: '14px', background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '100px', color: '#22D3EE', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
           🏨 Book your stay in {data.p2.city}
         </button>

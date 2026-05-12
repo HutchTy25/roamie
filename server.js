@@ -1,5 +1,6 @@
 import dotenv from 'dotenv'
 dotenv.config()
+import pLimit from 'p-limit'
 import express from 'express'
 import cors from 'cors'
 import https from 'https'
@@ -749,61 +750,57 @@ app.post('/api/flight-prices', [
 
     const priceResults = {}
 
-  for (const destName of destinations) {
-  const destIATA = getCityIATA(destName.split(',')[0].trim())
-  console.log(`Destination: ${destName} → IATA: ${destIATA}`)
+  const limit = pLimit(2)
 
- if (!destIATA) {
-    console.log(`No IATA for ${destName}, skipping`)
-    priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
-    continue
-  }
+  await Promise.all(destinations.map(destName => limit(async () => {
+    const destIATA = getCityIATA(destName.split(',')[0].trim())
+    console.log(`Destination: ${destName} → IATA: ${destIATA}`)
 
-
-  try {
-    if (sameCity) {
-      const price = await searchDuffelFlights(p1IATA, destIATA, departDate, returnDate)
-      priceResults[destName] = {
-        p1: price ? Math.round(price / 2) : null,
-        p2: price ? Math.round(price / 2) : null,
-        source: price ? 'duffel' : 'estimate'
-      }
-
-    } else if (routing === 'meet') {
-      const [p1Price, p2Price] = await Promise.all([
-        p1IATA ? searchDuffelFlights(p1IATA, destIATA, departDate, returnDate) : null,
-        p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
-      ])
-      console.log(`Meet prices for ${destName} — P1: ${p1Price}, P2: ${p2Price}`)
-      priceResults[destName] = {
-        p1: p1Price,
-        p2: p2Price,
-        source: 'duffel'
-      }
-
-    } else if (routing === 'fly_together') {
-      const p1ToP2Price = (p1IATA && p2IATA) ? await searchDuffelFlights(p1IATA, p2IATA, departDate, returnDate) : null
-      const bothToDestPrice = p2IATA ? await searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null
-      const p2ToDestPrice = bothToDestPrice
-      console.log(`Fly together prices for ${destName} — P1toP2: ${p1ToP2Price}, BothToDest: ${bothToDestPrice}, P2toDest: ${p2ToDestPrice}`)
-      priceResults[destName] = {
-        p1: (p1ToP2Price || 0) + (bothToDestPrice || 0),
-        p2: p2ToDestPrice || 0,
-        p1_breakdown: {
-          leg1: p1ToP2Price || 0,
-          leg2: bothToDestPrice || 0,
-        },
-        source: 'duffel'
-      }
+    if (!destIATA) {
+      console.log(`No IATA for ${destName}, skipping`)
+      priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
+      return
     }
 
-} catch (e) {
-    console.error(`Flight price error for ${destName}:`, e)
-    priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
-  }
-
-  await new Promise(r => setTimeout(r, 1000))
-  }
+    try {
+      if (sameCity) {
+        const price = await searchDuffelFlights(p1IATA, destIATA, departDate, returnDate)
+        priceResults[destName] = {
+          p1: price ? Math.round(price / 2) : null,
+          p2: price ? Math.round(price / 2) : null,
+          source: price ? 'duffel' : 'estimate'
+        }
+      } else if (routing === 'meet') {
+        const [p1Price, p2Price] = await Promise.all([
+          p1IATA ? searchDuffelFlights(p1IATA, destIATA, departDate, returnDate) : null,
+          p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
+        ])
+        console.log(`Meet prices for ${destName} — P1: ${p1Price}, P2: ${p2Price}`)
+        priceResults[destName] = {
+          p1: p1Price,
+          p2: p2Price,
+          source: 'duffel'
+        }
+      } else if (routing === 'fly_together') {
+        const p1ToP2Price = (p1IATA && p2IATA) ? await searchDuffelFlights(p1IATA, p2IATA, departDate, returnDate) : null
+        const bothToDestPrice = p2IATA ? await searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null
+        const p2ToDestPrice = bothToDestPrice
+        console.log(`Fly together prices for ${destName} — P1toP2: ${p1ToP2Price}, BothToDest: ${bothToDestPrice}, P2toDest: ${p2ToDestPrice}`)
+        priceResults[destName] = {
+          p1: (p1ToP2Price || 0) + (bothToDestPrice || 0),
+          p2: p2ToDestPrice || 0,
+          p1_breakdown: {
+            leg1: p1ToP2Price || 0,
+            leg2: bothToDestPrice || 0,
+          },
+          source: 'duffel'
+        }
+      }
+    } catch (e) {
+      console.error(`Flight price error for ${destName}:`, e)
+      priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
+    }
+  })))
     console.log('Final price results:', JSON.stringify(priceResults))
     res.json(priceResults)
 

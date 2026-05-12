@@ -214,3 +214,36 @@ roamie-nu.vercel.app — fully working
 - Gemini and Perplexity used for architecture analysis, market research, SQL review
 - Build with Claude evenings/weekends — surgical, efficient, no over-engineering
 - Strategic sprint week — aiming for beta testers by end of week
+
+## May 10, 2026
+
+### What we built
+- Airport autocomplete in Quiz — Duffel Places API replaces CSV lookup ✅
+- Atlanta → ATL, Berlin → BER, all major cities now resolve correctly ✅
+- max_connections: 2 in Duffel slices — connecting flights now supported ✅
+- p1Iata/p2Iata passed through frontend → server — selected airport overrides CSV ✅
+- Multi-city overrides expanded — ATL, MEM, SAN, LAS, DEN, SEA, BOS, NAS, CLT, DTW, MSP, PDX, PHX, DFW, IAH, MSY, TPA ✅
+- ✦ star symbol fixed across all files ✅
+- Claude Code installed and configured ✅
+- Rate limiter raised from 10 to 25 requests/hour ✅
+- Sensitive console.logs removed from server.js ✅
+- Commit to trip flow — button on saved trips card ✅
+- Countdown card on dashboard when trip committed ✅
+- Save trip from VisitResults ✅
+- Shared trips between partners via couple_id ✅
+- Dupe affiliate buttons fixed in VisitResults ✅
+- Partner sync bug fixed — refetch on app resume ✅
+- Swipe lock when expanded on Results page ✅
+- Zoom lock on mobile via viewport meta ✅
+- Rocket pointing at moon correctly ✅
+- Days income pills removed from cost cards ✅
+
+### Remaining before launch
+- Country code prefix leaking into destination names (us New York, GB London)
+- Planning orbit ring + activity bubbles
+- Privacy policy + terms of service pages
+- ExchangeRate API rate limit — may need plan upgrade
+- Load time optimization on Explore/Meet
+- Crystallization animation (post-launch ok)
+- Weather widget (post-launch ok)
+- Presence Pulse (post-launch ok)
