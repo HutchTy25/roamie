@@ -36,6 +36,7 @@ export default function Orbit({ session }) {
   const [showAddMoon, setShowAddMoon] = useState(false)
 const [newMoonLabel, setNewMoonLabel] = useState('')
 const [partnerOnline, setPartnerOnline] = useState(false)
+const [hasCommittedTrip, setHasCommittedTrip] = useState(false)
 
   useEffect(() => {
     if (!session) return
@@ -147,6 +148,14 @@ useEffect(() => {
         .order('created_at', { ascending: true })
 
       if (planetsData) setPlanets(planetsData)
+
+      const { data: committedTrips } = await supabase
+        .from('trips')
+        .select('id')
+        .eq('couple_id', profile.couple_id)
+        .eq('committed', true)
+        .limit(1)
+      if (committedTrips?.length > 0) setHasCommittedTrip(true)
     } catch (e) {
       console.error('Orbit fetch error:', e)
     } finally {
@@ -325,6 +334,19 @@ useEffect(() => {
             pointerEvents: 'none',
           }} />
         ))}
+
+        {/* Planning Ring */}
+        {hasCommittedTrip && (
+          <div style={{
+            position: 'absolute',
+            width: 148, height: 148,
+            borderRadius: '50%',
+            border: '2px dashed rgba(255,180,50,0.55)',
+            boxShadow: '0 0 20px rgba(255,180,50,0.15)',
+            pointerEvents: 'none',
+            animation: 'pulse-glow 3s ease-in-out infinite',
+          }} />
+        )}
 
         {/* Sun */}
         <motion.div
