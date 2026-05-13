@@ -646,6 +646,12 @@ const [p2Iata, setP2Iata] = useState('')
           )}
         </div>
 
+        {p1IataFound && p2IataFound && p1Iata && p2Iata && p1Iata === p2Iata && (
+          <div style={{ textAlign: 'center', color: '#f59e0b', fontSize: '13px', marginBottom: '8px', padding: '8px 12px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px' }}>
+            Looks like you both selected the same airport — is that right?
+          </div>
+        )}
+
         <button
           style={{ ...btnStyle, ...(!data.p1.city.trim() || (!data.sameCity && !data.p2.city.trim()) ? btnDisabledStyle : {}) }}
           disabled={!data.p1.city.trim() || (!data.sameCity && !data.p2.city.trim())}

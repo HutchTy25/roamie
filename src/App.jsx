@@ -12,6 +12,8 @@ import Connect from './pages/Connect'
 import Onboarding from './pages/Onboarding'
 import VisitResults from './pages/VisitResults'
 import Orbit from './pages/Orbit'
+import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
 
 export default function App() {
   const [session, setSession] = useState(undefined)
@@ -58,6 +60,8 @@ export default function App() {
       <Route path="/onboarding" element={<Onboarding session={session} onComplete={() => fetchProfile(session.user.id)} />} />
       <Route path="/visit-results" element={<VisitResults />} />
       <Route path="/orbit" element={<Orbit session={session} />} />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
     </Routes>
   )
 }

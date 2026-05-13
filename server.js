@@ -357,13 +357,16 @@ if (cachedData) {
 if (exchangeRates) {
   const p1Rate = exchangeRates[p1Currency] || 1
   const p2Rate = exchangeRates[p2Currency] || 1
-  currencyContext = `
-LIVE EXCHANGE RATES (as of today, use these for ALL currency conversions):
-1 USD = ${p1Rate} ${p1Currency}
-1 USD = ${p2Rate} ${p2Currency}
-1 ${p1Currency} = ${(p2Rate/p1Rate).toFixed(4)} ${p2Currency}
-1 ${p2Currency} = ${(p1Rate/p2Rate).toFixed(4)} ${p1Currency}
+  if (p1Currency === p2Currency) {
+    currencyContext = `LIVE EXCHANGE RATES (as of today): P1 and P2 both use ${p1Currency}. No conversion needed.`
+  } else {
+    const p1ToP2 = (p2Rate / p1Rate).toFixed(4)
+    const p2ToP1 = (p1Rate / p2Rate).toFixed(4)
+    currencyContext = `LIVE EXCHANGE RATES (as of today, use these for ALL currency conversions):
+1 ${p1Currency} = ${p1ToP2} ${p2Currency}
+1 ${p2Currency} = ${p2ToP1} ${p1Currency}
 Use these rates for all cost calculations. Do not estimate exchange rates.`
+  }
   console.log('Currency context:', currencyContext)
 }
 

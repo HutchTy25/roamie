@@ -8,6 +8,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
+  const [otp, setOtp] = useState('')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -33,7 +34,7 @@ async function sendMagicLink() {
     setError('')
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: true }
+      options: { shouldCreateUser: true, emailRedirectTo: undefined }
     })
     if (error) {
       setError(error.message)
@@ -54,6 +55,8 @@ async function verifyOtp() {
     })
     if (error) {
       setError(error.message)
+    } else {
+      navigate('/dashboard')
     }
     setLoading(false)
   }

@@ -498,14 +498,21 @@ Return ONLY this JSON, no markdown, no explanation:
     return `You are Roamie. Here are 3 destinations already selected for a couple. Add detailed cost breakdowns using the REAL flight prices provided.
 
 PARTNER DETAILS:
-- Partner 1: ${data.p1.city} | ${data.p1.currency} (${p1sym}) | Budget: ${p1sym}${data.p1.maxSpend.toLocaleString()}
-- Partner 2: ${data.p2.city} | ${data.p2.currency} (${p2sym}) | Budget: ${p2sym}${data.p2.maxSpend.toLocaleString()}
+- Partner 1: ${data.p1.city} | Currency: ${data.p1.currency} (${p1sym}) | Budget: ${p1sym}${data.p1.maxSpend.toLocaleString()}
+- Partner 2: ${data.p2.city} | Currency: ${data.p2.currency} (${p2sym}) | Budget: ${p2sym}${data.p2.maxSpend.toLocaleString()}
 - Dates: ${data.dates.from} to ${data.dates.to}
 - Routing: ${data.routing}
 - Accommodation: ${data.accommodation}
 
 REAL FLIGHT PRICES (use these exactly, do not estimate or change them):
 ${flightContext}
+
+CURRENCY CONVERSION RULES:
+- All flight prices above are in USD
+- P1 costs (p1_cost, flights_p1_leg1, flights_p1_leg2, flights_p1_total) must be converted from USD to ${data.p1.currency} using the exchange rate provided above
+- P2 costs (p2_cost, flights_p2) must be converted from USD to ${data.p2.currency} using the exchange rate provided above
+- Lodging, food, and activity costs stay in USD (they represent destination costs)
+- Use the exact exchange rate provided — do not estimate or round rates
 
 DESTINATIONS TO ADD BREAKDOWN TO:
 ${JSON.stringify(destinations, null, 2)}
@@ -514,13 +521,12 @@ CRITICAL RULES:
 - All numeric values must be plain numbers with NO currency symbols attached
 - p1_cost and p2_cost must be plain numbers only (e.g. 2265 not $2265)
 - All cost_breakdown values must be plain numbers only
-- All costs in USD equivalent
 - Use the EXACT flight prices provided above, do not modify them
 
 For each destination add these fields:
-- p1_cost: total trip cost for P1 as plain number in USD
-- p2_cost: total trip cost for P2 as plain number in USD
-- cost_breakdown: { flights_p1_leg1, flights_p1_leg2, flights_p1_total, flights_p2, lodging_per_night, lodging_total, food_per_day, food_total, activities_total } all plain numbers in USD
+- p1_cost: total trip cost for P1 as plain number in ${data.p1.currency}
+- p2_cost: total trip cost for P2 as plain number in ${data.p2.currency}
+- cost_breakdown: { flights_p1_leg1, flights_p1_leg2, flights_p1_total (all in ${data.p1.currency}), flights_p2 (in ${data.p2.currency}), lodging_per_night, lodging_total, food_per_day, food_total, activities_total (all in USD) } all plain numbers
 - lodging_note: specific hotel recommendation with price per night
 - routing_note: specific airlines and flight times for both partners
 - fairness_note: one sentence on currency fairness

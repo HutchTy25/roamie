@@ -347,6 +347,11 @@ export default function Home({ session }) {
           </div>
         </div>
       </div>
+
+      <div style={{ textAlign: 'center', padding: '24px 16px 32px', display: 'flex', gap: '20px', justifyContent: 'center' }}>
+        <a href="/privacy" style={{ fontSize: '12px', color: '#6B6F85', textDecoration: 'none' }}>Privacy Policy</a>
+        <a href="/terms" style={{ fontSize: '12px', color: '#6B6F85', textDecoration: 'none' }}>Terms of Service</a>
+      </div>
     </div>
   )
 }
