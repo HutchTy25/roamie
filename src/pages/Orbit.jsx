@@ -339,7 +339,7 @@ useEffect(() => {
         {hasCommittedTrip && (
           <div style={{
             position: 'absolute',
-            width: 148, height: 148,
+            width: 200, height: 200,
             borderRadius: '50%',
             border: '2px dashed rgba(255,180,50,0.55)',
             boxShadow: '0 0 20px rgba(255,180,50,0.15)',
@@ -370,7 +370,7 @@ useEffect(() => {
         {/* Empty state */}
         {visualPlanets.length === 0 && (
           <div style={{ position: 'absolute', top: '62%', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', whiteSpace: 'nowrap' }}>
-            <div style={{ fontSize: '13px', color: THEME.muted }}>Tap + to add your first destination</div>
+            <div style={{ fontSize: '13px', color: THEME.muted }}>{hasCommittedTrip ? '✨ Trip in planning — add activities and ideas' : 'Tap + to add your first destination'}</div>
           </div>
         )}
 
@@ -467,7 +467,7 @@ useEffect(() => {
           }}
         >
           <Sparkles size={16} />
-          Add Trip Memory
+          {hasCommittedTrip ? '✈️ Plan your trip' : 'Add Trip Memory'}
         </motion.button>
       </div>
 
