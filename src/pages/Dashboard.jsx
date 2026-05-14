@@ -428,6 +428,64 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
         {activeTab === 'home' && (
           <div style={{ animation: 'fadeSlideUp 0.4s ease' }}>
             
+            {/* Committed Trip Countdown */}
+            {trips.find(t => t.committed) && (() => {
+  const committedTrip = trips.find(t => t.committed)
+  const daysUntilCommitted = committedTrip.dates_from
+    ? Math.ceil((new Date(committedTrip.dates_from) - new Date()) / (1000 * 60 * 60 * 24))
+    : null
+  return (
+    <div className="glass-card" style={{ padding: '20px', marginBottom: '16px' }}>
+      <div style={{ fontSize: '11px', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', textAlign: 'center' }}>🚀 Next Adventure</div>
+      <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+        <div style={{ fontSize: '56px', fontWeight: '700', background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+          {daysUntilCommitted > 0 ? daysUntilCommitted : '🎉'}
+        </div>
+        <div style={{ fontSize: '13px', color: colors.textMuted }}>
+          {daysUntilCommitted > 0 ? 'days until' : 'trip time!'}
+        </div>
+        <div style={{ fontSize: '18px', fontWeight: '600', color: colors.pink, marginTop: '8px' }}>
+          {committedTrip.destinations?.[0]?.name || `${committedTrip.p1_city} → ${committedTrip.p2_city}`}
+        </div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', borderTop: `1px solid ${colors.border}` }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '13px', fontWeight: '600', color: colors.text }}>{committedTrip.dates_from}</div>
+          <div style={{ fontSize: '11px', color: colors.textMuted }}>Departure</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '13px', fontWeight: '600', color: colors.text }}>{committedTrip.dates_to}</div>
+          <div style={{ fontSize: '11px', color: colors.textMuted }}>Return</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '13px', fontWeight: '600', color: colors.cyan }}>{committedTrip.p1_city} → {committedTrip.p2_city}</div>
+          <div style={{ fontSize: '11px', color: colors.textMuted }}>Route</div>
+        </div>
+      </div>
+      <button
+        onClick={async () => {
+          await supabase.from('trips').update({ committed: false, committed_at: null }).eq('id', committedTrip.id)
+          setTrips(prev => prev.map(t => t.id === committedTrip.id ? { ...t, committed: false, committed_at: null } : t))
+        }}
+        style={{
+          display: 'block',
+          width: '100%',
+          marginTop: '12px',
+          padding: '8px',
+          background: 'none',
+          border: '1px solid rgba(239, 68, 68, 0.25)',
+          borderRadius: '100px',
+          color: 'rgba(239, 68, 68, 0.6)',
+          fontSize: '12px',
+          cursor: 'pointer',
+        }}
+      >
+        Remove from planning
+      </button>
+    </div>
+  )
+})()}
+
             {/* Moon Odyssey Card */}
             <div className="glass-card" style={{ padding: '20px', marginBottom: '16px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
@@ -641,44 +699,6 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
                 </div>
               </div>
             </div>
-
-            {/* Upcoming trip or CTA */}
-            {trips.find(t => t.committed) && (() => {
-  const committedTrip = trips.find(t => t.committed)
-  const daysUntilCommitted = committedTrip.dates_from
-    ? Math.ceil((new Date(committedTrip.dates_from) - new Date()) / (1000 * 60 * 60 * 24))
-    : null
-  return (
-    <div className="glass-card" style={{ padding: '20px', marginTop: '16px' }}>
-      <div style={{ fontSize: '11px', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', textAlign: 'center' }}>🚀 Next Adventure</div>
-      <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-        <div style={{ fontSize: '56px', fontWeight: '700', background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          {daysUntilCommitted > 0 ? daysUntilCommitted : '🎉'}
-        </div>
-        <div style={{ fontSize: '13px', color: colors.textMuted }}>
-          {daysUntilCommitted > 0 ? 'days until' : 'trip time!'}
-        </div>
-        <div style={{ fontSize: '18px', fontWeight: '600', color: colors.pink, marginTop: '8px' }}>
-          {committedTrip.destinations?.[0]?.name || `${committedTrip.p1_city} → ${committedTrip.p2_city}`}
-        </div>
-      </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', borderTop: `1px solid ${colors.border}` }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '13px', fontWeight: '600', color: colors.text }}>{committedTrip.dates_from}</div>
-          <div style={{ fontSize: '11px', color: colors.textMuted }}>Departure</div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '13px', fontWeight: '600', color: colors.text }}>{committedTrip.dates_to}</div>
-          <div style={{ fontSize: '11px', color: colors.textMuted }}>Return</div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '13px', fontWeight: '600', color: colors.cyan }}>{committedTrip.p1_city} → {committedTrip.p2_city}</div>
-          <div style={{ fontSize: '11px', color: colors.textMuted }}>Route</div>
-        </div>
-      </div>
-    </div>
-  )
-})()}
 
             {!coupleLoading && !partnerProfile && (
               <button 
