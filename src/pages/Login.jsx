@@ -34,7 +34,8 @@ async function sendMagicLink() {
     setError('')
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: true, emailRedirectTo: undefined }
+      type: 'email',
+      options: { shouldCreateUser: true, emailRedirectTo: null }
     })
     if (error) {
       setError(error.message)
