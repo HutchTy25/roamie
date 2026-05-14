@@ -37,6 +37,10 @@ export default function Orbit({ session }) {
 const [newMoonLabel, setNewMoonLabel] = useState('')
 const [partnerOnline, setPartnerOnline] = useState(false)
 const [hasCommittedTrip, setHasCommittedTrip] = useState(false)
+const [committedTripId, setCommittedTripId] = useState(null)
+const [activities, setActivities] = useState([])
+const [showAddActivity, setShowAddActivity] = useState(false)
+const [newActivityLabel, setNewActivityLabel] = useState('')
 
   useEffect(() => {
     if (!session) return
@@ -82,9 +86,22 @@ useEffect(() => {
     })
     .subscribe()
 
+  const activitySub = supabase
+    .channel('activities-changes')
+    .on('postgres_changes', {
+      event: 'INSERT',
+      schema: 'public',
+      table: 'activities',
+      filter: `couple_id=eq.${coupleId}`
+    }, (payload) => {
+      setActivities(prev => [...prev, payload.new])
+    })
+    .subscribe()
+
   return () => {
     supabase.removeChannel(planetSub)
     supabase.removeChannel(moonSub)
+    supabase.removeChannel(activitySub)
   }
 }, [coupleId])
 
@@ -155,7 +172,16 @@ useEffect(() => {
         .eq('couple_id', profile.couple_id)
         .eq('committed', true)
         .limit(1)
-      if (committedTrips?.length > 0) setHasCommittedTrip(true)
+      if (committedTrips?.length > 0) {
+        setHasCommittedTrip(true)
+        setCommittedTripId(committedTrips[0].id)
+        const { data: activitiesData } = await supabase
+          .from('activities')
+          .select('*')
+          .eq('couple_id', profile.couple_id)
+          .order('created_at', { ascending: true })
+        if (activitiesData) setActivities(activitiesData)
+      }
     } catch (e) {
       console.error('Orbit fetch error:', e)
     } finally {
@@ -213,6 +239,31 @@ useEffect(() => {
   }
 }
 
+  async function addActivity() {
+    if (!newActivityLabel.trim() || !coupleId) return
+    setAdding(true)
+    try {
+      const { data, error } = await supabase
+        .from('activities')
+        .insert({
+          couple_id: coupleId,
+          trip_id: committedTripId,
+          label: newActivityLabel.trim(),
+          added_by: session.user.id,
+        })
+        .select()
+        .single()
+      if (error) throw error
+      setActivities(prev => [...prev, data])
+      setNewActivityLabel('')
+      setShowAddActivity(false)
+    } catch (e) {
+      console.error('Add activity error:', e)
+    } finally {
+      setAdding(false)
+    }
+  }
+
   const visualPlanets = planets.map((p, i) => ({
     ...p,
     texture: planetColors[i % planetColors.length],
@@ -229,7 +280,24 @@ useEffect(() => {
   )
 
   if (!coupleId) return (
-    <div style={{ minHeight: '100vh', background: '#050505', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '2rem', textAlign: 'center' }}>
+    <div style={{ minHeight: '100vh', background: '#050505', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '2rem', textAlign: 'center', position: 'relative' }}>
+      <button
+        onClick={() => navigate('/dashboard')}
+        style={{
+          position: 'absolute', top: '24px', left: '24px',
+          height: '40px', borderRadius: '12px',
+          display: 'flex', alignItems: 'center', gap: '6px',
+          padding: '0 14px',
+          background: 'rgba(255,255,255,0.05)',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          cursor: 'pointer',
+          color: 'rgba(255,255,255,0.7)',
+          fontSize: '13px',
+        }}
+      >
+        ← Dashboard
+      </button>
       <div style={{ fontSize: '3rem' }}>🪐</div>
       <div style={{ fontSize: '20px', fontWeight: '600', color: THEME.text }}>Your Galaxy Awaits</div>
       <div style={{ fontSize: '14px', color: THEME.muted, maxWidth: '280px', lineHeight: 1.6 }}>
@@ -348,6 +416,46 @@ useEffect(() => {
           }} />
         )}
 
+        {/* Activity Bubbles */}
+        {hasCommittedTrip && activities.map((activity, i) => {
+          const angle = (i * (360 / Math.max(activities.length, 1))) * (Math.PI / 180)
+          const x = Math.cos(angle) * 120
+          const y = Math.sin(angle) * 120
+          const color = i % 2 === 0 ? THEME.cyan : THEME.accent
+          return (
+            <div key={activity.id} style={{
+              position: 'absolute',
+              left: `calc(50% + ${x}px - 5px)`,
+              top: `calc(50% + ${y}px - 5px)`,
+              zIndex: 15,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px',
+              pointerEvents: 'none',
+            }}>
+              <div style={{
+                width: 10, height: 10,
+                borderRadius: '50%',
+                background: color,
+                boxShadow: `0 0 8px ${color}, 0 0 16px ${color}50`,
+              }} />
+              <div style={{
+                fontSize: '9px',
+                color: color,
+                whiteSpace: 'nowrap',
+                maxWidth: '64px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                textAlign: 'center',
+                textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+              }}>
+                {activity.label}
+              </div>
+            </div>
+          )
+        })}
+
         {/* Sun */}
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
@@ -456,7 +564,7 @@ useEffect(() => {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => setShowAddPlanet(true)}
+          onClick={() => hasCommittedTrip ? setShowAddActivity(true) : setShowAddPlanet(true)}
           style={{
             display: 'flex', alignItems: 'center', gap: '8px',
             padding: '12px 24px', borderRadius: '100px',
@@ -470,6 +578,68 @@ useEffect(() => {
           {hasCommittedTrip ? '✈️ Plan your trip' : 'Add Trip Memory'}
         </motion.button>
       </div>
+
+      {/* Add Activity Modal */}
+      <AnimatePresence>
+        {showAddActivity && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowAddActivity(false)}
+            style={{ position: 'absolute', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
+          >
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              onClick={e => e.stopPropagation()}
+              style={{ width: '100%', maxWidth: '360px', borderRadius: '24px', padding: '24px', background: 'rgba(25,25,30,0.95)', border: `1px solid ${THEME.border}` }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: '600', color: THEME.text, margin: 0 }}>Add an activity</h2>
+                <button onClick={() => setShowAddActivity(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                  <X size={20} color="rgba(255,255,255,0.5)" />
+                </button>
+              </div>
+              <p style={{ fontSize: '13px', color: THEME.muted, marginBottom: '16px' }}>
+                Ideas, bookings, or things to do on your trip
+              </p>
+              <input
+                type="text"
+                placeholder="e.g. Book Airbnb, try local food, day hike..."
+                value={newActivityLabel}
+                onChange={e => setNewActivityLabel(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addActivity()}
+                autoFocus
+                style={{
+                  width: '100%', padding: '12px 16px',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: `1px solid ${THEME.border}`,
+                  borderRadius: '12px', color: THEME.text,
+                  fontSize: '14px', outline: 'none',
+                  marginBottom: '16px', fontFamily: 'Inter, sans-serif',
+                  boxSizing: 'border-box',
+                }}
+              />
+              <button
+                onClick={addActivity}
+                disabled={adding || !newActivityLabel.trim()}
+                style={{
+                  width: '100%', padding: '14px',
+                  background: `linear-gradient(135deg, ${THEME.cyan}, ${THEME.primary})`,
+                  border: 'none', borderRadius: '100px',
+                  color: '#fff', fontSize: '14px', fontWeight: '600',
+                  cursor: adding ? 'wait' : 'pointer',
+                  opacity: !newActivityLabel.trim() ? 0.4 : 1,
+                }}
+              >
+                {adding ? 'Adding...' : 'Add Activity'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Add Planet Modal */}
       <AnimatePresence>

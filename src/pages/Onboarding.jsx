@@ -117,6 +117,7 @@ navigate('/dashboard')
       .from('profiles')
       .update({ home_city: 'skip' })
       .eq('id', session.user.id)
+    await onComplete()
     navigate('/dashboard')
   }
 
