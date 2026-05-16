@@ -1,7 +1,7 @@
 const AFFILIATE_IDS = {
   travelpayouts: '526993',
   viator: 'P00300467',
-  wise: 'YOUR_WISE_ID',
+  wise: '',
 }
 
 export function generateAffiliateLink(type, params = {}) {

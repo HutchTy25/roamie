@@ -354,29 +354,30 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
           padding: '0 8px'
         }}>
           {/* Memphis location */}
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ 
-              width: '52px', 
-              height: '52px', 
-              borderRadius: '16px', 
+          <div style={{ width: '85px', textAlign: 'center', flexShrink: 0 }}>
+            <div style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '16px',
               background: colors.cardSolid,
               border: `1px solid ${colors.border}`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: '8px'
+              marginBottom: '8px',
+              margin: '0 auto 8px',
             }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={colors.cyan} strokeWidth="2">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
                 <circle cx="12" cy="10" r="3"/>
               </svg>
             </div>
-            <div style={{ fontSize: '14px', fontWeight: '600', color: colors.text }}>
-  {myProfile?.home_city && myProfile.home_city !== 'skip' ? myProfile.home_city : myName}
-</div>
-<div style={{ fontSize: '11px', color: colors.textMuted }}>
-  {myProfile?.home_iata || ''}
-</div>
+            <div style={{ fontSize: '14px', fontWeight: '600', color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {myProfile?.home_city && myProfile.home_city !== 'skip' ? myProfile.home_city : myName}
+            </div>
+            <div style={{ fontSize: '11px', color: colors.textMuted }}>
+              {myProfile?.home_iata || ''}
+            </div>
           </div>
 
           {/* Connection line with distance */}
@@ -406,30 +407,30 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
             </div>
           </div>
 
-          {/* Manchester location */}
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ 
-              width: '52px', 
-              height: '52px', 
-              borderRadius: '16px', 
+          {/* Partner location */}
+          <div style={{ width: '85px', textAlign: 'center', flexShrink: 0 }}>
+            <div style={{
+              width: '52px',
+              height: '52px',
+              borderRadius: '16px',
               background: colors.cardSolid,
               border: `1px solid ${colors.border}`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginBottom: '8px'
+              margin: '0 auto 8px',
             }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={colors.pink} strokeWidth="2">
                 <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
                 <circle cx="12" cy="10" r="3"/>
               </svg>
             </div>
-           <div style={{ fontSize: '14px', fontWeight: '600', color: colors.text }}>
-  {partnerProfile?.home_city && partnerProfile.home_city !== 'skip' ? partnerProfile.home_city : partnerName || 'Partner'}
-</div>
-<div style={{ fontSize: '11px', color: colors.textMuted }}>
-  {partnerProfile?.home_iata || ''}
-</div> 
+            <div style={{ fontSize: '14px', fontWeight: '600', color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {partnerProfile?.home_city && partnerProfile.home_city !== 'skip' ? partnerProfile.home_city : partnerName || 'Partner'}
+            </div>
+            <div style={{ fontSize: '11px', color: colors.textMuted }}>
+              {partnerProfile?.home_iata || ''}
+            </div>
           </div>
         </div>
       </div>

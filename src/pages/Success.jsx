@@ -6,7 +6,6 @@ export default function Success() {
   const [searchParams] = useSearchParams()
   const [verified, setVerified] = useState(false)
   const sessionId = searchParams.get('session_id')
-  console.log('Session ID:', sessionId)
 
   useEffect(() => {
     if (!sessionId) { navigate('/'); return }

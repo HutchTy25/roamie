@@ -241,16 +241,13 @@ async function saveTripToSupabase() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile } = await supabase
         .from('profiles')
         .select('couple_id')
         .eq('id', session.user.id)
         .single()
-      console.log('Profile query result:', { profile, profileError })
-      console.log('couple_id being saved:', profile?.couple_id ?? null)
       const activeDestination = allCards[activeCard]
-      console.log('Saving activeDestination:', activeDestination)
-      const { data: insertData, error: insertError } = await supabase.from('trips').insert({
+      await supabase.from('trips').insert({
         user_id: session.user.id,
         couple_id: profile?.couple_id || null,
         p1_city: data.p1.city,
@@ -273,7 +270,6 @@ async function saveTripToSupabase() {
         destinations: [activeDestination],
         stretch_goal: result.stretch_goal,
       })
-      console.log('Supabase insert response:', { data: insertData, error: insertError })
       setTripSaved(true)
     } catch (e) {
       console.error('Save trip error:', e)
@@ -583,10 +579,6 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
     }
   }
 
-  async function fetchTripBasics() {
-  if (!dest.trip_basics) return
-  setTripBasics(dest.trip_basics)
-}
 
   async function shareTrip() {
     const currentDest = allCards[activeCard]

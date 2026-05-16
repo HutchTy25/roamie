@@ -76,7 +76,7 @@ useEffect(() => {
      if (data.matches?.length > 0) {
   setSuggestions(data.matches)
   // Only auto-confirm if exact match
-  if (data.matches[0]?.city === query.toLowerCase()) {
+  if (data.matches[0]?.city === homeCity.toLowerCase()) {
     setHomeIata(data.matches[0].iata)
     setIataFound(true)
   }
