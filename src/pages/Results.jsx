@@ -246,6 +246,7 @@ async function saveTripToSupabase() {
         .select('couple_id')
         .eq('id', session.user.id)
         .single()
+      const activeDestination = allCards[activeCard]
       await supabase.from('trips').insert({
         user_id: session.user.id,
         couple_id: profile?.couple_id || null,
@@ -261,7 +262,12 @@ async function saveTripToSupabase() {
         routing: data.routing,
         accommodation: data.accommodation,
         region: data.region,
-        destinations: result.destinations,
+        destination_name: activeDestination.name,
+        p1_cost: activeDestination.p1_cost,
+        p2_cost: activeDestination.p2_cost,
+        country_emoji: activeDestination.country_emoji,
+        tagline: activeDestination.tagline,
+        destinations: [activeDestination],
         stretch_goal: result.stretch_goal,
       })
       setTripSaved(true)

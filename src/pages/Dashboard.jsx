@@ -115,6 +115,15 @@ if (profileResult.data) {
     }
   }
 
+  const CURR_SYMBOLS = {
+    USD: '$', GBP: '£', EUR: '€', CAD: 'C$', AUD: 'A$',
+    NZD: 'NZ$', JPY: '¥', CNY: '¥', KRW: '₩', PHP: '₱',
+    IDR: 'Rp', MYR: 'RM', THB: '฿', VND: '₫', SGD: 'S$',
+    INR: '₹', PKR: '₨', BDT: '৳', NGN: '₦', GHS: 'GH₵',
+    KES: 'KSh', ZAR: 'R', EGP: 'E£', AED: 'AED', SAR: '﷼',
+    BRL: 'R$', MXN: 'MX$', COP: 'COL$', ARS: 'AR$', CLP: 'CL$',
+  }
+
   const upcomingTrip = trips.find(t => t.dates_from && new Date(t.dates_from) > new Date())
   const daysUntil = upcomingTrip
     ? Math.ceil((new Date(upcomingTrip.dates_from) - new Date()) / (1000 * 60 * 60 * 24))
@@ -445,7 +454,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
           {daysUntilCommitted > 0 ? 'days until' : 'trip time!'}
         </div>
         <div style={{ fontSize: '18px', fontWeight: '600', color: colors.pink, marginTop: '8px' }}>
-          {committedTrip.destinations?.[0]?.name || `${committedTrip.p1_city} → ${committedTrip.p2_city}`}
+          {committedTrip.country_emoji} {committedTrip.destination_name || `${committedTrip.p1_city} → ${committedTrip.p2_city}`}
         </div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', borderTop: `1px solid ${colors.border}` }}>
@@ -765,51 +774,72 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
                   opacity: 0 
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                  <div>
-                    <div style={{ fontSize: '15px', fontWeight: '500', color: colors.text, marginBottom: '4px' }}>
-                      {trip.p1_city === trip.p2_city ? `${trip.p1_city} · Same city` : `${trip.p1_city} → ${trip.p2_city}`}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '17px', fontWeight: '600', color: colors.text, marginBottom: '4px' }}>
+                      {trip.country_emoji} {trip.destination_name || `${trip.p1_city} → ${trip.p2_city}`}
                     </div>
-                    <div style={{ fontSize: '12px', color: colors.textMuted }}>
+                    {trip.tagline && (
+                      <div style={{ fontSize: '12px', color: colors.textMuted, lineHeight: '1.5', marginBottom: '4px' }}>
+                        {trip.tagline}
+                      </div>
+                    )}
+                    <div style={{ fontSize: '11px', color: colors.textMuted }}>
                       {trip.dates_from} · {trip.vibes?.join(', ')}
                     </div>
                   </div>
-                  <button 
-                    onClick={() => deleteTrip(trip.id)} 
-                    style={{ 
-                      background: 'none', 
-                      border: 'none', 
-                      color: colors.textMuted, 
-                      cursor: 'pointer', 
-                      fontSize: '20px', 
+                  <button
+                    onClick={() => deleteTrip(trip.id)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: colors.textMuted,
+                      cursor: 'pointer',
+                      fontSize: '20px',
                       padding: '0',
-                      lineHeight: 1
+                      lineHeight: 1,
+                      flexShrink: 0,
+                      marginLeft: '8px',
                     }}
                   >
                     ×
                   </button>
                 </div>
-                
-                {trip.destinations?.slice(0, 2).map(dest => (
-                  <div 
-                    key={dest.name} 
-                    style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center', 
-                      padding: '10px 12px', 
-                      background: colors.cardSolid, 
-                      borderRadius: '10px', 
-                      marginBottom: '6px', 
-                      fontSize: '13px' 
-                    }}
-                  >
-                    <span style={{ color: colors.text }}>{dest.country_emoji} {dest.name}</span>
-                    <span style={{ color: colors.pink, fontSize: '12px', fontWeight: '500' }}>
-                      {trip.p1_currency === 'USD' ? '$' : trip.p1_currency}{dest.p1_cost?.toLocaleString()}
-                    </span>
+
+                {(trip.p1_cost != null || trip.p2_cost != null) && (
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                    {trip.p1_cost != null && (
+                      <div style={{
+                        flex: 1,
+                        background: 'rgba(244,114,182,0.1)',
+                        border: '1px solid rgba(244,114,182,0.25)',
+                        borderRadius: '10px',
+                        padding: '8px 12px',
+                        fontSize: '12px',
+                      }}>
+                        <span style={{ color: colors.textMuted, marginRight: '4px' }}>P1</span>
+                        <span style={{ color: colors.pink, fontWeight: '600', fontSize: '14px' }}>
+                          {CURR_SYMBOLS[trip.p1_currency] || trip.p1_currency}{trip.p1_cost?.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                    {trip.p2_cost != null && (
+                      <div style={{
+                        flex: 1,
+                        background: 'rgba(124,106,239,0.1)',
+                        border: '1px solid rgba(124,106,239,0.25)',
+                        borderRadius: '10px',
+                        padding: '8px 12px',
+                        fontSize: '12px',
+                      }}>
+                        <span style={{ color: colors.textMuted, marginRight: '4px' }}>P2</span>
+                        <span style={{ color: colors.primary, fontWeight: '600', fontSize: '14px' }}>
+                          {CURR_SYMBOLS[trip.p2_currency] || trip.p2_currency}{trip.p2_cost?.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                ))}
+                )}
                 
                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
   <button
