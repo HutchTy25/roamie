@@ -100,7 +100,7 @@ useEffect(() => {
       table: 'activities',
       filter: `couple_id=eq.${coupleId}`
     }, (payload) => {
-      setActivities(prev => [...prev, payload.new])
+      setActivities(prev => prev.some(a => a.id === payload.new.id) ? prev : [...prev, payload.new])
     })
     .subscribe()
 
