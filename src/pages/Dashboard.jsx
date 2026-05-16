@@ -53,38 +53,40 @@ useEffect(() => {
 
   async function fetchData() {
     try {
-      const [tripsResult, profileResult] = await Promise.all([
+      const { data: profile } = await supabase
+        .from('profiles').select('*').eq('id', session.user.id).single()
+
+      if (profile) {
+        setMyProfile(profile)
+        if (profile.avatar_url) setCustomAvatar(profile.avatar_url)
+      }
+
+      const tripQueries = [
         supabase.from('trips').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(10),
-        supabase.from('profiles').select('*').eq('id', session.user.id).single()
-      ])
-      if (tripsResult.data) setTrips(tripsResult.data)
-if (profileResult.data) {
-  setMyProfile(profileResult.data)
-  if (profileResult.data?.couple_id) {
-  const { data: partnerTrips } = await supabase
-    .from('trips')
-    .select('*')
-    .eq('couple_id', profileResult.data.couple_id)
-    .order('created_at', { ascending: false })
-    .limit(10)
-  if (partnerTrips) setTrips(prev => {
-  const ids = new Set(prev.map(t => t.id))
-  return [...prev, ...partnerTrips.filter(t => !ids.has(t.id))]
-})
-}
-  if (profileResult.data.avatar_url) setCustomAvatar(profileResult.data.avatar_url)
-  if (profileResult.data.couple_id) {
-    const { data: couple } = await supabase
-          .from('couples').select('*').eq('id', profileResult.data.couple_id).single()
+      ]
+      if (profile?.couple_id) {
+        tripQueries.push(
+          supabase.from('trips').select('*').eq('couple_id', profile.couple_id).order('created_at', { ascending: false }).limit(10)
+        )
+      }
+
+      const tripResults = await Promise.all(tripQueries)
+      const allTrips = tripResults.flatMap(r => r.data ?? [])
+      const dedupedTrips = [...new Map(allTrips.map(t => [t.id, t])).values()]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      setTrips(dedupedTrips)
+
+      if (profile?.couple_id) {
+        const { data: couple } = await supabase
+          .from('couples').select('*').eq('id', profile.couple_id).single()
         if (couple?.status === 'connected') {
           const partnerId = couple.partner1_id === session.user.id ? couple.partner2_id : couple.partner1_id
           const { data: partner } = await supabase
             .from('profiles').select('*').eq('id', partnerId).single()
           setPartnerProfile(partner)
+        }
       }
-      }
-    }
-  } catch (e) {
+    } catch (e) {
       console.error('Fetch data error:', e)
     } finally {
       setLoading(false)
