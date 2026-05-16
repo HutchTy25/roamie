@@ -4,6 +4,43 @@ import { supabase } from '../supabase'
 
 const cleanDestName = (name) => name?.replace(/^[A-Z]{2,3} /, '') ?? name
 
+const getAmbientGlow = () => {
+  const hour = new Date().getHours()
+  if (hour >= 5 && hour < 8) {
+    return {
+      gradient: "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(251,146,60,0.25) 0%, rgba(244,114,182,0.15) 30%, rgba(251,146,60,0.08) 50%, transparent 70%)",
+      secondaryGlow: "radial-gradient(ellipse 60% 40% at 50% 5%, rgba(253,186,116,0.2) 0%, transparent 60%)",
+      pulse: true,
+    }
+  }
+  if (hour >= 8 && hour < 12) {
+    return {
+      gradient: "radial-gradient(ellipse 80% 50% at 50% 0%, rgba(253,224,71,0.18) 0%, rgba(251,191,36,0.1) 40%, transparent 70%)",
+      secondaryGlow: "radial-gradient(ellipse 50% 35% at 50% 5%, rgba(254,249,195,0.15) 0%, transparent 50%)",
+      pulse: false,
+    }
+  }
+  if (hour >= 12 && hour < 18) {
+    return {
+      gradient: "radial-gradient(ellipse 70% 40% at 50% 0%, rgba(148,163,184,0.06) 0%, transparent 60%)",
+      secondaryGlow: null,
+      pulse: false,
+    }
+  }
+  if (hour >= 18 && hour < 21) {
+    return {
+      gradient: "radial-gradient(ellipse 80% 55% at 50% 0%, rgba(124,106,239,0.3) 0%, rgba(139,92,246,0.15) 35%, rgba(124,106,239,0.05) 55%, transparent 75%)",
+      secondaryGlow: "radial-gradient(ellipse 60% 40% at 50% 5%, rgba(167,139,250,0.2) 0%, transparent 55%)",
+      pulse: true,
+    }
+  }
+  return {
+    gradient: "radial-gradient(ellipse 85% 60% at 50% 0%, rgba(30,27,75,0.6) 0%, rgba(49,46,129,0.3) 30%, rgba(30,27,75,0.15) 50%, transparent 75%)",
+    secondaryGlow: "radial-gradient(ellipse 50% 35% at 50% 8%, rgba(99,102,241,0.12) 0%, transparent 60%)",
+    pulse: true,
+  }
+}
+
 export default function Dashboard({ session }) {
   const navigate = useNavigate()
   const [trips, setTrips] = useState([])
@@ -14,6 +51,7 @@ export default function Dashboard({ session }) {
   const [customAvatar, setCustomAvatar] = useState(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [myProfile, setMyProfile] = useState(null)
+  const [ambientGlow, setAmbientGlow] = useState(getAmbientGlow())
 
   // Theme colors - Moonly aesthetic
   const colors = {
@@ -50,6 +88,11 @@ useEffect(() => {
       window.removeEventListener('focus', handleFocus)
     }
   }, [session])
+
+  useEffect(() => {
+    const interval = setInterval(() => setAmbientGlow(getAmbientGlow()), 60000)
+    return () => clearInterval(interval)
+  }, [])
 
   async function fetchData() {
     try {
@@ -159,10 +202,14 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
       position: 'relative',
       overflow: 'hidden'
     }}>
+      <div style={{ position: "fixed", inset: 0, background: ambientGlow.gradient, pointerEvents: "none", zIndex: 1, filter: "blur(1px)" }} />
+      {ambientGlow.secondaryGlow && <div style={{ position: "fixed", inset: 0, background: ambientGlow.secondaryGlow, pointerEvents: "none", zIndex: 1 }} />}
+      {ambientGlow.pulse && <div style={{ position: "fixed", inset: 0, background: ambientGlow.gradient, pointerEvents: "none", zIndex: 1, opacity: 0.3, animation: "pulse 4s ease-in-out infinite" }} />}
+
       {/* Global styles */}
       <style>{`
         @keyframes fadeSlideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes pulse { 0%,100%{opacity:0.6} 50%{opacity:1} }
+        @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.6} }
         @keyframes twinkle { 0%,100%{opacity:0.3} 50%{opacity:1} }
         @keyframes pulseGlow { 0%,100%{box-shadow: 0 0 20px rgba(124,106,239,0.3)} 50%{box-shadow: 0 0 40px rgba(124,106,239,0.5)} }
         .glass-card {
