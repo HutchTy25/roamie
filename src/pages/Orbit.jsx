@@ -260,7 +260,6 @@ useEffect(() => {
         .select()
         .single()
       if (error) throw error
-      setActivities(prev => [...prev, data])
       setNewActivityLabel('')
       setShowAddActivity(false)
     } catch (e) {
@@ -490,22 +489,6 @@ useEffect(() => {
                     background: color,
                     boxShadow: `0 0 8px ${color}, 0 0 16px ${color}50`,
                   }} />
-                  <div style={{
-                    position: 'absolute',
-                    top: '14px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    fontSize: '9px',
-                    color: color,
-                    whiteSpace: 'nowrap',
-                    maxWidth: '64px',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    textAlign: 'center',
-                    textShadow: '0 1px 4px rgba(0,0,0,0.8)',
-                  }}>
-                    {activity.label}
-                  </div>
                 </button>
               </div>
             </div>
