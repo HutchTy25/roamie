@@ -241,11 +241,13 @@ async function saveTripToSupabase() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('couple_id')
         .eq('id', session.user.id)
         .single()
+      console.log('Profile query result:', { profile, profileError })
+      console.log('couple_id being saved:', profile?.couple_id ?? null)
       const activeDestination = allCards[activeCard]
       console.log('Saving activeDestination:', activeDestination)
       const { data: insertData, error: insertError } = await supabase.from('trips').insert({

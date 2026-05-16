@@ -25,6 +25,7 @@ const orbitRadii = [140, 190, 230, 160, 210]
 const orbitDurations = [55, 75, 95, 45, 85]
 
 export default function Orbit({ session }) {
+  const navigate = useNavigate()
   const [planets, setPlanets] = useState([])
   const [coupleId, setCoupleId] = useState(null)
   const [loading, setLoading] = useState(true)
