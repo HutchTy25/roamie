@@ -247,7 +247,8 @@ async function saveTripToSupabase() {
         .eq('id', session.user.id)
         .single()
       const activeDestination = allCards[activeCard]
-      await supabase.from('trips').insert({
+      console.log('Saving activeDestination:', activeDestination)
+      const { data: insertData, error: insertError } = await supabase.from('trips').insert({
         user_id: session.user.id,
         couple_id: profile?.couple_id || null,
         p1_city: data.p1.city,
@@ -270,6 +271,7 @@ async function saveTripToSupabase() {
         destinations: [activeDestination],
         stretch_goal: result.stretch_goal,
       })
+      console.log('Supabase insert response:', { data: insertData, error: insertError })
       setTripSaved(true)
     } catch (e) {
       console.error('Save trip error:', e)
