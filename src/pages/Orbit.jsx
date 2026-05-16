@@ -277,8 +277,11 @@ useEffect(() => {
   }
 
   function activityAddedByName(addedById) {
-    if (addedById === session.user.id) return myProfile?.full_name?.split(' ')[0] || 'You'
-    return partnerProfile?.full_name?.split(' ')[0] || partnerName || 'Partner'
+    if (addedById === session.user.id) {
+      const meta = session.user.user_metadata
+      return meta?.full_name?.split(' ')[0] || meta?.name?.split(' ')[0] || 'You'
+    }
+    return partnerName || 'Partner'
   }
 
   const visualPlanets = planets.map((p, i) => ({
