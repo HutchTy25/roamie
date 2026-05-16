@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
+const cleanDestName = (name) => name?.replace(/^[A-Z]{2,3} /, '') ?? name
+
 export default function Dashboard({ session }) {
   const navigate = useNavigate()
   const [trips, setTrips] = useState([])
@@ -454,7 +456,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
           {daysUntilCommitted > 0 ? 'days until' : 'trip time!'}
         </div>
         <div style={{ fontSize: '18px', fontWeight: '600', color: colors.pink, marginTop: '8px' }}>
-          {committedTrip.country_emoji} {committedTrip.destination_name || `${committedTrip.p1_city} → ${committedTrip.p2_city}`}
+          {committedTrip.country_emoji} {cleanDestName(committedTrip.destination_name) || `${committedTrip.p1_city} → ${committedTrip.p2_city}`}
         </div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', borderTop: `1px solid ${colors.border}` }}>
@@ -777,7 +779,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '17px', fontWeight: '600', color: colors.text, marginBottom: '4px' }}>
-                      {trip.country_emoji} {trip.destination_name || `${trip.p1_city} → ${trip.p2_city}`}
+                      {trip.country_emoji} {cleanDestName(trip.destination_name) || `${trip.p1_city} → ${trip.p2_city}`}
                     </div>
                     {trip.tagline && (
                       <div style={{ fontSize: '12px', color: colors.textMuted, lineHeight: '1.5', marginBottom: '4px' }}>
