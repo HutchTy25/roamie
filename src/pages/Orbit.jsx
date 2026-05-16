@@ -24,6 +24,10 @@ const planetColors = [
 const orbitRadii = [140, 190, 230, 160, 210]
 const orbitDurations = [55, 75, 95, 45, 85]
 
+const activityOrbitRadii = [82, 97, 88, 104, 78]
+const activityOrbitDurations = [18, 22, 15, 25, 20]
+const activityColors = [THEME.cyan, THEME.accent, THEME.primary]
+
 export default function Orbit({ session }) {
   const navigate = useNavigate()
   const [planets, setPlanets] = useState([])
@@ -42,6 +46,7 @@ const [committedTripId, setCommittedTripId] = useState(null)
 const [activities, setActivities] = useState([])
 const [showAddActivity, setShowAddActivity] = useState(false)
 const [newActivityLabel, setNewActivityLabel] = useState('')
+const [selectedActivity, setSelectedActivity] = useState(null)
 
   useEffect(() => {
     if (!session) return
@@ -265,6 +270,17 @@ useEffect(() => {
     }
   }
 
+  async function deleteActivity(activity) {
+    await supabase.from('activities').delete().eq('id', activity.id)
+    setActivities(prev => prev.filter(a => a.id !== activity.id))
+    setSelectedActivity(null)
+  }
+
+  function activityAddedByName(addedById) {
+    if (addedById === session.user.id) return myProfile?.full_name?.split(' ')[0] || 'You'
+    return partnerProfile?.full_name?.split(' ')[0] || partnerName || 'Partner'
+  }
+
   const visualPlanets = planets.map((p, i) => ({
     ...p,
     texture: planetColors[i % planetColors.length],
@@ -417,41 +433,77 @@ useEffect(() => {
           }} />
         )}
 
+        {/* Activity Orbit Paths */}
+        {hasCommittedTrip && activities.map((activity, i) => {
+          const radius = activityOrbitRadii[i % activityOrbitRadii.length]
+          return (
+            <div key={`activity-orbit-${activity.id}`} style={{
+              position: 'absolute',
+              width: radius * 2,
+              height: radius * 2,
+              borderRadius: '50%',
+              border: '1px solid rgba(255,255,255,0.04)',
+              pointerEvents: 'none',
+            }} />
+          )
+        })}
+
         {/* Activity Bubbles */}
         {hasCommittedTrip && activities.map((activity, i) => {
-          const angle = (i * (360 / Math.max(activities.length, 1))) * (Math.PI / 180)
-          const x = Math.cos(angle) * 120
-          const y = Math.sin(angle) * 120
-          const color = i % 2 === 0 ? THEME.cyan : THEME.accent
+          const radius = activityOrbitRadii[i % activityOrbitRadii.length]
+          const duration = activityOrbitDurations[i % activityOrbitDurations.length]
+          const color = activityColors[i % activityColors.length]
+          const startAngle = (i * 137) % 360
+          const delay = `${-(startAngle / 360) * duration}s`
           return (
             <div key={activity.id} style={{
               position: 'absolute',
-              left: `calc(50% + ${x}px - 5px)`,
-              top: `calc(50% + ${y}px - 5px)`,
-              zIndex: 15,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '4px',
+              width: radius * 2,
+              height: radius * 2,
+              animation: `orbit ${duration}s linear infinite`,
+              animationDelay: delay,
               pointerEvents: 'none',
+              zIndex: 15,
             }}>
               <div style={{
+                position: 'absolute',
+                right: -5, top: '50%',
                 width: 10, height: 10,
-                borderRadius: '50%',
-                background: color,
-                boxShadow: `0 0 8px ${color}, 0 0 16px ${color}50`,
-              }} />
-              <div style={{
-                fontSize: '9px',
-                color: color,
-                whiteSpace: 'nowrap',
-                maxWidth: '64px',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                textAlign: 'center',
-                textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+                animation: `counter-orbit ${duration}s linear infinite`,
+                animationDelay: delay,
               }}>
-                {activity.label}
+                <button
+                  onClick={() => setSelectedActivity({ ...activity, color })}
+                  style={{
+                    all: 'unset',
+                    display: 'block',
+                    cursor: 'pointer',
+                    pointerEvents: 'auto',
+                  }}
+                >
+                  <div style={{
+                    width: 10, height: 10,
+                    borderRadius: '50%',
+                    background: color,
+                    boxShadow: `0 0 8px ${color}, 0 0 16px ${color}50`,
+                  }} />
+                  <div style={{
+                    position: 'absolute',
+                    top: '14px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontSize: '9px',
+                    color: color,
+                    whiteSpace: 'nowrap',
+                    maxWidth: '64px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    textAlign: 'center',
+                    textShadow: '0 1px 4px rgba(0,0,0,0.8)',
+                  }}>
+                    {activity.label}
+                  </div>
+                </button>
               </div>
             </div>
           )
@@ -761,6 +813,56 @@ useEffect(() => {
     </motion.div>
   )}
 </AnimatePresence>
+
+      {/* Activity Modal */}
+      <AnimatePresence>
+        {selectedActivity && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedActivity(null)}
+            style={{ position: 'absolute', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)' }}
+          >
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              onClick={e => e.stopPropagation()}
+              style={{ width: '100%', maxWidth: '360px', borderRadius: '24px', padding: '24px', background: 'rgba(25,25,30,0.95)', border: `1px solid ${selectedActivity.color}33`, boxShadow: `0 0 80px ${selectedActivity.color}40` }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+                <div style={{
+                  width: 64, height: 64, borderRadius: '50%',
+                  background: `radial-gradient(circle at 35% 35%, ${selectedActivity.color}cc, ${selectedActivity.color}33)`,
+                  boxShadow: `0 0 40px ${selectedActivity.color}60`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <div style={{ width: 20, height: 20, borderRadius: '50%', background: selectedActivity.color, boxShadow: `0 0 12px ${selectedActivity.color}` }} />
+                </div>
+              </div>
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: THEME.text, textAlign: 'center', marginBottom: '4px' }}>
+                {selectedActivity.label}
+              </h2>
+              <p style={{ fontSize: '12px', color: THEME.muted, textAlign: 'center', marginBottom: '20px' }}>
+                Added by {activityAddedByName(selectedActivity.added_by)}
+              </p>
+              <button
+                onClick={() => deleteActivity(selectedActivity)}
+                style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,50,50,0.1)', border: '1px solid rgba(255,50,50,0.2)', color: '#FF6B6B', fontSize: '13px', cursor: 'pointer', marginBottom: '8px' }}
+              >
+                Remove activity
+              </button>
+              <button
+                onClick={() => setSelectedActivity(null)}
+                style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: THEME.muted, fontSize: '13px', cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Planet Modal */}
       <AnimatePresence>
