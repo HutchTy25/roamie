@@ -980,20 +980,16 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
             </div>
           )}
 
-          {/* Expand/unlock button */}
-          {!isStretch && (
+          {/* Expand button — pro users only */}
+          {!isStretch && isPro && (
             <button
               onClick={() => {
-                if (isPro) {
-                  setExpanded(e => !e)
-                  if (!expanded && dest.trip_basics) setTripBasics(dest.trip_basics)
-                } else {
-                  setPaywallHit(true)
-                }
+                setExpanded(e => !e)
+                if (!expanded && dest.trip_basics) setTripBasics(dest.trip_basics)
               }}
               style={{
-                background: isPro ? 'rgba(255,255,255,0.05)' : `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`,
-                border: isPro ? `1px solid ${THEME.border}` : 'none',
+                background: 'rgba(255,255,255,0.05)',
+                border: `1px solid ${THEME.border}`,
                 borderRadius: '100px',
                 padding: '12px 20px',
                 color: '#fff',
@@ -1004,10 +1000,9 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
                 transition: 'all 0.2s',
                 display: 'block',
                 width: '100%',
-                boxShadow: isPro ? 'none' : `0 0 20px rgba(244,114,182,0.3)`,
               }}
             >
-              {isPro ? (expanded ? 'Less details' : 'More details') : 'Unlock with Pro'}
+              {expanded ? 'Less details' : 'More details'}
             </button>
           )}
 
