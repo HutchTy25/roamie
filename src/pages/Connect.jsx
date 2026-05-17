@@ -124,29 +124,24 @@ export default function Connect({ session }) {
     if (!window.confirm('Are you sure you want to disconnect from your partner?')) return
     setLoading(true)
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('couple_id')
-        .eq('id', session.user.id)
-        .single()
-
-      if (profile?.couple_id) {
-        await supabase
-          .from('profiles')
-          .update({ couple_id: null })
-          .eq('couple_id', profile.couple_id)
-
-        await supabase
-          .from('couples')
-          .delete()
-          .eq('id', profile.couple_id)
+      const res = await fetch('https://roamie-61ib.onrender.com/api/disconnect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+        },
+        body: JSON.stringify({ userId: session.user.id }),
+      })
+      if (!res.ok) {
+        const { error } = await res.json()
+        throw new Error(error || 'Disconnect failed')
       }
-
       setCoupled(false)
       setPartnerName('')
       setInviteCode('')
     } catch (e) {
       console.error('Disconnect error:', e)
+      setError(e.message)
     } finally {
       setLoading(false)
     }

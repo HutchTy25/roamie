@@ -52,6 +52,7 @@ export default function Dashboard({ session }) {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [myProfile, setMyProfile] = useState(null)
   const [ambientGlow, setAmbientGlow] = useState(getAmbientGlow())
+  const [partnerWeather, setPartnerWeather] = useState(null)
 
   // Theme colors - Moonly aesthetic
   const colors = {
@@ -127,6 +128,7 @@ useEffect(() => {
           const { data: partner } = await supabase
             .from('profiles').select('*').eq('id', partnerId).single()
           setPartnerProfile(partner)
+          fetchPartnerWeather(partner)
         }
       }
     } catch (e) {
@@ -134,6 +136,17 @@ useEffect(() => {
     } finally {
       setLoading(false)
       setCoupleLoading(false)
+    }
+  }
+
+  async function fetchPartnerWeather(profile) {
+    if (!profile?.home_city) return
+    try {
+      const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(profile.home_city)}&appid=${import.meta.env.VITE_OPENWEATHER_KEY}&units=metric`)
+      const data = await res.json()
+      if (data.cod === 200) setPartnerWeather(data)
+    } catch (e) {
+      console.error('Weather fetch error:', e)
     }
   }
 
@@ -419,9 +432,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
                 <circle cx="12" cy="10" r="3"/>
               </svg>
             </div>
-            <div style={{ fontSize: '14px', fontWeight: '600', color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {myProfile?.home_city && myProfile.home_city !== 'skip' ? myProfile.home_city : myName}
-            </div>
+            <div style={{ fontSize: '22px', lineHeight: 1 }}>🏠</div>
             <div style={{ fontSize: '11px', color: colors.textMuted }}>
               {myProfile?.home_iata || ''}
             </div>
@@ -472,9 +483,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
                 <circle cx="12" cy="10" r="3"/>
               </svg>
             </div>
-            <div style={{ fontSize: '14px', fontWeight: '600', color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {partnerProfile?.home_city && partnerProfile.home_city !== 'skip' ? partnerProfile.home_city : partnerName || 'Partner'}
-            </div>
+            <div style={{ fontSize: '22px', lineHeight: 1 }}>🧡</div>
             <div style={{ fontSize: '11px', color: colors.textMuted }}>
               {partnerProfile?.home_iata || ''}
             </div>
@@ -676,90 +685,55 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
               </div>
             </div>
 
-            {/* Love in Miles Card */}
-            <div className="glass-card" style={{ padding: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '600', color: colors.text, margin: 0 }}>Love in Miles</h3>
-                  <p style={{ fontSize: '13px', color: colors.textMuted, margin: '4px 0 0 0' }}>Conquered Distance</p>
+            {/* Partner Weather Card */}
+            {(() => {
+              const weatherCondition = () => {
+                if (!partnerWeather) return null
+                const id = partnerWeather.weather[0].id
+                const icon = partnerWeather.weather[0].icon
+                if (icon.includes('n')) return { label: 'Clear Night', emoji: '🌙', gradient: 'rgba(99,102,241,0.1)', iconBg: 'linear-gradient(135deg, #818CF8, #6366F1)', glow: 'rgba(99,102,241,0.4)' }
+                if (id >= 200 && id < 300) return { label: 'Stormy', emoji: '⛈️', gradient: 'rgba(99,102,241,0.12)', iconBg: 'linear-gradient(135deg, #6366F1, #4F46E5)', glow: 'rgba(99,102,241,0.4)' }
+                if (id >= 300 && id < 600) return { label: 'Rainy', emoji: '🌧️', gradient: 'rgba(96,165,250,0.12)', iconBg: 'linear-gradient(135deg, #60A5FA, #3B82F6)', glow: 'rgba(96,165,250,0.4)' }
+                if (id >= 600 && id < 700) return { label: 'Snowy', emoji: '❄️', gradient: 'rgba(186,230,253,0.12)', iconBg: 'linear-gradient(135deg, #E0F2FE, #BAE6FD)', glow: 'rgba(186,230,253,0.4)' }
+                if (id >= 700 && id < 800) return { label: 'Foggy', emoji: '🌫️', gradient: 'rgba(148,163,184,0.1)', iconBg: 'linear-gradient(135deg, #94A3B8, #64748B)', glow: 'rgba(148,163,184,0.3)' }
+                if (id === 800) return { label: 'Sunny', emoji: '☀️', gradient: 'rgba(251,191,36,0.15)', iconBg: 'linear-gradient(135deg, #FCD34D, #F59E0B)', glow: 'rgba(251,191,36,0.4)' }
+                return { label: 'Cloudy', emoji: '☁️', gradient: 'rgba(148,163,184,0.1)', iconBg: 'linear-gradient(135deg, #94A3B8, #64748B)', glow: 'rgba(148,163,184,0.3)' }
+              }
+              const wc = weatherCondition()
+              const partnerLocalTime = partnerWeather
+                ? new Date((partnerWeather.dt + partnerWeather.timezone) * 1000).toUTCString().match(/(\d+:\d+)/)?.[1]
+                : null
+              return partnerProfile ? (
+                <div className="glass-card" style={{ padding: '20px', marginBottom: '16px', position: 'relative', overflow: 'hidden' }}>
+                  {wc && <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse at 70% 20%, ${wc.gradient} 0%, transparent 50%)`, pointerEvents: 'none' }} />}
+                  <div style={{ position: 'relative', zIndex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                      <div>
+                        <p style={{ fontSize: '13px', color: colors.pink, fontWeight: '500', marginBottom: '4px' }}>{partnerName}'s weather</p>
+                        <h3 style={{ fontSize: '22px', fontWeight: '600', color: colors.text, margin: 0 }}>{partnerProfile.home_city}</h3>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '11px', color: colors.textMuted, marginBottom: '4px' }}>Local time</p>
+                        <p style={{ fontSize: '16px', fontWeight: '500', color: colors.text }}>{partnerLocalTime || '--:--'}</p>
+                      </div>
+                    </div>
+                    {wc ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                        <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: wc.iconBg, boxShadow: `0 0 20px ${wc.glow}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0 }}>
+                          {wc.emoji}
+                        </div>
+                        <div>
+                          <p style={{ fontSize: '16px', fontWeight: '500', color: colors.text, marginBottom: '2px' }}>{wc.label}</p>
+                          <p style={{ fontSize: '13px', color: colors.textMuted }}>{Math.round(partnerWeather.main.temp)}°C · feels like {Math.round(partnerWeather.main.feels_like)}°C</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: '13px', color: colors.textMuted }}>Loading weather...</p>
+                    )}
+                  </div>
                 </div>
-                <div style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '12px',
-                  background: colors.cardSolid,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={colors.pink} strokeWidth="1.5" style={{ transform: 'rotate(-45deg)' }}>
-                    <path d="M12 19l9-7-9-7v14zM3 12h9"/>
-                  </svg>
-                </div>
-              </div>
-
-              {/* Big miles number */}
-              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                <div style={{ 
-                  fontSize: '48px', 
-                  fontWeight: '700', 
-                  background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  letterSpacing: '-2px'
-                }}>
-                  {myProfile?.total_miles ? myProfile.total_miles.toLocaleString() : '0'}
-                </div>
-                <div style={{ fontSize: '13px', color: colors.textMuted }}>Total Miles Flown</div>
-              </div>
-
-              {/* Flight path visualization */}
-              <div style={{ 
-                background: colors.cardSolid, 
-                borderRadius: '12px', 
-                padding: '16px',
-                marginBottom: '20px',
-                position: 'relative'
-              }}>
-                <svg viewBox="0 0 300 60" style={{ width: '100%', height: '60px' }}>
-                  <path 
-                    d="M 20 50 Q 150 10 280 50" 
-                    fill="none" 
-                    stroke={colors.pink}
-                    strokeWidth="2"
-                    strokeDasharray="4 4"
-                    opacity="0.6"
-                  />
-                  <circle cx="20" cy="50" r="6" fill={colors.pink} />
-                  <circle cx="280" cy="50" r="6" fill={colors.cyan} />
-                </svg>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px' }}>
-                  <span style={{ fontSize: '12px', color: colors.textMuted }}>{myProfile?.home_iata || '—'}</span>
-<span style={{ fontSize: '12px', color: colors.textMuted }}>{partnerProfile?.home_iata || '—'}</span>
-                </div>
-              </div>
-
-              
-
-              {/* Stats row */}
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'center',
-                gap: '20px',
-                paddingTop: '16px',
-                borderTop: `1px solid ${colors.border}`
-              }}>
-                
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '18px', fontWeight: '600', color: colors.cyan }}>
-  {myProfile?.relationship_start_date 
-    ? `Since '${new Date(myProfile.relationship_start_date).getFullYear().toString().slice(2)}`
-    : '—'}
-</div>
-                  <div style={{ fontSize: '11px', color: colors.textMuted }}>Together</div>
-                </div>
-              </div>
-            </div>
+              ) : null
+            })()}
 
             {!coupleLoading && !partnerProfile && (
               <button 

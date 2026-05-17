@@ -11,6 +11,9 @@ import { resolve } from 'path'
 import Stripe from 'stripe'
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
+const ROUTE_CACHE_TTL = 30 * 60 * 1000
+const globalRouteCache = new Map()
+
 const app = express()
 app.use(cors({
   origin: [
@@ -650,6 +653,20 @@ app.post('/api/accept-invite', async (req, res) => {
     if (couple.partner2_id) return res.status(400).json({ error: 'Already connected' })
     if (couple.partner1_id === userId) return res.status(400).json({ error: 'Cannot connect with yourself' })
 
+    // If the accepter is already in an active couple, soft-delete that old couple first
+    const { data: accepterProfile } = await supabase
+      .from('profiles')
+      .select('couple_id')
+      .eq('id', userId)
+      .single()
+
+    if (accepterProfile?.couple_id) {
+      const oldCoupleId = accepterProfile.couple_id
+      await supabase.from('couples').update({ status: 'disconnected' }).eq('id', oldCoupleId)
+      await supabase.from('profiles').update({ couple_id: null }).eq('couple_id', oldCoupleId)
+      console.log(`Soft-deleted old couple ${oldCoupleId} for user ${userId} before new link`)
+    }
+
     // Link the couple
     const { error: updateError } = await supabase
       .from('couples')
@@ -665,6 +682,38 @@ app.post('/api/accept-invite', async (req, res) => {
     res.json({ success: true, couple_id: couple.id })
   } catch (err) {
     console.error('Accept invite error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.post('/api/disconnect', async (req, res) => {
+  try {
+    const { userId } = req.body
+    if (!userId) return res.status(400).json({ error: 'Missing userId' })
+
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_SERVICE_KEY
+    )
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('couple_id')
+      .eq('id', userId)
+      .single()
+
+    if (!profile?.couple_id) return res.status(400).json({ error: 'Not in a couple' })
+
+    const coupleId = profile.couple_id
+
+    await supabase.from('couples').update({ status: 'disconnected' }).eq('id', coupleId)
+    await supabase.from('profiles').update({ couple_id: null }).eq('couple_id', coupleId)
+
+    console.log(`Couple ${coupleId} soft-deleted by user ${userId}`)
+    res.json({ success: true })
+  } catch (err) {
+    console.error('Disconnect error:', err)
     res.status(500).json({ error: err.message })
   }
 })
@@ -759,6 +808,13 @@ app.post('/api/flight-prices', [
 
     console.log('Flight prices request:', { p1City, p2City, p1IATA, p2IATA, departDate, returnDate, routing })
 
+    const cacheKey = [p1IATA, p2IATA, destinations.slice().sort().join('|'), departDate, routing].join('::')
+    const cached = globalRouteCache.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < ROUTE_CACHE_TTL) {
+      console.log(`[cache hit] ${cacheKey}`)
+      return res.json(cached.data)
+    }
+
     const priceResults = {}
 
   const limit = pLimit(2)
@@ -813,6 +869,7 @@ app.post('/api/flight-prices', [
     }
   })))
     console.log('Final price results:', JSON.stringify(priceResults))
+    globalRouteCache.set(cacheKey, { data: priceResults, timestamp: Date.now() })
     res.json(priceResults)
 
   } catch (err) {
