@@ -22,6 +22,7 @@ export default function Success() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, userId })
       })
+      console.log('Verify response:', await res.clone().json())
       const data = await res.json()
       if (data.success) {
         localStorage.setItem('roamie_paid', 'true')

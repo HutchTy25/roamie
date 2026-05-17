@@ -247,6 +247,13 @@ export default function Results() {
   }, [loading])
 
   async function startCheckout(plan) {
+    if (!userId) {
+      localStorage.setItem('roamie_upgrade_intent', plan)
+      localStorage.setItem('roamie_last_result', JSON.stringify(result))
+      localStorage.setItem('roamie_last_data', JSON.stringify(data))
+      navigate('/login')
+      return
+    }
     try {
       localStorage.setItem('roamie_last_result', JSON.stringify(result))
       localStorage.setItem('roamie_last_data', JSON.stringify(data))
