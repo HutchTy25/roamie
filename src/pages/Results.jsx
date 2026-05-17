@@ -330,6 +330,13 @@ function handleTouchEnd(e) {
   }
 
 async function fetchRecommendations() {
+  const tripCount = parseInt(localStorage.getItem('roamie_trip_count') || '0', 10)
+  if (tripCount >= 3 && !userId && localStorage.getItem('roamie_paid') !== 'true') {
+    setPaywallHit(true)
+    setLoading(false)
+    return
+  }
+
   if (data.tripMode === 'visit') {
     await fetchVisitPrices()
     return
@@ -435,6 +442,7 @@ Return ONLY this JSON, no markdown, no explanation:
 
     const fullResult = JSON.parse(text2)
     setResult(fullResult)
+    localStorage.setItem('roamie_trip_count', String(parseInt(localStorage.getItem('roamie_trip_count') || '0', 10) + 1))
 
   } catch (e) {
     console.error('Error:', e)
@@ -494,6 +502,7 @@ Return ONLY this JSON, no markdown, no explanation:
         ],
         couple_summary: `Real flight prices for ${data.dates.from} to ${data.dates.to}`
       })
+      localStorage.setItem('roamie_trip_count', String(parseInt(localStorage.getItem('roamie_trip_count') || '0', 10) + 1))
     } catch (e) {
       console.error('Visit prices error:', e)
       setError(true)
