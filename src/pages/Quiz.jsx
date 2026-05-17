@@ -687,11 +687,6 @@ const [p2Iata, setP2Iata] = useState('')
               style={{ ...btnStyle, ...(!data.dates.from || !data.dates.to ? btnDisabledStyle : {}) }}
               disabled={!data.dates.from || !data.dates.to}
               onClick={() => {
-                const isPaid = localStorage.getItem('roamie_paid') === 'true'
-                const isBeta = new URLSearchParams(window.location.search).get('beta') === 'true'
-                const count = parseInt(localStorage.getItem('roamie_trip_count') || '0')
-                if (!isPaid && !isBeta && count >= 3) { navigate('/gate', { state: { data } }); return }
-                localStorage.setItem('roamie_trip_count', count + 1)
                 posthog.capture('generate_trip_clicked', { mode: 'visit', p1_city: data.p1.city, p2_city: data.p2.city })
                 navigate('/visit-results', { state: { data } })
               }}
@@ -912,11 +907,6 @@ const [p2Iata, setP2Iata] = useState('')
           style={{ ...btnStyle, ...(!data.dates.from || !data.dates.to ? btnDisabledStyle : {}) }}
           disabled={!data.dates.from || !data.dates.to}
           onClick={() => {
-            const isPaid = localStorage.getItem('roamie_paid') === 'true'
-            const isBeta = new URLSearchParams(window.location.search).get('beta') === 'true'
-            const count = parseInt(localStorage.getItem('roamie_trip_count') || '0')
-            if (!isPaid && !isBeta && count >= 3) { navigate('/gate', { state: { data } }); return }
-            localStorage.setItem('roamie_trip_count', count + 1)
             posthog.capture('generate_trip_clicked', { mode: data.tripMode, p1_city: data.p1.city, p2_city: data.p2.city, region: data.region, vibes: data.vibes })
             navigate('/results', { state: { data } })
           }}
