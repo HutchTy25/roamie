@@ -983,40 +983,17 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
           {/* Expand/unlock button */}
           {!isStretch && (
             <button
-              onClick={async () => {
-                const isPaid = localStorage.getItem('roamie_paid') === 'true'
-                if (isPaid) {
-  setExpanded(e => !e)
-  if (!expanded && dest.trip_basics) setTripBasics(dest.trip_basics)
-  return
-}
-
-                try {
-                  const res = await fetch('https://roamie-61ib.onrender.com/api/create-checkout', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      priceId: import.meta.env.VITE_STRIPE_PRICE_ONETIME,
-                      mode: 'payment',
-                    })
-                  })
-                  const stripeResponse = await res.json()
-                  if (stripeResponse.url) {
-                    localStorage.setItem('roamie_last_result', JSON.stringify(result))
-                    localStorage.setItem('roamie_last_data', JSON.stringify(data))
-                    window.location.href = stripeResponse.url
-                  }  
-                } catch (e) {
-                  console.error('Checkout error:', e)
+              onClick={() => {
+                if (isPro) {
+                  setExpanded(e => !e)
+                  if (!expanded && dest.trip_basics) setTripBasics(dest.trip_basics)
+                } else {
+                  setPaywallHit(true)
                 }
               }}
               style={{
-                background: localStorage.getItem('roamie_paid') === 'true'
-                  ? 'rgba(255,255,255,0.05)'
-                  : `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`,
-                border: localStorage.getItem('roamie_paid') === 'true'
-                  ? `1px solid ${THEME.border}`
-                  : 'none',
+                background: isPro ? 'rgba(255,255,255,0.05)' : `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`,
+                border: isPro ? `1px solid ${THEME.border}` : 'none',
                 borderRadius: '100px',
                 padding: '12px 20px',
                 color: '#fff',
@@ -1027,11 +1004,11 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
                 transition: 'all 0.2s',
                 display: 'block',
                 width: '100%',
-                boxShadow: localStorage.getItem('roamie_paid') !== 'true' ? `0 0 20px rgba(244,114,182,0.3)` : 'none',
+                boxShadow: isPro ? 'none' : `0 0 20px rgba(244,114,182,0.3)`,
               }}
             >
-              {expanded ? 'Less details' : localStorage.getItem('roamie_paid') === 'true' ? 'More details' : 'Unlock full breakdown — $3.99'}
-            </button>  
+              {isPro ? (expanded ? 'Less details' : 'More details') : 'Unlock with Pro'}
+            </button>
           )}
 
           {/* Expanded details */}
