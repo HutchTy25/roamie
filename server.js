@@ -221,6 +221,33 @@ function setCache(key, data) {
   }
 }
 
+async function checkProAccess(userId, supabase) {
+  if (!userId) return { allowed: true }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('couple_id, search_count')
+    .eq('id', userId)
+    .single()
+
+  if (!profile) return { allowed: true }
+
+  if (profile.couple_id) {
+    const { data: couple } = await supabase
+      .from('couples')
+      .select('is_pro')
+      .eq('id', profile.couple_id)
+      .single()
+    if (couple?.is_pro) return { allowed: true, reason: 'pro' }
+  }
+
+  const searchCount = profile.search_count || 0
+  if (searchCount >= 3) return { allowed: false, reason: 'limit_reached' }
+
+  await supabase.from('profiles').update({ search_count: searchCount + 1 }).eq('id', userId)
+  return { allowed: true, reason: 'trial' }
+}
+
 async function getFlightPrices(p1City, p2City, dates, destinations) {
   try {
     const p1IATA = getCityIATA(p1City)
@@ -300,6 +327,7 @@ app.post('/api/messages', [
   body('messages.*.content').isString().trim().isLength({ max: 50000 }),
   body('model').isString().trim(),
   body('max_tokens').isInt({ min: 1, max: 4000 }),
+  body('userId').isString().trim().optional(),
 ], async (req, res) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
@@ -307,8 +335,18 @@ app.post('/api/messages', [
   }
 
   try {
+    const { userId } = req.body
     const messages = req.body.messages || []
     const userMessage = messages[messages.length - 1]?.content || ''
+
+    if (userId) {
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+      const access = await checkProAccess(userId, supabase)
+      if (!access.allowed) {
+        return res.status(402).json({ error: 'upgrade_required', message: 'Upgrade to Roamie Pro to continue searching' })
+      }
+    }
 
     const p1CityMatch = userMessage.match(/Partner 1: Lives in ([^|]+)/)
     const p2CityMatch = userMessage.match(/Partner 2: Lives in ([^|]+)/)
@@ -440,8 +478,10 @@ app.post('/api/waitlist', [
   }
 })
 app.post('/api/create-checkout', [
-  body('priceId').isString().trim().notEmpty(),
+  body('plan').isIn(['monthly', 'founding']).optional(),
+  body('priceId').isString().trim().optional(),
   body('mode').isIn(['payment', 'subscription']),
+  body('userId').isString().trim().optional(),
 ], async (req, res) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
@@ -449,15 +489,23 @@ app.post('/api/create-checkout', [
   }
 
   try {
-    const { priceId, mode } = req.body
+    const { plan, priceId: rawPriceId, mode, userId } = req.body
+
+    let resolvedPriceId = rawPriceId
+    if (plan === 'monthly') resolvedPriceId = process.env.STRIPE_PRICE_MONTHLY
+    else if (plan === 'founding') resolvedPriceId = process.env.STRIPE_PRICE_FOUNDING
+
+    if (!resolvedPriceId) return res.status(400).json({ error: 'Invalid plan or missing priceId' })
+
     const session = await stripe.checkout.sessions.create({
-  payment_method_types: ['card'],
-  line_items: [{ price: priceId, quantity: 1 }],
-  mode: mode,
-  success_url: 'https://roamie-nu.vercel.app/success?session_id={CHECKOUT_SESSION_ID}',
-  cancel_url: 'https://roamie-nu.vercel.app/results',
-})
-res.json({ url: session.url })
+      payment_method_types: ['card'],
+      line_items: [{ price: resolvedPriceId, quantity: 1 }],
+      mode,
+      success_url: 'https://roamie-nu.vercel.app/success?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: 'https://roamie-nu.vercel.app/results',
+      metadata: { userId: userId || '' },
+    })
+    res.json({ url: session.url })
   } catch (err) {
     console.error('Stripe error:', err)
     res.status(500).json({ error: err.message })
@@ -481,6 +529,49 @@ app.post('/api/verify-payment', [
     }
   } catch (err) {
     console.error('Verify error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
+app.post('/api/verify-subscription', [
+  body('sessionId').isString().trim().notEmpty(),
+  body('userId').isString().trim().notEmpty(),
+], async (req, res) => {
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) return res.status(400).json({ error: 'Invalid request' })
+
+  try {
+    const { sessionId, userId } = req.body
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ['subscription'],
+    })
+
+    const sub = session.subscription
+    if (!sub || sub.status !== 'active') {
+      return res.json({ success: false })
+    }
+
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('couple_id')
+      .eq('id', userId)
+      .single()
+
+    if (profile?.couple_id) {
+      await supabase
+        .from('couples')
+        .update({ is_pro: true, stripe_subscription_id: sub.id })
+        .eq('id', profile.couple_id)
+      console.log(`Couple ${profile.couple_id} upgraded to pro via subscription ${sub.id}`)
+    }
+
+    res.json({ success: true, subscriptionId: sub.id })
+  } catch (err) {
+    console.error('Verify subscription error:', err)
     res.status(500).json({ error: err.message })
   }
 })
@@ -791,6 +882,7 @@ app.post('/api/flight-prices', [
   body('destinations').isArray().notEmpty(),
   body('dates').isString().trim().notEmpty(),
   body('routing').isString().trim().notEmpty(),
+  body('userId').isString().trim().optional(),
 ], async (req, res) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
@@ -798,7 +890,7 @@ app.post('/api/flight-prices', [
   }
 
   try {
-    const { p1City, p2City, p1Iata, p2Iata, destinations, dates, routing, sameCity } = req.body
+    const { p1City, p2City, p1Iata, p2Iata, destinations, dates, routing, sameCity, userId } = req.body
     const dateParts = dates.split(' to ')
     const departDate = dateParts[0]?.trim()
     const returnDate = dateParts[1]?.trim()
@@ -813,6 +905,15 @@ app.post('/api/flight-prices', [
     if (cached && Date.now() - cached.timestamp < ROUTE_CACHE_TTL) {
       console.log(`[cache hit] ${cacheKey}`)
       return res.json(cached.data)
+    }
+
+    if (userId) {
+      const { createClient } = await import('@supabase/supabase-js')
+      const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+      const access = await checkProAccess(userId, supabase)
+      if (!access.allowed) {
+        return res.status(402).json({ error: 'upgrade_required', message: 'Upgrade to Roamie Pro to continue searching' })
+      }
     }
 
     const priceResults = {}

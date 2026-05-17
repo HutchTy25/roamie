@@ -159,6 +159,9 @@ export default function Results() {
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [paywallHit, setPaywallHit] = useState(false)
+  const [userId, setUserId] = useState(null)
+  const isPro = localStorage.getItem('roamie_paid') === 'true'
   const [activeCard, setActiveCard] = useState(0)
   const [expanded, setExpanded] = useState(false)
   const [photos, setPhotos] = useState({})
@@ -187,6 +190,12 @@ export default function Results() {
   }
 
   const UNSPLASH_KEY = import.meta.env.VITE_UNSPLASH_KEY
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) setUserId(session.user.id)
+    })
+  }, [])
 
   useEffect(() => {
     if (!data) { navigate('/'); return }
@@ -236,6 +245,22 @@ export default function Results() {
     }, 2500)
     return () => clearInterval(interval)
   }, [loading])
+
+  async function startCheckout(plan) {
+    try {
+      localStorage.setItem('roamie_last_result', JSON.stringify(result))
+      localStorage.setItem('roamie_last_data', JSON.stringify(data))
+      const res = await fetch('https://roamie-61ib.onrender.com/api/create-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, mode: 'subscription' }),
+      })
+      const { url } = await res.json()
+      if (url) window.location.href = url
+    } catch (e) {
+      console.error('Checkout error:', e)
+    }
+  }
 
 async function saveTripToSupabase() {
     try {
@@ -377,6 +402,7 @@ Return ONLY this JSON, no markdown, no explanation:
 
     setMessageIndex(2)
     const flightPrices = await fetchRealFlightPrices(destNames)
+    if (flightPrices === null) return
 
     setMessageIndex(4)
     const breakdownPrompt = buildBreakdownPrompt(destinations, flightPrices, p1sym, p2sym)
@@ -428,8 +454,10 @@ Return ONLY this JSON, no markdown, no explanation:
           dates: `${data.dates.from} to ${data.dates.to}`,
           routing: 'meet',
           sameCity: false,
+          userId: userId || undefined,
         })
       })
+      if (res.status === 402) { setPaywallHit(true); return }
       const prices = await res.json()
 
       setResult({
@@ -484,8 +512,10 @@ Return ONLY this JSON, no markdown, no explanation:
   dates: `${data.dates.from} to ${data.dates.to}`,
   routing: data.routing,
   sameCity: data.sameCity,
+  userId: userId || undefined,
 })
       })
+      if (res.status === 402) { setPaywallHit(true); return null }
       return await res.json()
     } catch (e) {
       console.error('Flight price fetch error:', e)
@@ -670,6 +700,30 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
     </div>
   )
 
+  // PAYWALL STATE
+  if (paywallHit) return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '2rem', background: THEME.bg, textAlign: 'center' }}>
+      <Starfield />
+      <div style={{ fontSize: '40px', position: 'relative', zIndex: 1 }}>🔒</div>
+      <h2 style={{ fontSize: '22px', fontWeight: '700', color: THEME.text, margin: 0, position: 'relative', zIndex: 1 }}>You've used your 3 free searches</h2>
+      <p style={{ fontSize: '14px', color: THEME.muted, margin: 0, maxWidth: '280px', lineHeight: '1.5', position: 'relative', zIndex: 1 }}>Upgrade to Roamie Pro to keep planning trips together.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxWidth: '300px', position: 'relative', zIndex: 1 }}>
+        <button
+          onClick={() => startCheckout('monthly')}
+          style={{ padding: '14px', background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`, border: 'none', borderRadius: '14px', color: '#fff', fontSize: '15px', fontWeight: '600', cursor: 'pointer', boxShadow: `0 0 24px rgba(244,114,182,0.3)` }}
+        >
+          Start Pro — $7.99/month
+        </button>
+        <button
+          onClick={() => startCheckout('founding')}
+          style={{ padding: '14px', background: 'rgba(255,255,255,0.06)', border: `1px solid ${THEME.border}`, borderRadius: '14px', color: THEME.text, fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}
+        >
+          Early Access — $5.99/month <span style={{ fontSize: '12px', color: THEME.muted }}>(founding)</span>
+        </button>
+      </div>
+    </div>
+  )
+
   // ERROR STATE
   if (error || !result) return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '2rem', background: THEME.bg }}>
@@ -710,6 +764,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
         @keyframes fadeSlideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fadeIn { from{opacity:0} to{opacity:1} }
         @keyframes twinkle { 0%,100%{opacity:0.2} 50%{opacity:0.8} }
+        @keyframes skeletonPulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
       `}</style>
 
       <div
@@ -882,34 +937,34 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
 
           {/* Cost pills */}
           {!isStretch && (
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
-              <div style={{
-                background: 'rgba(244,114,182,0.12)',
-                border: '1px solid rgba(244,114,182,0.3)',
-                borderRadius: '100px',
-                padding: '10px 16px',
-                fontSize: '13px',
-                flex: 1,
-                minWidth: '140px',
-              }}>
-                <span style={{ color: THEME.muted, marginRight: '6px' }}>P1</span>
-                <span style={{ color: THEME.accent, fontWeight: '600', fontSize: '16px' }}>{p1sym}{dest.p1_cost?.toLocaleString()}</span>
-                
+            isPro ? (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ background: 'rgba(244,114,182,0.12)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: '100px', padding: '10px 16px', fontSize: '13px', flex: 1, minWidth: '140px' }}>
+                  <span style={{ color: THEME.muted, marginRight: '6px' }}>P1</span>
+                  <span style={{ color: THEME.accent, fontWeight: '600', fontSize: '16px' }}>{p1sym}{dest.p1_cost?.toLocaleString()}</span>
+                </div>
+                <div style={{ background: 'rgba(124,106,239,0.12)', border: '1px solid rgba(124,106,239,0.3)', borderRadius: '100px', padding: '10px 16px', fontSize: '13px', flex: 1, minWidth: '140px' }}>
+                  <span style={{ color: THEME.muted, marginRight: '6px' }}>P2</span>
+                  <span style={{ color: THEME.primary, fontWeight: '600', fontSize: '16px' }}>{p2sym}{dest.p2_cost?.toLocaleString()}</span>
+                </div>
               </div>
-              <div style={{
-                background: 'rgba(124,106,239,0.12)',
-                border: '1px solid rgba(124,106,239,0.3)',
-                borderRadius: '100px',
-                padding: '10px 16px',
-                fontSize: '13px',
-                flex: 1,
-                minWidth: '140px',
-              }}>
-                <span style={{ color: THEME.muted, marginRight: '6px' }}>P2</span>
-                <span style={{ color: THEME.primary, fontWeight: '600', fontSize: '16px' }}>{p2sym}{dest.p2_cost?.toLocaleString()}</span>
-                
+            ) : (
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                  <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`, animation: 'skeletonPulse 1.5s ease-in-out infinite' }} />
+                  <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`, animation: 'skeletonPulse 1.5s ease-in-out infinite' }} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '14px' }}>🔒</span>
+                  <button
+                    onClick={() => startCheckout('monthly')}
+                    style={{ background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`, border: 'none', borderRadius: '100px', padding: '7px 18px', color: '#fff', fontSize: '12px', fontWeight: '600', cursor: 'pointer', boxShadow: `0 0 16px rgba(244,114,182,0.3)` }}
+                  >
+                    Unlock with Pro
+                  </button>
+                </div>
               </div>
-            </div>
+            )
           )}
 
           {/* Stretch goal content */}

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { supabase } from '../supabase'
 
 export default function Success() {
   const navigate = useNavigate()
@@ -14,10 +15,12 @@ export default function Success() {
 
   async function verifyPayment() {
     try {
-      const res = await fetch('https://roamie-61ib.onrender.com/api/verify-payment', {
+      const { data: { session } } = await supabase.auth.getSession()
+      const userId = session?.user?.id
+      const res = await fetch('https://roamie-61ib.onrender.com/api/verify-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId })
+        body: JSON.stringify({ sessionId, userId })
       })
       const data = await res.json()
       if (data.success) {
@@ -125,16 +128,16 @@ export default function Success() {
             marginBottom: '0.5rem',
             color: '#E8E8ED',
           }}>
-            {"You're in."}
+            {"You're now on Roamie Pro"}
           </div>
-          <div style={{ 
-            fontSize: '15px', 
-            color: '#8B8FA3', 
-            marginBottom: '2rem', 
-            maxWidth: '320px', 
-            lineHeight: '1.6' 
+          <div style={{
+            fontSize: '15px',
+            color: '#8B8FA3',
+            marginBottom: '2rem',
+            maxWidth: '320px',
+            lineHeight: '1.6'
           }}>
-            Your full breakdown is unlocked. Head back to your results to see everything.
+            Unlimited searches, Partner Sync, and your full Orbit galaxy are now unlocked.
           </div>
           <button
             onClick={() => {
