@@ -737,16 +737,10 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
       <p style={{ fontSize: '14px', color: THEME.muted, margin: 0, maxWidth: '280px', lineHeight: '1.5', position: 'relative', zIndex: 1 }}>Upgrade to Roamie Pro to keep planning trips together.</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxWidth: '300px', position: 'relative', zIndex: 1 }}>
         <button
-          onClick={() => startCheckout('monthly')}
+          onClick={() => startCheckout('founding')}
           style={{ padding: '14px', background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`, border: 'none', borderRadius: '14px', color: '#fff', fontSize: '15px', fontWeight: '600', cursor: 'pointer', boxShadow: `0 0 24px rgba(244,114,182,0.3)` }}
         >
-          Start Pro — $7.99/month
-        </button>
-        <button
-          onClick={() => startCheckout('founding')}
-          style={{ padding: '14px', background: 'rgba(255,255,255,0.06)', border: `1px solid ${THEME.border}`, borderRadius: '14px', color: THEME.text, fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}
-        >
-          Early Access — $5.99/month <span style={{ fontSize: '12px', color: THEME.muted }}>(founding)</span>
+          Join Roamie — $5.99/month (founding rate)
         </button>
       </div>
     </div>
@@ -985,7 +979,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '14px' }}>🔒</span>
                   <button
-                    onClick={() => startCheckout('monthly')}
+                    onClick={() => startCheckout('founding')}
                     style={{ background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`, border: 'none', borderRadius: '100px', padding: '7px 18px', color: '#fff', fontSize: '12px', fontWeight: '600', cursor: 'pointer', boxShadow: `0 0 16px rgba(244,114,182,0.3)` }}
                   >
                     Unlock with Pro
