@@ -6,6 +6,7 @@ export default function Success() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [verified, setVerified] = useState(false)
+  const [needsOnboarding, setNeedsOnboarding] = useState(false)
   const sessionId = searchParams.get('session_id')
 
   useEffect(() => {
@@ -26,6 +27,14 @@ export default function Success() {
       const data = await res.json()
       if (data.success) {
         localStorage.setItem('roamie_paid', 'true')
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('home_city')
+          .eq('id', userId)
+          .single()
+        if (!profile?.home_city || profile.home_city === 'skip') {
+          setNeedsOnboarding(true)
+        }
         setVerified(true)
       } else {
         navigate('/')
@@ -142,6 +151,10 @@ export default function Success() {
           </div>
           <button
             onClick={() => {
+              if (needsOnboarding) {
+                navigate('/onboarding')
+                return
+              }
               const lastData = localStorage.getItem('roamie_last_data')
               if (lastData) {
                 navigate('/results', { state: { data: JSON.parse(lastData) } })

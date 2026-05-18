@@ -20,12 +20,12 @@ export default function App() {
   const [profile, setProfile] = useState(undefined)
 
   async function fetchProfile(userId) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('home_city, display_name')
       .eq('id', userId)
       .single()
-    setProfile(data || null)
+    setProfile(error ? null : (data || null))
   }
 
   useEffect(() => {
