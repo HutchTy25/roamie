@@ -18,13 +18,7 @@ export default function Gate() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       })
-      localStorage.setItem('roamie_paid', 'true')
       setDone(true)
-      setTimeout(() => {
-        const count = parseInt(localStorage.getItem('roamie_trip_count') || '0')
-        localStorage.setItem('roamie_trip_count', count + 1)
-        navigate('/results', { state: { data } })
-      }, 1500)
     } catch (e) {
       console.error(e)
     } finally {
