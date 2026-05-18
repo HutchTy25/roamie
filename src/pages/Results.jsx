@@ -161,6 +161,7 @@ export default function Results() {
   const [error, setError] = useState(false)
   const [paywallHit, setPaywallHit] = useState(false)
   const [userId, setUserId] = useState(null)
+  const [pendingUpgradePlan, setPendingUpgradePlan] = useState(null)
   const isPro = localStorage.getItem('roamie_paid') === 'true'
   const [activeCard, setActiveCard] = useState(0)
   const [expanded, setExpanded] = useState(false)
@@ -198,11 +199,22 @@ export default function Results() {
   }, [])
 
   useEffect(() => {
+    if (userId && pendingUpgradePlan) {
+      setPendingUpgradePlan(null)
+      startCheckout(pendingUpgradePlan)
+    }
+  }, [userId, pendingUpgradePlan])
+
+  useEffect(() => {
     if (!data) { navigate('/'); return }
     const params = new URLSearchParams(window.location.search)
     if (params.get('beta') === 'true') {
       localStorage.setItem('roamie_paid', 'true')
     }
+    const plan = location.state?.plan || params.get('plan')
+    const trigger = location.state?.triggerUpgrade || params.get('triggerUpgrade') === 'true'
+    if (trigger && plan) setPendingUpgradePlan(plan)
+
     const savedResult = localStorage.getItem('roamie_last_result')
     if (savedResult) {
       setResult(JSON.parse(savedResult))

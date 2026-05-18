@@ -561,6 +561,12 @@ app.post('/api/verify-subscription', [
       .eq('id', userId)
       .single()
 
+    await supabase
+      .from('profiles')
+      .update({ is_pro: true, stripe_subscription_id: sub.id })
+      .eq('id', userId)
+    console.log(`Profile ${userId} upgraded to pro via subscription ${sub.id}`)
+
     if (profile?.couple_id) {
       await supabase
         .from('couples')

@@ -18,10 +18,14 @@ export default function Login() {
 
   async function signInWithGoogle() {
     setLoading(true)
+    const upgradeIntent = localStorage.getItem('roamie_upgrade_intent')
+    const redirectTo = upgradeIntent
+      ? `${window.location.origin}/results?triggerUpgrade=true&plan=${upgradeIntent}`
+      : `${window.location.origin}/dashboard`
     const { error } = await supabase.auth.signInWithOAuth({
-  provider: 'google',
-  options: { redirectTo: `${window.location.origin}/dashboard` }
-})
+      provider: 'google',
+      options: { redirectTo },
+    })
     if (error) {
       setError(error.message)
       setLoading(false)
@@ -57,7 +61,13 @@ async function verifyOtp() {
     if (error) {
       setError(error.message)
     } else {
-      navigate('/dashboard')
+      const upgradeIntent = localStorage.getItem('roamie_upgrade_intent')
+      if (upgradeIntent) {
+        localStorage.removeItem('roamie_upgrade_intent')
+        navigate('/results', { state: { triggerUpgrade: true, plan: upgradeIntent } })
+      } else {
+        navigate('/dashboard')
+      }
     }
     setLoading(false)
   }
