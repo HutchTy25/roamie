@@ -1002,6 +1002,35 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
           boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
         }}>
 
+          {!isPro && !userId && activeCard > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem', gap: '0.75rem' }}>
+              <div style={{ fontSize: '28px' }}>🔒</div>
+              <div style={{ fontSize: '17px', fontWeight: '600', color: THEME.text, textAlign: 'center' }}>
+                Unlock all 3 destinations
+              </div>
+              <div style={{ fontSize: '13px', color: THEME.muted, textAlign: 'center', lineHeight: '1.5' }}>
+                Create a free account — it&apos;s free
+              </div>
+              <button
+                onClick={() => navigate('/login')}
+                style={{
+                  marginTop: '0.5rem',
+                  background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`,
+                  border: 'none',
+                  borderRadius: '100px',
+                  padding: '14px 32px',
+                  color: '#fff',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  boxShadow: `0 0 24px rgba(244,114,182,0.3)`,
+                }}
+              >
+                Create free account
+              </button>
+            </div>
+          ) : (
+            <>
           {/* Cost pills */}
           {!isStretch && (
             isPro ? (
@@ -1276,6 +1305,8 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
                 swipe to explore
               </div>
             </div>
+          )}
+            </>
           )}
 
         </div>
