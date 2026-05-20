@@ -487,6 +487,7 @@ app.post('/api/create-checkout', [
   if (!errors.isEmpty()) {
     return res.status(400).json({ error: 'Invalid request' })
   }
+  console.log('Checkout body:', req.body)
 
   try {
     const { plan, priceId: rawPriceId, mode, userId } = req.body
@@ -496,6 +497,7 @@ app.post('/api/create-checkout', [
     else if (plan === 'founding') resolvedPriceId = process.env.STRIPE_PRICE_FOUNDING
 
     if (!resolvedPriceId) return res.status(400).json({ error: 'Invalid plan or missing priceId' })
+    console.log('Resolved price ID:', resolvedPriceId)
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
