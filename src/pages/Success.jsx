@@ -7,12 +7,52 @@ export default function Success() {
   const [searchParams] = useSearchParams()
   const [verified, setVerified] = useState(false)
   const [needsOnboarding, setNeedsOnboarding] = useState(false)
+  const [restoring, setRestoring] = useState(false)
   const sessionId = searchParams.get('session_id')
 
   useEffect(() => {
     if (!sessionId) { navigate('/'); return }
     verifyPayment()
   }, [])
+
+  async function restoreFromSupabase() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const userId = session?.user?.id
+      if (!userId) { navigate('/quiz'); return }
+
+      const { data: trip } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (!trip) { navigate('/quiz', { state: { message: "Welcome to Pro! Let's plan your first trip 🎉" } }); return }
+
+      const lastData = {
+        p1: { city: trip.p1_city, currency: trip.p1_currency, maxSpend: trip.p1_budget },
+        p2: { city: trip.p2_city, currency: trip.p2_currency, maxSpend: trip.p2_budget },
+        vibes: trip.vibes,
+        dates: { from: trip.dates_from, to: trip.dates_to },
+        routing: trip.routing,
+        accommodation: trip.accommodation,
+        region: trip.region,
+      }
+
+      localStorage.setItem('roamie_last_data', JSON.stringify(lastData))
+      localStorage.setItem('roamie_last_result', JSON.stringify({
+        destinations: trip.destinations,
+        stretch_goal: trip.stretch_goal,
+      }))
+
+      navigate('/results', { state: { data: lastData } })
+    } catch (e) {
+      console.error('Restore error:', e)
+      navigate('/quiz')
+    }
+  }
 
   async function verifyPayment() {
     try {
@@ -149,34 +189,51 @@ export default function Success() {
           }}>
             Unlimited searches, Partner Sync, and your full Orbit galaxy are now unlocked.
           </div>
-          <button
-            onClick={() => {
-              if (needsOnboarding) {
-                navigate('/onboarding')
-                return
-              }
-              const lastData = localStorage.getItem('roamie_last_data')
-              if (lastData) {
-                navigate('/results', { state: { data: JSON.parse(lastData) } })
-              } else {
-                navigate('/quiz')
-              }
-            }}
-            style={{
-              background: 'linear-gradient(135deg, #22D3EE, #7C6AEF)',
-              border: 'none',
-              borderRadius: '100px',
-              padding: '16px 40px',
-              color: '#fff',
-              fontSize: '15px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              boxShadow: '0 0 30px rgba(34,211,238,0.4)',
-              transition: 'all 0.2s',
-            }}
-          >
-            See my results
-          </button>
+          {restoring ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+              <div style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                border: '3px solid rgba(124,106,239,0.2)',
+                borderTopColor: '#7C6AEF',
+                animation: 'spin 1s linear infinite',
+              }} />
+              <div style={{ color: '#8B8FA3', fontSize: '15px' }}>
+                Your payment was successful! Restoring your trip...
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => {
+                if (needsOnboarding) {
+                  navigate('/onboarding')
+                  return
+                }
+                const lastData = localStorage.getItem('roamie_last_data')
+                if (lastData) {
+                  navigate('/results', { state: { data: JSON.parse(lastData) } })
+                } else {
+                  setRestoring(true)
+                  restoreFromSupabase()
+                }
+              }}
+              style={{
+                background: 'linear-gradient(135deg, #22D3EE, #7C6AEF)',
+                border: 'none',
+                borderRadius: '100px',
+                padding: '16px 40px',
+                color: '#fff',
+                fontSize: '15px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                boxShadow: '0 0 30px rgba(34,211,238,0.4)',
+                transition: 'all 0.2s',
+              }}
+            >
+              See my results
+            </button>
+          )}
         </>
       ) : (
         <div style={{ 

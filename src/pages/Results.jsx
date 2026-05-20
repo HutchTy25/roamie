@@ -170,6 +170,7 @@ export default function Results() {
   const [showSummary, setShowSummary] = useState(false)
   const [tripBasics, setTripBasics] = useState(null)
   const [tripSaved, setTripSaved] = useState(false)
+  const [cancelToast, setCancelToast] = useState(false)
 
   const loadingMessages = [
     "Checking flight routes from both cities...",
@@ -196,6 +197,15 @@ export default function Results() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) setUserId(session.user.id)
     })
+  }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('cancelled') === 'true') {
+      setCancelToast(true)
+      const t = setTimeout(() => setCancelToast(false), 3000)
+      return () => clearTimeout(t)
+    }
   }, [])
 
   useEffect(() => {
@@ -782,6 +792,25 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
   return (
     <div style={{ minHeight: '100vh', overflowX: 'hidden', background: THEME.bg }}>
       <Starfield />
+      {cancelToast && (
+        <div style={{
+          position: 'fixed',
+          top: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: '#16A34A',
+          color: '#fff',
+          padding: '12px 24px',
+          borderRadius: '100px',
+          fontSize: '14px',
+          fontWeight: '500',
+          whiteSpace: 'nowrap',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          zIndex: 9999,
+        }}>
+          No worries — you can upgrade anytime 👋
+        </div>
+      )}
       <style>{`
         @keyframes fadeSlideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fadeIn { from{opacity:0} to{opacity:1} }

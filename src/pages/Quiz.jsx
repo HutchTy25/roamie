@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import posthog from 'posthog-js'
 
 // Moonly Theme Colors
@@ -267,7 +267,17 @@ function CalendarPicker({ label, selected, onChange, minDate }) {
 
 export default function Quiz({ session }) {
   const navigate = useNavigate()
+  const location = useLocation()
+  const [toast, setToast] = useState(null)
   const [step, setStep] = useState(0)
+
+  useEffect(() => {
+    const msg = location.state?.message
+    if (!msg) return
+    setToast(msg)
+    const t = setTimeout(() => setToast(null), 3000)
+    return () => clearTimeout(t)
+  }, [])
   const [p1Suggestions, setP1Suggestions] = useState([])
 const [p2Suggestions, setP2Suggestions] = useState([])
 const [p1IataFound, setP1IataFound] = useState(false)
@@ -414,6 +424,25 @@ const [p2Iata, setP2Iata] = useState('')
   if (step === 0) return (
     <div style={{ minHeight: '100vh', background: THEME.bg, position: 'relative' }}>
       <Starfield />
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: '#16A34A',
+          color: '#fff',
+          padding: '12px 24px',
+          borderRadius: '100px',
+          fontSize: '14px',
+          fontWeight: '500',
+          whiteSpace: 'nowrap',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          zIndex: 9999,
+        }}>
+          {toast}
+        </div>
+      )}
       <div style={containerStyle}>
         <div style={{ width: '100%', textAlign: 'center', marginBottom: '2rem' }}>
           <div style={{ fontSize: 'clamp(1.6rem, 5vw, 2rem)', color: THEME.text, marginBottom: '8px', fontWeight: '600' }}>
