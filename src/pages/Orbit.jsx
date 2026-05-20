@@ -47,6 +47,7 @@ const [activities, setActivities] = useState([])
 const [showAddActivity, setShowAddActivity] = useState(false)
 const [newActivityLabel, setNewActivityLabel] = useState('')
 const [selectedActivity, setSelectedActivity] = useState(null)
+const [confirmModal, setConfirmModal] = useState(null)
 
   useEffect(() => {
     if (!session) return
@@ -71,7 +72,7 @@ useEffect(() => {
         .select('*, moons(*)')
         .eq('id', payload.new.id)
         .single()
-      if (data) setPlanets(prev => [...prev, data])
+      if (data) setPlanets(prev => prev.some(p => p.id === data.id) ? prev : [...prev, data])
     })
     .subscribe()
 
@@ -85,7 +86,7 @@ useEffect(() => {
       filter: `couple_id=eq.${coupleId}`
     }, (payload) => {
       setPlanets(prev => prev.map(p =>
-        p.id === payload.new.planet_id
+        p.id === payload.new.planet_id && !p.moons?.some(m => m.id === payload.new.id)
           ? { ...p, moons: [...(p.moons || []), payload.new] }
           : p
       ))
@@ -850,6 +851,43 @@ useEffect(() => {
         )}
       </AnimatePresence>
 
+      {/* Confirm Modal */}
+      <AnimatePresence>
+        {confirmModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setConfirmModal(null)}
+            style={{ position: 'absolute', inset: 0, zIndex: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(12px)' }}
+          >
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              onClick={e => e.stopPropagation()}
+              style={{ width: '100%', maxWidth: '320px', borderRadius: '24px', padding: '28px 24px 24px', background: 'rgba(25,25,30,0.97)', border: `1px solid ${THEME.border}` }}
+            >
+              <p style={{ fontSize: '15px', color: THEME.text, textAlign: 'center', marginBottom: '24px', lineHeight: 1.5, margin: '0 0 24px' }}>
+                {confirmModal.message}
+              </p>
+              <button
+                onClick={confirmModal.onConfirm}
+                style={{ width: '100%', padding: '13px', borderRadius: '12px', background: 'rgba(255,50,50,0.15)', border: '1px solid rgba(255,50,50,0.3)', color: '#FF6B6B', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '8px' }}
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setConfirmModal(null)}
+                style={{ width: '100%', padding: '13px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: `1px solid ${THEME.border}`, color: THEME.muted, fontSize: '13px', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Planet Modal */}
       <AnimatePresence>
         {selectedPlanet && (
@@ -904,13 +942,16 @@ useEffect(() => {
 </button>
 
 <button
-  onClick={async () => {
-    if (!confirm(`Delete ${selectedPlanet.display_name} and all its memories?`)) return
-    await supabase.from('moons').delete().eq('planet_id', selectedPlanet.id)
-    await supabase.from('planets').delete().eq('id', selectedPlanet.id)
-    setPlanets(prev => prev.filter(p => p.id !== selectedPlanet.id))
-    setSelectedPlanet(null)
-  }}
+  onClick={() => setConfirmModal({
+    message: `Delete ${selectedPlanet.display_name} and all its memories?`,
+    onConfirm: async () => {
+      await supabase.from('moons').delete().eq('planet_id', selectedPlanet.id)
+      await supabase.from('planets').delete().eq('id', selectedPlanet.id)
+      setPlanets(prev => prev.filter(p => p.id !== selectedPlanet.id))
+      setSelectedPlanet(null)
+      setConfirmModal(null)
+    },
+  })}
   style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,50,50,0.1)', border: '1px solid rgba(255,50,50,0.2)', color: '#FF6B6B', fontSize: '13px', cursor: 'pointer', marginBottom: '8px' }}
 >
   Delete planet

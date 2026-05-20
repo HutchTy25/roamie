@@ -500,10 +500,22 @@ app.post('/api/create-checkout', [
     if (!resolvedPriceId) return res.status(400).json({ error: 'Invalid plan or missing priceId' })
     console.log('Resolved price ID:', resolvedPriceId)
 
+    let customerId
+    if (userId) {
+      const existing = await stripe.customers.list({ metadata: { userId } })
+      if (existing.data.length > 0) {
+        customerId = existing.data[0].id
+      } else {
+        const customer = await stripe.customers.create({ metadata: { userId } })
+        customerId = customer.id
+      }
+    }
+
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [{ price: resolvedPriceId, quantity: 1 }],
       mode,
+      ...(customerId ? { customer: customerId } : {}),
       success_url: 'https://roamie-nu.vercel.app/success?session_id={CHECKOUT_SESSION_ID}',
       cancel_url: 'https://roamie-nu.vercel.app/results?cancelled=true',
       metadata: { userId: userId || '' },
@@ -753,12 +765,11 @@ app.post('/api/accept-invite', async (req, res) => {
     if (couple.partner2_id) return res.status(400).json({ error: 'Already connected' })
     if (couple.partner1_id === userId) return res.status(400).json({ error: 'Cannot connect with yourself' })
 
-    // If the accepter is already in an active couple, soft-delete that old couple first
-    const { data: accepterProfile } = await supabase
-      .from('profiles')
-      .select('couple_id')
-      .eq('id', userId)
-      .single()
+    // Fetch both profiles in parallel — need couple_id for old-couple cleanup, is_pro for propagation
+    const [{ data: accepterProfile }, { data: partner1Profile }] = await Promise.all([
+      supabase.from('profiles').select('couple_id, is_pro').eq('id', userId).single(),
+      supabase.from('profiles').select('is_pro').eq('id', couple.partner1_id).single(),
+    ])
 
     if (accepterProfile?.couple_id) {
       const oldCoupleId = accepterProfile.couple_id
@@ -767,10 +778,13 @@ app.post('/api/accept-invite', async (req, res) => {
       console.log(`Soft-deleted old couple ${oldCoupleId} for user ${userId} before new link`)
     }
 
-    // Link the couple
+    // Link the couple, propagating Pro if either partner already has it
+    const coupleUpdate = { partner2_id: userId, status: 'connected' }
+    if (accepterProfile?.is_pro || partner1Profile?.is_pro) coupleUpdate.is_pro = true
+
     const { error: updateError } = await supabase
       .from('couples')
-      .update({ partner2_id: userId, status: 'connected' })
+      .update(coupleUpdate)
       .eq('id', couple.id)
 
     if (updateError) throw updateError

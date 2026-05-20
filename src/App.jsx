@@ -28,9 +28,21 @@ export default function App() {
   async function fetchProfile(userId) {
     const { data, error } = await supabase
       .from('profiles')
-      .select('home_city, display_name')
+      .select('home_city, display_name, is_pro, couple_id')
       .eq('id', userId)
       .single()
+    if (data) {
+      if (data.is_pro) {
+        localStorage.setItem('roamie_paid', 'true')
+      } else if (data.couple_id) {
+        const { data: couple } = await supabase
+          .from('couples')
+          .select('is_pro')
+          .eq('id', data.couple_id)
+          .single()
+        if (couple?.is_pro) localStorage.setItem('roamie_paid', 'true')
+      }
+    }
     setProfile(error ? null : (data || null))
   }
 

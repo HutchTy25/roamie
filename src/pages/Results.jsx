@@ -289,7 +289,7 @@ export default function Results() {
       const res = await fetch('https://roamie-61ib.onrender.com/api/create-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, mode: 'subscription' }),
+        body: JSON.stringify({ plan, mode: 'subscription', userId }),
       })
       const { url } = await res.json()
       if (url) window.location.href = url
