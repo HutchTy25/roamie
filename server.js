@@ -487,6 +487,7 @@ app.post('/api/create-checkout', [
   if (!errors.isEmpty()) {
     return res.status(400).json({ error: 'Invalid request' })
   }
+  console.log('ENV check:', { monthly: process.env.STRIPE_PRICE_MONTHLY, founding: process.env.STRIPE_PRICE_FOUNDING })
   console.log('Checkout body:', req.body)
 
   try {
