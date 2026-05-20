@@ -1091,7 +1091,8 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
         borderTop: `1px solid ${colors.border}`, 
-        padding: '12px 8px 28px',
+        padding: '12px 8px 0',
+        paddingBottom: 'max(28px, env(safe-area-inset-bottom))',
         zIndex: 100 
       }}>
         <div style={{ 

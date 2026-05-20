@@ -171,6 +171,8 @@ export default function Results() {
   const [tripBasics, setTripBasics] = useState(null)
   const [tripSaved, setTripSaved] = useState(false)
   const [cancelToast, setCancelToast] = useState(false)
+  const [partialResult, setPartialResult] = useState(null)
+  const fetchedPhotos = useRef(new Set())
 
   const loadingMessages = [
     "Checking flight routes from both cities...",
@@ -236,14 +238,19 @@ export default function Results() {
   }, [])
 
   useEffect(() => {
-    if (!result) return
-    result.destinations?.forEach((dest, i) => {
-      fetchPhoto(dest.name, i)
+    const r = result || partialResult
+    if (!r) return
+    r.destinations?.forEach((dest, i) => {
+      if (!fetchedPhotos.current.has(i)) {
+        fetchedPhotos.current.add(i)
+        fetchPhoto(dest.name, i)
+      }
     })
-    if (result.stretch_goal?.name) {
-      fetchPhoto(result.stretch_goal.name, 'stretch')
+    if (r.stretch_goal?.name && !fetchedPhotos.current.has('stretch')) {
+      fetchedPhotos.current.add('stretch')
+      fetchPhoto(r.stretch_goal.name, 'stretch')
     }
-  }, [result])
+  }, [result, partialResult])
 
   useEffect(() => {
     setTripBasics(null)
@@ -433,15 +440,19 @@ Return ONLY this JSON, no markdown, no explanation:
       ? json1.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
       : raw1.replace(/```json|```/g, '').trim()
 
-    const destinations = JSON.parse(text1)
-    const destNames = destinations.destinations?.map(d => d.name) || []
+    const firstPassResult = JSON.parse(text1)
+    const destNames = firstPassResult.destinations?.map(d => d.name) || []
+
+    // Show cards immediately — costs will fill in after Call 2
+    setPartialResult(firstPassResult)
+    setLoading(false)
 
     setMessageIndex(2)
     const flightPrices = await fetchRealFlightPrices(destNames)
     if (flightPrices === null) return
 
     setMessageIndex(4)
-    const breakdownPrompt = buildBreakdownPrompt(destinations, flightPrices, p1sym, p2sym)
+    const breakdownPrompt = buildBreakdownPrompt(firstPassResult, flightPrices, p1sym, p2sym)
 
     const res2 = await fetch('https://roamie-61ib.onrender.com/api/messages', {
       method: 'POST',
@@ -464,6 +475,7 @@ Return ONLY this JSON, no markdown, no explanation:
 
     const fullResult = JSON.parse(text2)
     setResult(fullResult)
+    setPartialResult(null)
     localStorage.setItem('roamie_trip_count', String(parseInt(localStorage.getItem('roamie_trip_count') || '0', 10) + 1))
 
   } catch (e) {
@@ -672,8 +684,11 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
   const p1sym = CURR_SYMBOLS[data?.p1?.currency] || ''
   const p2sym = CURR_SYMBOLS[data?.p2?.currency] || ''
 
+  const displayResult = result || partialResult
+  const costsLoading = !!partialResult && !result
+
   // LOADING STATE
-  if (loading) return (
+  if (loading && !partialResult) return (
     <div style={{
       minHeight: '100vh',
       display: 'flex',
@@ -757,7 +772,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
   )
 
   // ERROR STATE
-  if (error || !result) return (
+  if (error || !displayResult) return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem', padding: '2rem', background: THEME.bg }}>
       <Starfield />
       <div style={{ fontSize: '1.4rem', color: THEME.text, fontWeight: '500', position: 'relative', zIndex: 1 }}>Something went wrong</div>
@@ -783,7 +798,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
     </div>
   )
 
-  const allCards = [...(result.destinations || []), { isStretch: true, ...(result.stretch_goal || {}) }]
+  const allCards = [...(displayResult.destinations || []), { isStretch: true, ...(displayResult.stretch_goal || {}) }]
   const allCardsLength = allCards.length
   const dest = allCards[activeCard] || {}
   const isStretch = dest.isStretch || false
@@ -885,13 +900,14 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
         {/* ======================== */}
         {/* PREMIUM DESTINATION CARD */}
         {/* ======================== */}
-        <div style={{
+        <div key={activeCard} style={{
           width: '100%',
           borderRadius: '24px',
           overflow: 'hidden',
           marginBottom: '1.25rem',
           position: 'relative',
           boxShadow: `0 20px 60px rgba(0,0,0,0.5), 0 0 40px ${isStretch ? 'rgba(124,106,239,0.15)' : 'rgba(244,114,182,0.15)'}`,
+          animation: 'fadeSlideUp 0.4s ease both',
         }}>
           {/* Full bleed photo */}
           <div style={{
@@ -989,16 +1005,23 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
           {/* Cost pills */}
           {!isStretch && (
             isPro ? (
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                <div style={{ background: 'rgba(244,114,182,0.12)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: '100px', padding: '10px 16px', fontSize: '13px', flex: 1, minWidth: '140px' }}>
-                  <span style={{ color: THEME.muted, marginRight: '6px' }}>P1</span>
-                  <span style={{ color: THEME.accent, fontWeight: '600', fontSize: '16px' }}>{p1sym}{dest.p1_cost?.toLocaleString()}</span>
+              costsLoading ? (
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`, animation: 'skeletonPulse 1.5s ease-in-out infinite' }} />
+                  <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`, animation: 'skeletonPulse 1.5s ease-in-out infinite 0.3s' }} />
                 </div>
-                <div style={{ background: 'rgba(124,106,239,0.12)', border: '1px solid rgba(124,106,239,0.3)', borderRadius: '100px', padding: '10px 16px', fontSize: '13px', flex: 1, minWidth: '140px' }}>
-                  <span style={{ color: THEME.muted, marginRight: '6px' }}>P2</span>
-                  <span style={{ color: THEME.primary, fontWeight: '600', fontSize: '16px' }}>{p2sym}{dest.p2_cost?.toLocaleString()}</span>
+              ) : (
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap', animation: 'fadeSlideUp 0.4s ease both' }}>
+                  <div style={{ background: 'rgba(244,114,182,0.12)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: '100px', padding: '10px 16px', fontSize: '13px', flex: 1, minWidth: '140px' }}>
+                    <span style={{ color: THEME.muted, marginRight: '6px' }}>P1</span>
+                    <span style={{ color: THEME.accent, fontWeight: '600', fontSize: '16px' }}>{p1sym}{dest.p1_cost?.toLocaleString()}</span>
+                  </div>
+                  <div style={{ background: 'rgba(124,106,239,0.12)', border: '1px solid rgba(124,106,239,0.3)', borderRadius: '100px', padding: '10px 16px', fontSize: '13px', flex: 1, minWidth: '140px' }}>
+                    <span style={{ color: THEME.muted, marginRight: '6px' }}>P2</span>
+                    <span style={{ color: THEME.primary, fontWeight: '600', fontSize: '16px' }}>{p2sym}{dest.p2_cost?.toLocaleString()}</span>
+                  </div>
                 </div>
-              </div>
+              )
             ) : (
               <div style={{ marginBottom: '1rem' }}>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
@@ -1031,8 +1054,8 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
             </div>
           )}
 
-          {/* Expand button — pro users only */}
-          {!isStretch && isPro && (
+          {/* Expand button — pro users only, hidden until costs are loaded */}
+          {!isStretch && isPro && !costsLoading && (
             <button
               onClick={() => {
                 setExpanded(e => !e)
@@ -1259,7 +1282,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
       </div>
 
       {/* Couple summary */}
-      {result.couple_summary && (
+      {displayResult.couple_summary && (
         <div style={{
           padding: '1.5rem',
           background: THEME.card,
@@ -1272,7 +1295,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
           position: 'relative',
           zIndex: 1,
         }}>
-          {result.couple_summary}
+          {displayResult.couple_summary}
         </div>
       )}
 
