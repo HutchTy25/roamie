@@ -502,9 +502,13 @@ app.post('/api/create-checkout', [
 
     let customerId
     if (userId) {
-      const existing = await stripe.customers.list({ metadata: { userId } })
-      if (existing.data.length > 0) {
-        customerId = existing.data[0].id
+      const existing = await stripe.customers.search({
+        query: `metadata['userId']:'${userId}'`,
+        limit: 1,
+      })
+      const existingCustomer = existing.data[0]
+      if (existingCustomer) {
+        customerId = existingCustomer.id
       } else {
         const customer = await stripe.customers.create({ metadata: { userId } })
         customerId = customer.id
