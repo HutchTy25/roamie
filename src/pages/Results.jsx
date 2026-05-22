@@ -239,8 +239,10 @@ export default function Results() {
       setResult(JSON.parse(savedResult))
       setLoading(false)
       localStorage.removeItem('roamie_last_result')
-    } else {
+    } else if (data.p1?.city && data.p2?.city) {
       fetchRecommendations()
+    } else {
+      navigate('/quiz', { state: { message: "Let's find your next trip" } })
     }
   }, [])
 
