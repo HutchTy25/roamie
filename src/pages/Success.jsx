@@ -57,13 +57,16 @@ export default function Success() {
   async function verifyPayment() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
-      const userId = session?.user?.id
+      let userId = session?.user?.id
+      if (!userId) {
+        const { data: { session: refreshed } } = await supabase.auth.refreshSession()
+        userId = refreshed?.user?.id
+      }
       const res = await fetch('https://roamie-61ib.onrender.com/api/verify-subscription', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, userId })
       })
-      console.log('Verify response:', await res.clone().json())
       const data = await res.json()
       if (data.success) {
         localStorage.setItem('roamie_paid', 'true')
