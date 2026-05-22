@@ -1061,7 +1061,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
             </div>
 
             <button 
-              onClick={() => supabase.auth.signOut().then(() => navigate('/'))} 
+              onClick={() => supabase.auth.signOut().then(() => { localStorage.removeItem('roamie_paid'); navigate('/') })} 
               style={{ 
                 width: '100%', 
                 padding: '16px', 

@@ -109,6 +109,7 @@ export default function Connect({ session }) {
       })
       const data = await res.json()
       if (data.success) {
+        await supabase.auth.refreshSession()
         await checkCoupleStatus()
       } else {
         setError(data.error || 'Invalid invite code')

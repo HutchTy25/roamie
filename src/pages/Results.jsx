@@ -218,8 +218,15 @@ export default function Results() {
   }, [userId, pendingUpgradePlan])
 
   useEffect(() => {
-    if (!data) { navigate('/'); return }
     const params = new URLSearchParams(window.location.search)
+    const isCancelled = params.get('cancelled') === 'true'
+
+    if (!data) {
+      // data is already the localStorage fallback (line 158); if still null, nothing to restore
+      navigate(isCancelled ? '/quiz' : '/')
+      return
+    }
+
     if (params.get('beta') === 'true') {
       localStorage.setItem('roamie_paid', 'true')
     }
@@ -329,7 +336,7 @@ async function saveTripToSupabase() {
         country_emoji: activeDestination.country_emoji,
         tagline: activeDestination.tagline,
         destinations: [activeDestination],
-        stretch_goal: result.stretch_goal,
+        stretch_goal: result?.stretch_goal ?? partialResult?.stretch_goal,
       })
       setTripSaved(true)
     } catch (e) {

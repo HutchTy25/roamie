@@ -106,7 +106,7 @@ export default function Home({ session }) {
             Dashboard
           </button>
           <button
-            onClick={() => supabase.auth.signOut()}
+            onClick={() => supabase.auth.signOut().then(() => localStorage.removeItem('roamie_paid'))}
             style={{
               background: 'none',
               border: 'none',
