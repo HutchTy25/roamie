@@ -483,7 +483,13 @@ Return ONLY this JSON, no markdown, no explanation:
       : raw2.replace(/```json|```/g, '').trim()
 
     const fullResult = JSON.parse(text2)
-    setResult(fullResult)
+    const secondPassDests = Array.isArray(fullResult) ? fullResult : (fullResult.destinations || [])
+    const mergedDestinations = (firstPassResult.destinations || []).map((orig, i) => ({
+      ...orig,
+      ...(secondPassDests[i] || {}),
+    }))
+    const mergedResult = { ...firstPassResult, destinations: mergedDestinations }
+    setResult(mergedResult)
     setPartialResult(null)
     localStorage.setItem('roamie_trip_count', String(parseInt(localStorage.getItem('roamie_trip_count') || '0', 10) + 1))
 
