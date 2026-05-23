@@ -47,7 +47,7 @@ export default function Privacy() {
         </p>
 
         <Section title="1. Who We Are">
-          <P>Roamie ("we", "us", "our") is a travel planning service that helps couples find destinations they can both afford. Our website is roamie-nu.vercel.app. For privacy questions, contact us at hutchiesonty25@gmail.com.</P>
+          <P>Roamie ("we", "us", "our") is a travel planning service that helps couples find destinations they can both afford. Our website is roamietravel.app. For privacy questions, contact us at hutchiesonty25@gmail.com.</P>
         </Section>
 
         <Section title="2. Information We Collect">

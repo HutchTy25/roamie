@@ -687,7 +687,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
     const currentDest = allCards[activeCard]
     if (!currentDest || currentDest.isStretch) return
 
-    const shareText = `✈️ We're thinking ${currentDest.country_emoji} ${cleanDestName(currentDest.name)}!\n\n💰 P1: ${p1sym}${currentDest.p1_cost?.toLocaleString()}\n💰 P2: ${p2sym}${currentDest.p2_cost?.toLocaleString()}\n\n${currentDest.tagline}\n\n🔗 Plan yours free at roamie-nu.vercel.app`
+    const shareText = `✈️ We're thinking ${currentDest.country_emoji} ${cleanDestName(currentDest.name)}!\n\n💰 P1: ${p1sym}${currentDest.p1_cost?.toLocaleString()}\n💰 P2: ${p2sym}${currentDest.p2_cost?.toLocaleString()}\n\n${currentDest.tagline}\n\n🔗 Plan yours free at roamietravel.app`
 
     if (navigator.share) {
       try {
@@ -1442,7 +1442,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
               {dest.savings_scenario}
             </div>
             <div style={{ textAlign: 'center', fontSize: '11px', color: 'rgba(255,255,255,0.25)' }}>
-              Planned with Roamie · roamie-nu.vercel.app
+              Planned with Roamie · roamietravel.app
             </div>
             <button
               onClick={() => setShowSummary(false)}

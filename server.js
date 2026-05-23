@@ -20,7 +20,7 @@ const proAccessCache = new Map()
 const app = express()
 app.use(cors({
   origin: [
-    'https://roamie-nu.vercel.app',
+    'https://roamietravel.app',
     'http://localhost:5173',
     'http://localhost:4173',
   ],
@@ -490,8 +490,8 @@ app.post('/api/create-checkout', [
       line_items: [{ price: resolvedPriceId, quantity: 1 }],
       mode,
       ...(customerId ? { customer: customerId } : {}),
-      success_url: 'https://roamie-nu.vercel.app/success?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'https://roamie-nu.vercel.app/results?cancelled=true',
+      success_url: 'https://roamietravel.app/success?session_id={CHECKOUT_SESSION_ID}',
+      cancel_url: 'https://roamietravel.app/results?cancelled=true',
       metadata: { userId: userId || '' },
     })
     res.json({ url: session.url })

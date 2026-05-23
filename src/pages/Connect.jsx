@@ -149,7 +149,7 @@ export default function Connect({ session }) {
   }
 
   function copyInviteLink() {
-    const link = `https://roamie-nu.vercel.app/connect?code=${inviteCode}`
+    const link = `https://roamietravel.app/connect?code=${inviteCode}`
     navigator.clipboard.writeText(link)
     setCopyDone(true)
     setTimeout(() => setCopyDone(false), 2000)
@@ -416,7 +416,7 @@ export default function Connect({ session }) {
               wordBreak: 'break-all',
               border: '1px solid rgba(124,106,239,0.2)',
             }}>
-              roamie-nu.vercel.app/connect?code={inviteCode}
+              roamietravel.app/connect?code={inviteCode}
             </div>
             <button
               onClick={copyInviteLink}
