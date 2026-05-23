@@ -456,6 +456,14 @@ Return ONLY this JSON, no markdown, no explanation:
     const flightPrices = await fetchRealFlightPrices(destNames)
     if (flightPrices === null) return
 
+    // Flight prices now include pre-computed cost_breakdown fields — merge onto
+    // partialResult immediately so flight costs appear before Call 2 finishes
+    const enrichedDests = (firstPassResult.destinations || []).map(dest => ({
+      ...dest,
+      ...(flightPrices[dest.name] || {}),
+    }))
+    setPartialResult({ ...firstPassResult, destinations: enrichedDests })
+
     setMessageIndex(4)
     const breakdownPrompt = buildBreakdownPrompt(firstPassResult, flightPrices, p1sym, p2sym)
 
@@ -574,6 +582,10 @@ Return ONLY this JSON, no markdown, no explanation:
   routing: data.routing,
   sameCity: data.sameCity,
   userId: userId || undefined,
+  p1Currency: data.p1.currency,
+  p2Currency: data.p2.currency,
+  p1Budget: data.p1.maxSpend,
+  p2Budget: data.p2.maxSpend,
 })
       })
       if (res.status === 402) { setPaywallHit(true); return null }

@@ -259,6 +259,62 @@ async function checkProAccess(userId, supabase) {
   return cache({ allowed: true, reason: 'trial' })
 }
 
+function computeTripCosts(dest, flightPrices, exchangeRates, data) {
+  const p1Rate = exchangeRates?.[data.p1.currency] || 1
+  const p2Rate = exchangeRates?.[data.p2.currency] || 1
+
+  // Duffel prices are in USD — convert to each partner's currency.
+  // p1_breakdown only exists for fly_together routing (two legs).
+  // For meet/sameCity, p1 is a single direct price with no breakdown.
+  const leg1Usd = flightPrices?.p1_breakdown?.leg1 ?? null
+  const leg2Usd = flightPrices?.p1_breakdown?.leg2 ?? null
+  const p1FlightUsd = flightPrices?.p1 ?? null
+  const p2FlightUsd = flightPrices?.p2 ?? null
+
+  const flights_p1_leg1 = leg1Usd !== null ? Math.round(leg1Usd * p1Rate) : null
+  const flights_p1_leg2 = leg2Usd !== null ? Math.round(leg2Usd * p1Rate) : null
+  const flights_p1_total =
+    flights_p1_leg1 !== null && flights_p1_leg2 !== null
+      ? flights_p1_leg1 + flights_p1_leg2
+      : p1FlightUsd !== null ? Math.round(p1FlightUsd * p1Rate) : null
+  const flights_p2 = p2FlightUsd !== null ? Math.round(p2FlightUsd * p2Rate) : null
+
+  // p1_cost / p2_cost are null until Claude returns lodging/food/activities estimates.
+  // p1_days_income, p2_days_income, and harder_partner all depend on those totals,
+  // so they evaluate to null for now and will be non-null in the next step.
+  const p1_cost = null
+  const p2_cost = null
+
+  const p1_days_income = p1_cost !== null && data.p1.maxSpend
+    ? Math.round(p1_cost / (data.p1.maxSpend / 30))
+    : null
+  const p2_days_income = p2_cost !== null && data.p2.maxSpend
+    ? Math.round(p2_cost / (data.p2.maxSpend / 30))
+    : null
+
+  const harder_partner = p1_cost !== null && p2_cost !== null
+    ? (p1_cost / data.p1.maxSpend >= p2_cost / data.p2.maxSpend ? 'p1' : 'p2')
+    : null
+
+  return {
+    cost_breakdown: {
+      flights_p1_leg1,
+      flights_p1_leg2,
+      flights_p1_total,
+      flights_p2,
+      lodging_per_night: null,
+      lodging_total: null,
+      food_per_day: null,
+      food_total: null,
+      activities_total: null,
+    },
+    p1_cost,
+    p2_cost,
+    p1_days_income,
+    p2_days_income,
+    harder_partner,
+  }
+}
 
 app.post('/api/messages', [
   body('messages').isArray().notEmpty(),
@@ -804,6 +860,10 @@ app.post('/api/flight-prices', [
   body('dates').isString().trim().notEmpty(),
   body('routing').isString().trim().notEmpty(),
   body('userId').isString().trim().optional(),
+  body('p1Currency').isString().trim().isLength({ min: 3, max: 3 }).optional(),
+  body('p2Currency').isString().trim().isLength({ min: 3, max: 3 }).optional(),
+  body('p1Budget').isNumeric().optional(),
+  body('p2Budget').isNumeric().optional(),
 ], async (req, res) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
@@ -811,7 +871,8 @@ app.post('/api/flight-prices', [
   }
 
   try {
-    const { p1City, p2City, p1Iata, p2Iata, destinations, dates, routing, sameCity, userId } = req.body
+    const { p1City, p2City, p1Iata, p2Iata, destinations, dates, routing, sameCity, userId,
+            p1Currency, p2Currency, p1Budget, p2Budget } = req.body
     const dateParts = dates.split(' to ')
     const departDate = dateParts[0]?.trim()
     const returnDate = dateParts[1]?.trim()
@@ -821,7 +882,8 @@ app.post('/api/flight-prices', [
 
     console.log('Flight prices request:', { p1City, p2City, p1IATA, p2IATA, departDate, returnDate, routing })
 
-    const cacheKey = [p1IATA, p2IATA, destinations.slice().sort().join('|'), departDate, routing].join('::')
+    const cacheKey = [p1IATA, p2IATA, destinations.slice().sort().join('|'), departDate, routing,
+                      p1Currency || '', p2Currency || ''].join('::')
     const cached = globalRouteCache.get(cacheKey)
     if (cached && Date.now() - cached.timestamp < ROUTE_CACHE_TTL) {
       console.log(`[cache hit] ${cacheKey}`)
@@ -891,8 +953,25 @@ app.post('/api/flight-prices', [
     }
   })))
     console.log('Final price results:', JSON.stringify(priceResults))
-    globalRouteCache.set(cacheKey, { data: priceResults, timestamp: Date.now() })
-    res.json(priceResults)
+
+    let finalResults = priceResults
+    if (p1Currency && p2Currency) {
+      const exchangeRates = await getExchangeRates('USD')
+      finalResults = {}
+      for (const [destName, prices] of Object.entries(priceResults)) {
+        const computed = computeTripCosts(
+          { name: destName },
+          prices,
+          exchangeRates,
+          { p1: { currency: p1Currency, maxSpend: Number(p1Budget) || 0 },
+            p2: { currency: p2Currency, maxSpend: Number(p2Budget) || 0 } }
+        )
+        finalResults[destName] = { ...prices, ...computed }
+      }
+    }
+
+    globalRouteCache.set(cacheKey, { data: finalResults, timestamp: Date.now() })
+    res.json(finalResults)
 
   } catch (err) {
     console.error('Flight prices endpoint error:', err)
