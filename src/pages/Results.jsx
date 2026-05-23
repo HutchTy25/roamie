@@ -426,22 +426,18 @@ Return ONLY this JSON, no markdown, no explanation:
   try {
     setMessageIndex(0)
 
-    // Run Claude Call 1 AND flight prices in parallel
-    const [res1, earlyFlightPrices] = await Promise.all([
-      fetch('https://roamie-61ib.onrender.com/api/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 2000,
-          messages: [{ role: 'user', content: destinationPrompt }]
-        })
-      }),
-      fetchRealFlightPrices([data.p1.city, data.p2.city]).catch(() => ({}))
-    ])
+    const res1 = await fetch('https://roamie-61ib.onrender.com/api/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: destinationPrompt }]
+      })
+    })
 
     const raw1 = await res1.text()
     const json1 = JSON.parse(raw1)

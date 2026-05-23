@@ -8,7 +8,9 @@ import rateLimit from 'express-rate-limit'
 import { body, validationResult } from 'express-validator'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
+import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
 const ROUTE_CACHE_TTL = 30 * 60 * 1000
@@ -248,78 +250,6 @@ async function checkProAccess(userId, supabase) {
   return { allowed: true, reason: 'trial' }
 }
 
-async function getFlightPrices(p1City, p2City, dates, destinations) {
-  try {
-    const p1IATA = getCityIATA(p1City)
-    const p2IATA = getCityIATA(p2City)
-
-    if (!p1IATA || !p2IATA) {
-      console.log(`IATA not found for ${p1City} or ${p2City}, falling back to Perplexity`)
-      return await getFlightPricesPerplexity(p1City, p2City, dates)
-    }
-
-   const dateParts = dates.split(' to ')
-const departDate = dateParts[0]?.trim() || dates
-const returnDate = dateParts[1]?.trim() || dates
-
-    // Use each partner's city as destination for the other
-const [p1Flights, p2Flights] = await Promise.all([
-  fetch(`https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p1IATA}/${p2IATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`)
-    .then(r => r.json()).catch(() => null),
-  fetch(`https://api.flightapi.io/roundtrip/${process.env.FLIGHTAPI_KEY}/${p2IATA}/${p1IATA}/${departDate}/${returnDate}/1/0/0/Economy/USD`)
-    .then(r => r.json()).catch(() => null),
-])
-
-console.log('P1 IATA:', p1IATA, 'P2 IATA:', p2IATA)
-console.log('Depart:', departDate, 'Return:', returnDate)
-
-    console.log('FlightAPI P1 response:', JSON.stringify(p1Flights)?.substring(0, 200))
-    console.log('FlightAPI P2 response:', JSON.stringify(p2Flights)?.substring(0, 200))
-
-    let result = `LIVE FLIGHT PRICES FROM FLIGHTAPI:\n`
-
-    if (p1Flights && !p1Flights.error) {
-      result += `Flights from ${p1City} (${p1IATA}): Data received\n`
-    }
-    if (p2Flights && !p2Flights.error) {
-      result += `Flights from ${p2City} (${p2IATA}): Data received\n`
-    }
-
-    return result
-
-  } catch (e) {
-    console.error('FlightAPI error:', e)
-    return await getFlightPricesPerplexity(p1City, p2City, dates)
-  }
-}
-
-async function getFlightPricesPerplexity(p1City, p2City, dates) {
-  const query = `What are typical economy flight prices in 2026 for these routes during ${dates}? Give realistic price ranges only in this exact format, no explanations:
-
-${p1City} to top destinations: $XXX-XXX USD (Airline name)
-${p2City} to top destinations: $XXX-XXX (local currency) (Airline name)
-
-If exact prices unknown give realistic estimates based on distance and typical fares. Always provide numbers, never say unknown or cannot.`
-
-  const body = JSON.stringify({
-    model: 'sonar',
-    messages: [{ role: 'user', content: query }],
-    max_tokens: 500,
-  })
-
-  try {
-    const result = await httpsPost(
-      'api.perplexity.ai',
-      '/chat/completions',
-      { 'Authorization': `Bearer ${process.env.PERPLEXITY_API_KEY}` },
-      body
-    )
-    return result.choices?.[0]?.message?.content || ''
-  } catch (e) {
-    console.error('Perplexity fallback error:', e)
-    return ''
-  }
-}
 
 app.post('/api/messages', [
   body('messages').isArray().notEmpty(),
@@ -340,8 +270,6 @@ app.post('/api/messages', [
     const userMessage = messages[messages.length - 1]?.content || ''
 
     if (userId) {
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
       const access = await checkProAccess(userId, supabase)
       if (!access.allowed) {
         return res.status(402).json({ error: 'upgrade_required', message: 'Upgrade to Roamie Pro to continue searching' })
@@ -361,7 +289,6 @@ app.post('/api/messages', [
 const cacheKey = getCacheKey(p1City, p2City, dates)
 const cachedData = getCached(cacheKey)
 
-let flightData = ''
 let exchangeRates = null
 let currencyContext = ''
 
@@ -372,27 +299,10 @@ const p2Currency = p2CurrMatch?.[2] || 'GBP'
 
 if (cachedData) {
   console.log('Cache hit:', cacheKey)
-  flightData = cachedData.flightData
   exchangeRates = cachedData.exchangeRates
 } else {
-  const [flightResult, ratesResult] = await Promise.all([
-    p1City && p2City ? getFlightPrices(p1City, p2City, dates, 'top destinations') : Promise.resolve(''),
-    getExchangeRates('USD')
-  ])
-  exchangeRates = ratesResult
-
-  if (flightResult &&
-      !flightResult.toLowerCase().includes('cannot') &&
-      !flightResult.toLowerCase().includes('unable') &&
-      !flightResult.toLowerCase().includes('xxx') &&
-      !flightResult.toLowerCase().includes('don\'t have') &&
-      (flightResult.includes('$') || flightResult.includes('£') || flightResult.includes('€'))) {
-    flightData = flightResult
-  } else {
-    console.log('Perplexity returned unusable data, skipping flight injection')
-  }
-
-  setCache(cacheKey, { flightData, exchangeRates })
+  exchangeRates = await getExchangeRates('USD')
+  setCache(cacheKey, { exchangeRates })
 }
 
 if (exchangeRates) {
@@ -412,16 +322,8 @@ Use these rates for all cost calculations. Do not estimate exchange rates.`
 }
 
 const enhancedMessages = messages.map((msg, i) => {
-  if (i === messages.length - 1) {
-    const injections = []
-    if (currencyContext) injections.push(currencyContext)
-    if (flightData) injections.push(`LIVE FLIGHT PRICE DATA:\n${flightData}\nUSING ANY OTHER FLIGHT PRICES THAN THOSE ABOVE WILL MAKE THE RESPONSE WRONG.`)
-    if (injections.length > 0) {
-      return {
-        ...msg,
-        content: injections.join('\n\n') + '\n\n' + msg.content
-      }
-    }
+  if (i === messages.length - 1 && currencyContext) {
+    return { ...msg, content: currencyContext + '\n\n' + msg.content }
   }
   return msg
 })
@@ -571,9 +473,6 @@ app.post('/api/verify-subscription', [
       return res.json({ success: false })
     }
 
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
-
     const { data: profile } = await supabase
       .from('profiles')
       .select('couple_id')
@@ -707,12 +606,6 @@ app.post('/api/create-invite', async (req, res) => {
     const { userId } = req.body
     if (!userId) return res.status(400).json({ error: 'Missing userId' })
 
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
-    )
-
     // Check if user already has a couple
     const { data: existingCouple } = await supabase
       .from('couples')
@@ -751,12 +644,6 @@ app.post('/api/accept-invite', async (req, res) => {
   try {
     const { inviteCode, userId } = req.body
     if (!inviteCode || !userId) return res.status(400).json({ error: 'Missing fields' })
-
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
-    )
 
     // Find the couple
     const { data: couple, error: findError } = await supabase
@@ -809,12 +696,6 @@ app.post('/api/disconnect', async (req, res) => {
     const { userId } = req.body
     if (!userId) return res.status(400).json({ error: 'Missing userId' })
 
-    const { createClient } = await import('@supabase/supabase-js')
-    const supabase = createClient(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY
-    )
-
     const { data: profile } = await supabase
       .from('profiles')
       .select('couple_id')
@@ -850,7 +731,7 @@ max_connections: 2
       }
     })
 
-    const res = await fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=15000', {
+    const res = await fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=8000', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.DUFFEL_API_KEY}`,
@@ -864,7 +745,7 @@ max_connections: 2
    if (res.status === 429) {
   console.log('Duffel rate limited, waiting 2s...')
   await new Promise(r => setTimeout(r, 2000))
-  const retry = await fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=15000', {
+  const retry = await fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=8000', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${process.env.DUFFEL_API_KEY}`,
@@ -935,8 +816,6 @@ app.post('/api/flight-prices', [
     }
 
     if (userId) {
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
       const access = await checkProAccess(userId, supabase)
       if (!access.allowed) {
         return res.status(402).json({ error: 'upgrade_required', message: 'Upgrade to Roamie Pro to continue searching' })
@@ -945,7 +824,7 @@ app.post('/api/flight-prices', [
 
     const priceResults = {}
 
-  const limit = pLimit(2)
+  const limit = pLimit(4)
 
   await Promise.all(destinations.map(destName => limit(async () => {
     const destIATA = getCityIATA(destName.split(',')[0].trim())
@@ -977,8 +856,10 @@ app.post('/api/flight-prices', [
           source: 'duffel'
         }
       } else if (routing === 'fly_together') {
-        const p1ToP2Price = (p1IATA && p2IATA) ? await searchDuffelFlights(p1IATA, p2IATA, departDate, returnDate) : null
-        const bothToDestPrice = p2IATA ? await searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null
+        const [p1ToP2Price, bothToDestPrice] = await Promise.all([
+          (p1IATA && p2IATA) ? searchDuffelFlights(p1IATA, p2IATA, departDate, returnDate) : Promise.resolve(null),
+          p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : Promise.resolve(null),
+        ])
         const p2ToDestPrice = bothToDestPrice
         console.log(`Fly together prices for ${destName} — P1toP2: ${p1ToP2Price}, BothToDest: ${bothToDestPrice}, P2toDest: ${p2ToDestPrice}`)
         priceResults[destName] = {
