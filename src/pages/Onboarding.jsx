@@ -41,6 +41,39 @@ function Starfield() {
   )
 }
 
+const CURRENCIES = [
+  { code: 'USD', symbol: '$', label: 'USD' },
+  { code: 'GBP', symbol: '£', label: 'GBP' },
+  { code: 'EUR', symbol: '€', label: 'EUR' },
+  { code: 'CAD', symbol: 'C$', label: 'CAD' },
+  { code: 'AUD', symbol: 'A$', label: 'AUD' },
+  { code: 'NZD', symbol: 'NZ$', label: 'NZD' },
+  { code: 'JPY', symbol: '¥', label: 'JPY' },
+  { code: 'CNY', symbol: '¥', label: 'CNY' },
+  { code: 'KRW', symbol: '₩', label: 'KRW' },
+  { code: 'PHP', symbol: '₱', label: 'PHP' },
+  { code: 'IDR', symbol: 'Rp', label: 'IDR' },
+  { code: 'MYR', symbol: 'RM', label: 'MYR' },
+  { code: 'THB', symbol: '฿', label: 'THB' },
+  { code: 'VND', symbol: '₫', label: 'VND' },
+  { code: 'SGD', symbol: 'S$', label: 'SGD' },
+  { code: 'INR', symbol: '₹', label: 'INR' },
+  { code: 'PKR', symbol: '₨', label: 'PKR' },
+  { code: 'BDT', symbol: '৳', label: 'BDT' },
+  { code: 'NGN', symbol: '₦', label: 'NGN' },
+  { code: 'GHS', symbol: 'GH₵', label: 'GHS' },
+  { code: 'KES', symbol: 'KSh', label: 'KES' },
+  { code: 'ZAR', symbol: 'R', label: 'ZAR' },
+  { code: 'EGP', symbol: 'E£', label: 'EGP' },
+  { code: 'AED', symbol: 'AED', label: 'AED' },
+  { code: 'SAR', symbol: '﷼', label: 'SAR' },
+  { code: 'BRL', symbol: 'R$', label: 'BRL' },
+  { code: 'MXN', symbol: 'MX$', label: 'MXN' },
+  { code: 'COP', symbol: 'COL$', label: 'COP' },
+  { code: 'ARS', symbol: 'AR$', label: 'ARS' },
+  { code: 'CLP', symbol: 'CL$', label: 'CLP' },
+]
+
 const STEPS = ['Welcome', 'Your name', 'Home city', 'Anniversary']
 
 export default function Onboarding({ session, onComplete }) {
@@ -58,6 +91,7 @@ export default function Onboarding({ session, onComplete }) {
   const [iataFound, setIataFound] = useState(false)
   const [anniversaryDate, setAnniversaryDate] = useState('')
   const [suggestions, setSuggestions] = useState([])
+  const [homeCurrency, setHomeCurrency] = useState('USD')
 
 useEffect(() => {
   if (homeCity.length < 3) {
@@ -100,6 +134,7 @@ useEffect(() => {
           display_name: displayName.trim() || null,
           home_city: homeCity.trim() || null,
           home_iata: homeIata || null,
+          home_currency: homeCurrency || null,
           relationship_start_date: anniversaryDate || null,
         })
         .eq('id', session.user.id)
@@ -385,6 +420,16 @@ navigate('/dashboard')
               No airport found — try a nearby major city
             </div>
           )}
+          <div style={{ marginTop: '1.25rem' }}>
+            <div style={{ fontSize: '11px', color: THEME.muted, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '8px' }}>Your currency</div>
+            <select
+              value={homeCurrency}
+              onChange={e => setHomeCurrency(e.target.value)}
+              style={{ ...inputStyle, cursor: 'pointer' }}
+            >
+              {CURRENCIES.map(c => <option key={c.code} value={c.code}>{c.label} {c.symbol}</option>)}
+            </select>
+          </div>
           <button
             style={{ ...btnStyle, marginTop: '1.25rem', ...(homeCity.trim() ? {} : btnDisabledStyle) }}
             disabled={!homeCity.trim()}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import posthog from 'posthog-js'
+import { supabase } from '../supabase'
 
 // Moonly Theme Colors
 const THEME = {
@@ -278,12 +279,63 @@ export default function Quiz({ session }) {
     const t = setTimeout(() => setToast(null), 3000)
     return () => clearTimeout(t)
   }, [])
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+    async function fetchProfiles() {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('home_city, home_iata, home_currency, couple_id')
+          .eq('id', session.user.id)
+          .single()
+
+        if (!profile?.home_iata || !profile?.home_currency) return
+
+        const city = (profile.home_city && profile.home_city !== 'skip') ? profile.home_city : ''
+        setData(d => ({ ...d, p1: { ...d.p1, city, iata: profile.home_iata, currency: profile.home_currency } }))
+        setP1Iata(profile.home_iata)
+        setP1IataFound(true)
+        setP1Prefilled(true)
+
+        if (!profile.couple_id) return
+
+        const { data: couple } = await supabase
+          .from('couples')
+          .select('partner1_id, partner2_id')
+          .eq('id', profile.couple_id)
+          .single()
+
+        const partnerId = couple?.partner1_id === session.user.id ? couple?.partner2_id : couple?.partner1_id
+        if (!partnerId) return
+
+        const { data: partnerProfile } = await supabase
+          .from('profiles')
+          .select('home_city, home_iata, home_currency')
+          .eq('id', partnerId)
+          .single()
+
+        if (!partnerProfile?.home_iata || !partnerProfile?.home_currency) return
+
+        const partnerCity = (partnerProfile.home_city && partnerProfile.home_city !== 'skip') ? partnerProfile.home_city : ''
+        setData(d => ({ ...d, p2: { ...d.p2, city: partnerCity, iata: partnerProfile.home_iata, currency: partnerProfile.home_currency } }))
+        setP2Iata(partnerProfile.home_iata)
+        setP2IataFound(true)
+        setP2Prefilled(true)
+      } catch {
+        // silent fail — leave fields empty
+      }
+    }
+    fetchProfiles()
+  }, [session])
   const [p1Suggestions, setP1Suggestions] = useState([])
 const [p2Suggestions, setP2Suggestions] = useState([])
 const [p1IataFound, setP1IataFound] = useState(false)
 const [p2IataFound, setP2IataFound] = useState(false)
 const [p1Iata, setP1Iata] = useState('')
 const [p2Iata, setP2Iata] = useState('')
+const [p1Prefilled, setP1Prefilled] = useState(false)
+const [p2Prefilled, setP2Prefilled] = useState(false)
   const [data, setData] = useState({
     p1: { city: '', iata: '', currency: 'USD', maxSpend: 1500 },
     p2: { city: '', iata: '', currency: 'GBP', maxSpend: 1200 },
@@ -338,7 +390,12 @@ const [p2Iata, setP2Iata] = useState('')
   }
 }
   
-  function next() { setStep(s => s + 1) }
+  function next() {
+    setStep(s => {
+      if (s === 0 && p1Prefilled && p2Prefilled) return 2
+      return s + 1
+    })
+  }
   function back() { setStep(s => s - 1) }
 
   const totalSteps = data.tripMode === 'visit' ? 3 : 5
