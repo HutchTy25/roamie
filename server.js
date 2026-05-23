@@ -435,7 +435,7 @@ app.post('/api/waitlist', [
     const resend = new Resend(process.env.RESEND_API_KEY)
 
     await resend.emails.send({
-      from: 'Roamie <onboarding@resend.dev>',
+      from: 'Roamie <noreply@roamietravel.app>',
       to: ['hutchiesonty25@gmail.com'],
       subject: `New beta signup: ${email}`,
       html: `<p>New Roamie beta signup: <strong>${email}</strong></p>`
