@@ -17,6 +17,24 @@ const ROUTE_CACHE_TTL = 30 * 60 * 1000
 const globalRouteCache = new Map()
 const proAccessCache = new Map()
 
+const PREWARM_PAIRS = [
+  { p1: 'JFK', p2: 'LHR' },
+  { p1: 'JFK', p2: 'LGW' },
+  { p1: 'LAX', p2: 'LHR' },
+  { p1: 'ORD', p2: 'LHR' },
+  { p1: 'BOS', p2: 'LHR' },
+  { p1: 'ATL', p2: 'LHR' },
+  { p1: 'DFW', p2: 'LHR' },
+  { p1: 'MIA', p2: 'LHR' },
+  { p1: 'IAD', p2: 'LHR' },
+  { p1: 'SFO', p2: 'LHR' },
+  { p1: 'JFK', p2: 'MAN' },
+  { p1: 'JFK', p2: 'DUB' },
+  { p1: 'BOS', p2: 'DUB' },
+  { p1: 'JFK', p2: 'EDI' },
+  { p1: 'MEM', p2: 'LHR' },
+]
+
 const app = express()
 app.use(cors({
   origin: [
@@ -890,6 +908,19 @@ app.post('/api/flight-prices', [
       return res.json(cached.data)
     }
 
+    const SIX_HOURS = 6 * 60 * 60 * 1000
+    const { data: sbCached } = await supabase
+      .from('flight_cache')
+      .select('data')
+      .eq('cache_key', cacheKey)
+      .gt('created_at', new Date(Date.now() - SIX_HOURS).toISOString())
+      .single()
+    if (sbCached) {
+      console.log(`[supabase cache hit] ${cacheKey}`)
+      globalRouteCache.set(cacheKey, { data: sbCached.data, timestamp: Date.now() })
+      return res.json(sbCached.data)
+    }
+
     if (userId) {
       const access = await checkProAccess(userId, supabase)
       if (!access.allowed) {
@@ -971,6 +1002,11 @@ app.post('/api/flight-prices', [
     }
 
     globalRouteCache.set(cacheKey, { data: finalResults, timestamp: Date.now() })
+    supabase
+      .from('flight_cache')
+      .upsert({ cache_key: cacheKey, data: finalResults }, { onConflict: 'cache_key' })
+      .then(() => {})
+      .catch(e => console.error('[flight_cache write error]', e))
     res.json(finalResults)
 
   } catch (err) {
@@ -1125,4 +1161,64 @@ console.log('Closest large:', closestLarge?.iata, closestLarge?.type, Math.round
   }
 })
 
+async function prewarmFlightCache() {
+  console.log('[prewarm] Starting flight cache pre-warm...')
+  const limit = pLimit(2)
+  const SIX_HOURS = 6 * 60 * 60 * 1000
+  const dates = []
+  for (let i = 1; i <= 14; i++) {
+    const d = new Date()
+    d.setDate(d.getDate() + i)
+    dates.push(d.toISOString().split('T')[0])
+  }
+  let fetched = 0, skipped = 0, errors = 0
+  const tasks = []
+  for (const { p1, p2 } of PREWARM_PAIRS) {
+    for (const departDate of dates) {
+      const cacheKey = `${p1}::${p2}::${departDate}`
+      tasks.push(limit(async () => {
+        try {
+          const { data: existing } = await supabase
+            .from('flight_cache')
+            .select('cache_key')
+            .eq('cache_key', cacheKey)
+            .gt('created_at', new Date(Date.now() - SIX_HOURS).toISOString())
+            .single()
+          if (existing) { skipped++; return }
+          const returnDate = new Date(departDate)
+          returnDate.setDate(returnDate.getDate() + 7)
+          const returnDateStr = returnDate.toISOString().split('T')[0]
+          const [p1ToP2, p2ToP1] = await Promise.all([
+            searchDuffelFlights(p1, p2, departDate, returnDateStr),
+            searchDuffelFlights(p2, p1, departDate, returnDateStr),
+          ])
+          await supabase
+            .from('flight_cache')
+            .upsert({ cache_key: cacheKey, data: { p1_to_p2: p1ToP2, p2_to_p1: p2ToP1 } }, { onConflict: 'cache_key' })
+          console.log(`[prewarm] ${cacheKey} → p1→p2: ${p1ToP2}, p2→p1: ${p2ToP1}`)
+          fetched++
+        } catch (e) {
+          console.error(`[prewarm] Error for ${cacheKey}:`, e.message)
+          errors++
+        }
+      }))
+    }
+  }
+  await Promise.all(tasks)
+  console.log(`[prewarm] Done — ${fetched} fetched, ${skipped} skipped, ${errors} errors`)
+}
+
+app.get('/api/prewarm', async (req, res) => {
+  if (req.headers['x-roamie-secret'] !== process.env.ROAMIE_SECRET)
+    return res.status(403).json({ error: 'Forbidden' })
+  res.json({ message: 'Pre-warm started' })
+  prewarmFlightCache().catch(e => console.error('[prewarm] Unhandled error:', e))
+})
+
 app.listen(3001, () => console.log('Server running on port 3001'))
+
+prewarmFlightCache().catch(e => console.error('[prewarm] Startup error:', e))
+setInterval(
+  () => prewarmFlightCache().catch(e => console.error('[prewarm] Interval error:', e)),
+  6 * 60 * 60 * 1000
+)
