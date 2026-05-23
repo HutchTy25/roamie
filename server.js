@@ -15,6 +15,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
 const ROUTE_CACHE_TTL = 30 * 60 * 1000
 const globalRouteCache = new Map()
+const proAccessCache = new Map()
 
 const app = express()
 app.use(cors({
@@ -226,13 +227,21 @@ function setCache(key, data) {
 async function checkProAccess(userId, supabase) {
   if (!userId) return { allowed: true }
 
+  const cached = proAccessCache.get(userId)
+  if (cached && Date.now() - cached.timestamp < 60000) return cached.result
+
+  function cache(result) {
+    proAccessCache.set(userId, { result, timestamp: Date.now() })
+    return result
+  }
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('couple_id, search_count')
     .eq('id', userId)
     .single()
 
-  if (!profile) return { allowed: true }
+  if (!profile) return cache({ allowed: true })
 
   if (profile.couple_id) {
     const { data: couple } = await supabase
@@ -240,14 +249,14 @@ async function checkProAccess(userId, supabase) {
       .select('is_pro')
       .eq('id', profile.couple_id)
       .single()
-    if (couple?.is_pro) return { allowed: true, reason: 'pro' }
+    if (couple?.is_pro) return cache({ allowed: true, reason: 'pro' })
   }
 
   const searchCount = profile.search_count || 0
-  if (searchCount >= 3) return { allowed: false, reason: 'limit_reached' }
+  if (searchCount >= 3) return cache({ allowed: false, reason: 'limit_reached' })
 
   await supabase.from('profiles').update({ search_count: searchCount + 1 }).eq('id', userId)
-  return { allowed: true, reason: 'trial' }
+  return cache({ allowed: true, reason: 'trial' })
 }
 
 
@@ -321,8 +330,11 @@ Use these rates for all cost calculations. Do not estimate exchange rates.`
   console.log('Currency context:', currencyContext)
 }
 
+const isCall2 = userMessage.includes('breakdown') ||
+                userMessage.includes('trip_basics') ||
+                userMessage.includes('COST BREAKDOWN')
 const enhancedMessages = messages.map((msg, i) => {
-  if (i === messages.length - 1 && currencyContext) {
+  if (i === messages.length - 1 && currencyContext && isCall2) {
     return { ...msg, content: currencyContext + '\n\n' + msg.content }
   }
   return msg
@@ -493,6 +505,7 @@ app.post('/api/verify-subscription', [
       console.log(`Couple ${profile.couple_id} upgraded to pro via subscription ${sub.id}`)
     }
 
+    proAccessCache.delete(userId)
     res.json({ success: true, subscriptionId: sub.id })
   } catch (err) {
     console.error('Verify subscription error:', err)
