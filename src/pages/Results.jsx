@@ -1282,8 +1282,9 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
   <button onClick={() => window.open(generateAffiliateLink('booking', { city: dest.name, checkin: data.dates.from, checkout: data.dates.to }), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '100px', color: THEME.cyan, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
     🏨 Book your stay in {cleanDestName(dest.name)?.split(',')[0]}
   </button>
-  <button onClick={() => window.open(generateAffiliateLink('viator', { city: dest.name }), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(124,106,239,0.1)', border: '1px solid rgba(124,106,239,0.3)', borderRadius: '100px', color: THEME.primary, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
+  <button onClick={() => window.open(generateAffiliateLink('viator', { city: dest.name }), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(124,106,239,0.1)', border: '1px solid rgba(124,106,239,0.3)', borderRadius: '100px', color: THEME.primary, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center', opacity: 0.5, pointerEvents: 'none' }}>
     🎯 Find things to do in {cleanDestName(dest.name)?.split(',')[0]}
+    <span style={{ marginLeft: '8px', fontSize: '10px', color: THEME.muted, background: 'rgba(255,255,255,0.08)', borderRadius: '100px', padding: '2px 7px', verticalAlign: 'middle' }}>Soon</span>
   </button>
   <button onClick={() => window.open(generateAffiliateLink('wise'), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(244,114,182,0.1)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: '100px', color: THEME.accent, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
     💸 Send money fee-free with Wise
