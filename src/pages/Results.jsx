@@ -494,8 +494,8 @@ Return ONLY this JSON, no markdown, no explanation:
 
     const fullResult = JSON.parse(text2)
     const secondPassDests = Array.isArray(fullResult) ? fullResult : (fullResult.destinations || [])
-    const mergedDestinations = (firstPassResult.destinations || []).map((orig, i) => ({
-      ...orig,
+    const mergedDestinations = enrichedDests.map((enriched, i) => ({
+      ...enriched,
       ...(secondPassDests[i] || {}),
     }))
     const mergedResult = { ...firstPassResult, destinations: mergedDestinations }
