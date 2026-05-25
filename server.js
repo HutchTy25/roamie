@@ -420,8 +420,9 @@ const enhancedMessages = messages.map((msg, i) => {
   return msg
 })
 
+    const { flightPrices: _fp, quizData: _qd, ...anthropicFields } = req.body
     const claudeBody = JSON.stringify({
-      ...req.body,
+      ...anthropicFields,
       messages: enhancedMessages
     })
 
@@ -1236,9 +1237,11 @@ async function prewarmFlightCache() {
   let fetched = 0, skipped = 0, errors = 0
   const tasks = []
   for (const { p1, p2 } of PREWARM_PAIRS) {
+    let pairRateLimited = false
     for (const departDate of dates) {
       const cacheKey = `${p1}::${p2}::${departDate}`
       tasks.push(limit(async () => {
+        if (pairRateLimited) { skipped++; return }
         try {
           const { data: existing } = await supabase
             .from('flight_cache')
@@ -1251,9 +1254,15 @@ async function prewarmFlightCache() {
           returnDate.setDate(returnDate.getDate() + 7)
           const returnDateStr = returnDate.toISOString().split('T')[0]
           const p1ToP2 = await searchDuffelFlights(p1, p2, departDate, returnDateStr)
-          await new Promise(r => setTimeout(r, 2000))
+          await new Promise(r => setTimeout(r, p1ToP2 === null ? 5000 : 2000))
           const p2ToP1 = await searchDuffelFlights(p2, p1, departDate, returnDateStr)
-          await new Promise(r => setTimeout(r, 2000))
+          await new Promise(r => setTimeout(r, p2ToP1 === null ? 5000 : 2000))
+          if (p1ToP2 === null && p2ToP1 === null) {
+            console.log(`[prewarm] Both directions null for ${cacheKey} — likely rate limited, skipping remaining dates for ${p1}/${p2}`)
+            pairRateLimited = true
+            errors++
+            return
+          }
           await supabase
             .from('flight_cache')
             .upsert({ cache_key: cacheKey, data: { p1_to_p2: p1ToP2, p2_to_p1: p2ToP1 } }, { onConflict: 'cache_key' })
@@ -1261,6 +1270,7 @@ async function prewarmFlightCache() {
           fetched++
         } catch (e) {
           console.error(`[prewarm] Error for ${cacheKey}:`, e.message)
+          pairRateLimited = true
           errors++
         }
       }))
@@ -1284,10 +1294,6 @@ app.use((err, req, res, next) => {
 
 app.listen(3001, () => console.log('Server running on port 3001'))
 
-setTimeout(
-  () => prewarmFlightCache().catch(e => console.error('[prewarm] Startup error:', e)),
-  60 * 1000
-)
 setInterval(
   () => prewarmFlightCache().catch(e => console.error('[prewarm] Interval error:', e)),
   6 * 60 * 60 * 1000
