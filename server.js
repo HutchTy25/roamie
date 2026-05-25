@@ -436,6 +436,7 @@ const enhancedMessages = messages.map((msg, i) => {
     )
 
    console.log('Claude response received')
+console.log('[Claude raw]', JSON.stringify(claudeResult).slice(0, 500))
 globalTripCount++
 console.log('Global trip count:', globalTripCount)
 
