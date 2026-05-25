@@ -172,6 +172,7 @@ export default function Results() {
   const [tripSaved, setTripSaved] = useState(false)
   const [cancelToast, setCancelToast] = useState(false)
   const [partialResult, setPartialResult] = useState(null)
+  const [hotelTier, setHotelTier] = useState('value')
   const fetchedPhotos = useRef(new Set())
 
   const loadingMessages = [
@@ -265,6 +266,7 @@ export default function Results() {
     setTripBasics(null)
     setExpanded(false)
     setTripSaved(false)
+    setHotelTier('value')
   }, [activeCard])
 
   useEffect(() => {
@@ -1097,6 +1099,82 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
               </div>
             )
           )}
+
+          {/* Hotel section */}
+          {!isStretch && !costsLoading && dest.cost_breakdown?.lodging_per_night != null && (() => {
+            const base = dest.cost_breakdown.lodging_per_night
+            const tierData = {
+              luxe: { label: 'Luxe', price: Math.round(base * 2.5 / 5) * 5 },
+              value: { label: 'Best Value', price: base },
+              budget: { label: 'Budget', price: Math.round(base * 0.6 / 5) * 5 },
+            }
+            const active = tierData[hotelTier]
+            const hotelLink = `https://www.google.com/travel/hotels/${encodeURIComponent(dest.name)}`
+            return (
+              <div style={{ marginBottom: '1rem' }}>
+                <div style={{
+                  display: 'flex',
+                  background: 'rgba(255,255,255,0.04)',
+                  borderRadius: '12px',
+                  padding: '3px',
+                  border: `1px solid ${THEME.border}`,
+                  marginBottom: '8px',
+                }}>
+                  {[['luxe', 'Luxe'], ['value', 'Value'], ['budget', 'Budget']].map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => setHotelTier(key)}
+                      style={{
+                        flex: 1,
+                        padding: '8px 0',
+                        background: hotelTier === key ? THEME.accent : 'transparent',
+                        border: 'none',
+                        borderRadius: '9px',
+                        color: hotelTier === key ? '#fff' : THEME.muted,
+                        fontSize: '12px',
+                        fontWeight: hotelTier === key ? '600' : '400',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: 'rgba(255,255,255,0.04)',
+                  borderRadius: '12px',
+                  padding: '12px 14px',
+                  border: `1px solid ${THEME.border}`,
+                }}>
+                  <span style={{ fontSize: '13px', color: THEME.text }}>
+                    🏨 {active.label} · ~${active.price}/night
+                  </span>
+                  <a
+                    href={hotelLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      fontSize: '12px',
+                      color: THEME.accent,
+                      fontWeight: '500',
+                      textDecoration: 'none',
+                      background: 'rgba(244,114,182,0.12)',
+                      border: '1px solid rgba(244,114,182,0.3)',
+                      borderRadius: '100px',
+                      padding: '6px 14px',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Find hotels
+                  </a>
+                </div>
+              </div>
+            )
+          })()}
 
           {/* Stretch goal content */}
           {isStretch && (
