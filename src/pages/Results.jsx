@@ -508,6 +508,8 @@ Return ONLY this JSON, no markdown, no explanation:
   } catch (e) {
     console.error('Error:', e)
     setError(true)
+    setResult(firstPassResult)
+    setPartialResult(null)
   } finally {
     setLoading(false)
   }
@@ -1045,6 +1047,7 @@ Return the complete destinations JSON with all fields including trip_basics. Sam
           ) : (
             <>
           {/* Cost pills */}
+          {console.log('costsLoading:', costsLoading, 'result:', result, 'partialResult:', partialResult)}
           {!isStretch && (
             isPro ? (
               costsLoading ? (
