@@ -455,7 +455,6 @@ Return ONLY this JSON, no markdown, no explanation:
     setMessageIndex(2)
     const flightPrices = await fetchRealFlightPrices(destNames)
     if (flightPrices === null) return
-    console.log('Flight prices received:', flightPrices)
 
     // Flight prices now include pre-computed cost_breakdown fields — merge onto
     // partialResult immediately so flight costs appear before Call 2 finishes
@@ -463,7 +462,6 @@ Return ONLY this JSON, no markdown, no explanation:
       ...dest,
       ...(flightPrices[dest.name] || {}),
     }))
-    console.log('Enriched destinations:', enrichedDests)
     setPartialResult({ ...firstPassResult, destinations: enrichedDests })
 
     setMessageIndex(4)
@@ -1061,7 +1059,6 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
           ) : (
             <>
           {/* Cost pills */}
-          {console.log('costsLoading:', costsLoading, 'result:', result, 'partialResult:', partialResult)}
           {!isStretch && (
             isPro ? (
               costsLoading ? (
