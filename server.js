@@ -1213,7 +1213,7 @@ console.log('Closest large:', closestLarge?.iata, closestLarge?.type, Math.round
 
 async function prewarmFlightCache() {
   console.log('[prewarm] Starting flight cache pre-warm...')
-  const limit = pLimit(2)
+  const limit = pLimit(1)
   const SIX_HOURS = 6 * 60 * 60 * 1000
   const dates = []
   for (let i = 1; i <= 14; i++) {
@@ -1238,10 +1238,10 @@ async function prewarmFlightCache() {
           const returnDate = new Date(departDate)
           returnDate.setDate(returnDate.getDate() + 7)
           const returnDateStr = returnDate.toISOString().split('T')[0]
-          const [p1ToP2, p2ToP1] = await Promise.all([
-            searchDuffelFlights(p1, p2, departDate, returnDateStr),
-            searchDuffelFlights(p2, p1, departDate, returnDateStr),
-          ])
+          const p1ToP2 = await searchDuffelFlights(p1, p2, departDate, returnDateStr)
+          await new Promise(r => setTimeout(r, 2000))
+          const p2ToP1 = await searchDuffelFlights(p2, p1, departDate, returnDateStr)
+          await new Promise(r => setTimeout(r, 2000))
           await supabase
             .from('flight_cache')
             .upsert({ cache_key: cacheKey, data: { p1_to_p2: p1ToP2, p2_to_p1: p2ToP1 } }, { onConflict: 'cache_key' })
@@ -1272,7 +1272,10 @@ app.use((err, req, res, next) => {
 
 app.listen(3001, () => console.log('Server running on port 3001'))
 
-prewarmFlightCache().catch(e => console.error('[prewarm] Startup error:', e))
+setTimeout(
+  () => prewarmFlightCache().catch(e => console.error('[prewarm] Startup error:', e)),
+  60 * 1000
+)
 setInterval(
   () => prewarmFlightCache().catch(e => console.error('[prewarm] Interval error:', e)),
   6 * 60 * 60 * 1000
