@@ -683,7 +683,6 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
         setPhotos(prev => ({ ...prev, [index]: best.urls.regular }))
       }
     } catch (e) {
-      console.log('Photo fetch failed:', e)
     }
   }
 
@@ -701,7 +700,6 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
           text: shareText,
         })
       } catch (e) {
-        console.log('Share cancelled')
       }
     } else {
       navigator.clipboard.writeText(shareText)

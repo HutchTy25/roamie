@@ -65,7 +65,6 @@ export default function VisitResults() {
         })
       })
       const result = await res.json()
-      console.log('Visit prices:', result)
       setPrices(result)
     } catch (e) {
       console.error('Visit prices error:', e)
