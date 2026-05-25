@@ -1101,12 +1101,18 @@ app.post('/api/flight-prices', [
           const gapMinutes = (p1Detail?.arrivalAt && p2ArrivalAt)
             ? Math.abs(Math.round((new Date(p2ArrivalAt) - new Date(p1Detail.arrivalAt)) / 60000))
             : null
-          console.log(`Sync arrival for ${destName} — P1: ${p1Detail?.price}, P2: ${p2Price}, gap: ${gapMinutes}min`)
+          const p1Date = p1Detail?.arrivalAt?.slice(0, 10) || null
+          const p2Date = p2ArrivalAt?.slice(0, 10) || null
+          const syncValid = gapMinutes !== null && gapMinutes <= 120 && p1Date === p2Date
+          if (!syncValid && p2Price === null) {
+            p2Price = await searchDuffelFlights(p2IATA, destIATA, departDate, returnDate)
+          }
+          console.log(`Sync arrival for ${destName} — P1: ${p1Detail?.price}, P2: ${p2Price}, gap: ${gapMinutes}min, valid: ${syncValid}`)
           priceResults[destName] = {
             p1: p1Detail?.price || null,
             p2: p2Price,
             source: 'duffel',
-            synchronized_arrival: (p1Detail?.arrivalAt && p2ArrivalAt)
+            synchronized_arrival: syncValid
               ? { p1_arrives: p1Detail.arrivalAt, p2_arrives: p2ArrivalAt, gap_minutes: gapMinutes }
               : null,
           }
