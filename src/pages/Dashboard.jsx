@@ -703,8 +703,17 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
               const partnerLocalTime = partnerWeather
                 ? new Date((partnerWeather.dt + partnerWeather.timezone) * 1000).toUTCString().match(/(\d+:\d+)/)?.[1]
                 : null
+              const partnerLocalHour = partnerWeather
+                ? new Date((partnerWeather.dt + partnerWeather.timezone) * 1000).getUTCHours()
+                : null
+              const timeGlow = partnerLocalHour == null ? 'rgba(99,102,241,0.4)'
+                : partnerLocalHour >= 5 && partnerLocalHour < 8 ? 'rgba(251,146,60,0.4)'
+                : partnerLocalHour >= 8 && partnerLocalHour < 18 ? 'rgba(96,165,250,0.4)'
+                : partnerLocalHour >= 18 && partnerLocalHour < 20 ? 'rgba(192,132,252,0.4)'
+                : 'rgba(99,102,241,0.4)'
               return partnerProfile ? (
-                <div className="glass-card" style={{ padding: '20px', marginBottom: '16px', position: 'relative', overflow: 'hidden' }}>
+                <div className="glass-card" style={{ padding: '20px', marginBottom: '16px', position: 'relative', overflow: 'hidden', boxShadow: `0 0 80px ${timeGlow}, 0 0 32px ${timeGlow}` }}>
+                  <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse at 65% 0%, ${timeGlow.replace('0.4', '0.3')} 0%, transparent 65%), radial-gradient(ellipse at 20% 100%, ${timeGlow.replace('0.4', '0.12')} 0%, transparent 50%)`, pointerEvents: 'none' }} />
                   {wc && <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse at 70% 20%, ${wc.gradient} 0%, transparent 50%)`, pointerEvents: 'none' }} />}
                   <div style={{ position: 'relative', zIndex: 1 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
