@@ -1197,13 +1197,13 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
                     <div style={{ background: 'rgba(244,114,182,0.08)', border: '1px solid rgba(244,114,182,0.2)', borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
                       <div style={{ fontSize: '10px', color: THEME.muted, marginBottom: '4px' }}>Partner 1 lands</div>
                       <div style={{ fontSize: '14px', fontWeight: '600', color: THEME.accent }}>
-                        {new Date(dest.synchronized_arrival.p1_arrives).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        {new Date(dest.synchronized_arrival.p1_arrives).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
                       </div>
                     </div>
                     <div style={{ background: 'rgba(124,106,239,0.08)', border: '1px solid rgba(124,106,239,0.2)', borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
                       <div style={{ fontSize: '10px', color: THEME.muted, marginBottom: '4px' }}>Partner 2 lands</div>
                       <div style={{ fontSize: '14px', fontWeight: '600', color: THEME.primary }}>
-                        {new Date(dest.synchronized_arrival.p2_arrives).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                        {new Date(dest.synchronized_arrival.p2_arrives).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })}
                       </div>
                     </div>
                   </div>

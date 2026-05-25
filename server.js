@@ -1058,10 +1058,11 @@ app.post('/api/flight-prices', [
           let p2Price = null
           let p2ArrivalAt = null
           if (p1Detail?.arrivalAt) {
-            const p1Arrival = new Date(p1Detail.arrivalAt)
-            const toHHMM = d => d.toISOString().slice(11, 16)
-            const windowFrom = toHHMM(new Date(p1Arrival.getTime() - 60 * 60 * 1000))
-            const windowTo   = toHHMM(new Date(p1Arrival.getTime() + 60 * 60 * 1000))
+            const localMinutes = parseInt(p1Detail.arrivalAt.slice(11, 13)) * 60
+                               + parseInt(p1Detail.arrivalAt.slice(14, 16))
+            const minsToHHMM = m => { const n = ((m % 1440) + 1440) % 1440; return `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}` }
+            const windowFrom = minsToHHMM(localMinutes - 60)
+            const windowTo   = minsToHHMM(localMinutes + 60)
             const p2Body = JSON.stringify({
               data: {
                 slices: [
