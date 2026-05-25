@@ -1065,7 +1065,7 @@ app.post('/api/flight-prices', [
             const p2Body = JSON.stringify({
               data: {
                 slices: [
-                  { origin: p2IATA, destination: destIATA, departure_date: departDate,
+                  { origin: p2IATA, destination: destIATA, departure_date: p1Detail.arrivalAt.slice(0, 10),
                     arrival_time: { from: windowFrom, to: windowTo }, max_connections: 2 },
                   { origin: destIATA, destination: p2IATA, departure_date: returnDate, max_connections: 2 },
                 ],
