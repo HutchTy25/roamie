@@ -448,8 +448,16 @@ console.log('Global trip count:', globalTripCount)
         const contentText = Array.isArray(claudeResult.content)
           ? claudeResult.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
           : ''
+        console.log('[Call2 enrichment] raw content length:', contentText?.length)
+        console.log('[Call2 enrichment] content preview:', contentText?.slice(0, 200))
         if (contentText) {
-          const parsed = JSON.parse(contentText)
+          let parsed
+          try {
+            parsed = JSON.parse(contentText)
+          } catch (parseErr) {
+            console.error('[Call2 enrichment] JSON.parse failed:', parseErr.message, '| content start:', contentText?.slice(0, 100))
+            throw parseErr
+          }
           const dests  = Array.isArray(parsed) ? parsed : (parsed.destinations || [])
           console.log('[Call2 enrichment] parsed destinations:', dests?.length)
           const from   = quizData?.dates?.from
