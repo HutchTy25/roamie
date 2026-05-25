@@ -443,6 +443,7 @@ console.log('Global trip count:', globalTripCount)
     try {
       const flightPrices = req.body.flightPrices || {}
       const quizData    = req.body.quizData    || {}
+      console.log('[Call2 enrichment] isCall2:', isCall2, 'has flightPrices:', Object.keys(req.body.flightPrices || {}).length, 'has quizData:', !!req.body.quizData)
       if (Object.keys(flightPrices).length > 0) {
         const contentText = Array.isArray(claudeResult.content)
           ? claudeResult.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
@@ -450,6 +451,7 @@ console.log('Global trip count:', globalTripCount)
         if (contentText) {
           const parsed = JSON.parse(contentText)
           const dests  = Array.isArray(parsed) ? parsed : (parsed.destinations || [])
+          console.log('[Call2 enrichment] parsed destinations:', dests?.length)
           const from   = quizData?.dates?.from
           const to     = quizData?.dates?.to
           const nights = from && to
@@ -473,6 +475,7 @@ console.log('Global trip count:', globalTripCount)
             return { ...dest, ...computed }
           })
           const enrichedResult = Array.isArray(parsed) ? enriched : { ...parsed, destinations: enriched }
+          console.log('[Call2 enrichment] enriched result sample:', JSON.stringify(enriched?.[0]?.p1_cost))
           console.log('[Call 2 enrichment] computed costs for', enriched.length, 'destinations')
           return res.json({ ...claudeResult, content: [{ type: 'text', text: JSON.stringify(enrichedResult) }] })
         }
