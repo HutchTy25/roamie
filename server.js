@@ -928,6 +928,50 @@ if (!data.data?.offers?.length) return null
   }
 }
 
+async function searchDuffelFlightsWithDetail(originIata, destIata, departDate, returnDate) {
+  try {
+    const body = JSON.stringify({
+      data: {
+        slices: [
+          { origin: originIata, destination: destIata, departure_date: departDate, max_connections: 2 },
+          { origin: destIata, destination: originIata, departure_date: returnDate, max_connections: 2 },
+        ],
+        passengers: [{ type: 'adult' }],
+        cabin_class: 'economy',
+        max_connections: 2,
+      }
+    })
+    const makeReq = () => fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=8000', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.DUFFEL_API_KEY}`,
+        'Duffel-Version': 'v2',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body
+    })
+    let res = await makeReq()
+    if (res.status === 429) {
+      await new Promise(r => setTimeout(r, 2000))
+      res = await makeReq()
+    }
+    const data = await res.json()
+    if (!data.data?.offers?.length) return null
+    const sorted = data.data.offers
+      .map(o => ({ price: parseFloat(o.total_amount), offer: o }))
+      .filter(({ price }) => !isNaN(price) && price > 0)
+      .sort((a, b) => a.price - b.price)
+    if (!sorted.length) return null
+    const cheapest = sorted[0]
+    const arrivalAt = cheapest.offer.slices?.[0]?.segments?.at(-1)?.arriving_at || null
+    return { price: Math.round(cheapest.price), arrivalAt }
+  } catch (e) {
+    console.error('Duffel detail search error:', e)
+    return null
+  }
+}
+
 app.post('/api/flight-prices', [
   body('p1City').isString().trim().notEmpty(),
   body('p2City').isString().trim().notEmpty(),
@@ -939,6 +983,7 @@ app.post('/api/flight-prices', [
   body('p2Currency').isString().trim().isLength({ min: 3, max: 3 }).optional(),
   body('p1Budget').isNumeric().optional(),
   body('p2Budget').isNumeric().optional(),
+  body('syncArrival').isBoolean().optional(),
 ], async (req, res) => {
   const errors = validationResult(req)
   if (!errors.isEmpty()) {
@@ -947,7 +992,7 @@ app.post('/api/flight-prices', [
 
   try {
     const { p1City, p2City, p1Iata, p2Iata, destinations, dates, routing, sameCity, userId,
-            p1Currency, p2Currency, p1Budget, p2Budget } = req.body
+            p1Currency, p2Currency, p1Budget, p2Budget, syncArrival } = req.body
     const dateParts = dates.split(' to ')
     const departDate = dateParts[0]?.trim()
     const returnDate = dateParts[1]?.trim()
@@ -1008,15 +1053,70 @@ app.post('/api/flight-prices', [
           source: price ? 'duffel' : 'estimate'
         }
       } else if (routing === 'meet') {
-        const [p1Price, p2Price] = await Promise.all([
-          p1IATA ? searchDuffelFlights(p1IATA, destIATA, departDate, returnDate) : null,
-          p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
-        ])
-        console.log(`Meet prices for ${destName} — P1: ${p1Price}, P2: ${p2Price}`)
-        priceResults[destName] = {
-          p1: p1Price,
-          p2: p2Price,
-          source: 'duffel'
+        if (syncArrival && p1IATA && p2IATA) {
+          const p1Detail = await searchDuffelFlightsWithDetail(p1IATA, destIATA, departDate, returnDate)
+          let p2Price = null
+          let p2ArrivalAt = null
+          if (p1Detail?.arrivalAt) {
+            const p1Arrival = new Date(p1Detail.arrivalAt)
+            const toHHMM = d => d.toISOString().slice(11, 16)
+            const windowFrom = toHHMM(new Date(p1Arrival.getTime() - 60 * 60 * 1000))
+            const windowTo   = toHHMM(new Date(p1Arrival.getTime() + 60 * 60 * 1000))
+            const p2Body = JSON.stringify({
+              data: {
+                slices: [
+                  { origin: p2IATA, destination: destIATA, departure_date: departDate,
+                    arrival_time: { from: windowFrom, to: windowTo }, max_connections: 2 },
+                  { origin: destIATA, destination: p2IATA, departure_date: returnDate, max_connections: 2 },
+                ],
+                passengers: [{ type: 'adult' }],
+                cabin_class: 'economy',
+                max_connections: 2,
+              }
+            })
+            const makeP2Req = () => fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=8000', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${process.env.DUFFEL_API_KEY}`, 'Duffel-Version': 'v2',
+                         'Content-Type': 'application/json', 'Accept': 'application/json' },
+              body: p2Body
+            })
+            try {
+              let p2Res = await makeP2Req()
+              if (p2Res.status === 429) { await new Promise(r => setTimeout(r, 2000)); p2Res = await makeP2Req() }
+              const p2Data = await p2Res.json()
+              if (p2Data.data?.offers?.length) {
+                const sorted = p2Data.data.offers
+                  .map(o => ({ price: parseFloat(o.total_amount), offer: o }))
+                  .filter(({ price }) => !isNaN(price) && price > 0)
+                  .sort((a, b) => a.price - b.price)
+                if (sorted.length) {
+                  p2Price = Math.round(sorted[0].price)
+                  p2ArrivalAt = sorted[0].offer.slices?.[0]?.segments?.at(-1)?.arriving_at || null
+                }
+              }
+            } catch (e) { console.error(`P2 sync arrival error for ${destName}:`, e) }
+          } else {
+            p2Price = await searchDuffelFlights(p2IATA, destIATA, departDate, returnDate)
+          }
+          const gapMinutes = (p1Detail?.arrivalAt && p2ArrivalAt)
+            ? Math.abs(Math.round((new Date(p2ArrivalAt) - new Date(p1Detail.arrivalAt)) / 60000))
+            : null
+          console.log(`Sync arrival for ${destName} — P1: ${p1Detail?.price}, P2: ${p2Price}, gap: ${gapMinutes}min`)
+          priceResults[destName] = {
+            p1: p1Detail?.price || null,
+            p2: p2Price,
+            source: 'duffel',
+            synchronized_arrival: (p1Detail?.arrivalAt && p2ArrivalAt)
+              ? { p1_arrives: p1Detail.arrivalAt, p2_arrives: p2ArrivalAt, gap_minutes: gapMinutes }
+              : null,
+          }
+        } else {
+          const [p1Price, p2Price] = await Promise.all([
+            p1IATA ? searchDuffelFlights(p1IATA, destIATA, departDate, returnDate) : null,
+            p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
+          ])
+          console.log(`Meet prices for ${destName} — P1: ${p1Price}, P2: ${p2Price}`)
+          priceResults[destName] = { p1: p1Price, p2: p2Price, source: 'duffel' }
         }
       } else if (routing === 'fly_together') {
         const [p1ToP2Price, bothToDestPrice] = await Promise.all([

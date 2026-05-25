@@ -594,6 +594,7 @@ Return ONLY this JSON, no markdown, no explanation:
   p2Currency: data.p2.currency,
   p1Budget: data.p1.maxSpend,
   p2Budget: data.p2.maxSpend,
+  syncArrival: data.syncArrival || false,
 })
       })
       if (res.status === 402) { setPaywallHit(true); return null }
@@ -1176,6 +1177,43 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
               <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '12px', padding: '12px 14px', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.65)', border: `1px solid ${THEME.border}` }}>
                 ✈️ {dest.routing_note}
               </div>
+
+              {dest.synchronized_arrival && (
+                <div style={{
+                  background: 'rgba(34, 211, 238, 0.07)',
+                  borderRadius: '12px',
+                  padding: '14px 16px',
+                  marginBottom: '8px',
+                  border: '1px solid rgba(34, 211, 238, 0.25)',
+                  boxShadow: '0 0 20px rgba(34, 211, 238, 0.08)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                    <span style={{ fontSize: '14px' }}>⏱️</span>
+                    <span style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: THEME.cyan, fontWeight: '600' }}>
+                      Synchronized Arrival
+                    </span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+                    <div style={{ background: 'rgba(244,114,182,0.08)', border: '1px solid rgba(244,114,182,0.2)', borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '10px', color: THEME.muted, marginBottom: '4px' }}>Partner 1 lands</div>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: THEME.accent }}>
+                        {new Date(dest.synchronized_arrival.p1_arrives).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                      </div>
+                    </div>
+                    <div style={{ background: 'rgba(124,106,239,0.08)', border: '1px solid rgba(124,106,239,0.2)', borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '10px', color: THEME.muted, marginBottom: '4px' }}>Partner 2 lands</div>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: THEME.primary }}>
+                        {new Date(dest.synchronized_arrival.p2_arrives).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'center', fontSize: '12px', color: THEME.cyan }}>
+                    {dest.synchronized_arrival.gap_minutes === 0
+                      ? 'Landing at virtually the same time'
+                      : `${dest.synchronized_arrival.gap_minutes} min apart — arriving together`}
+                  </div>
+                </div>
+              )}
 
               {dest.safety_note && (
                 <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '12px', padding: '12px 14px', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.65)', border: `1px solid ${THEME.border}` }}>

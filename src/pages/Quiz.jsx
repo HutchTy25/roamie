@@ -346,6 +346,7 @@ const [p2Prefilled, setP2Prefilled] = useState(false)
     region: 'surprise',
     accommodation: 'mid',
     sameCity: false,
+    syncArrival: false,
   })
 
   function getCurrencySymbol(code) {
@@ -520,7 +521,7 @@ const [p2Prefilled, setP2Prefilled] = useState(false)
     key={m.id}
     onClick={() => {
       if (m.locked) { navigate('/login'); return }
-      setData(d => ({ ...d, tripMode: m.id, routing: m.routing }))
+      setData(d => ({ ...d, tripMode: m.id, routing: m.routing, syncArrival: false }))
     }}
     style={{
       padding: '1.25rem',
@@ -553,8 +554,50 @@ const [p2Prefilled, setP2Prefilled] = useState(false)
     
     
   </div>
-))}  
+))}
         </div>
+
+        {data.tripMode === 'meet' && (
+          <div
+            onClick={() => setData(d => ({ ...d, syncArrival: !d.syncArrival }))}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '14px',
+              padding: '1.25rem',
+              borderRadius: '16px',
+              border: `1px solid ${data.syncArrival ? THEME.cyan : THEME.border}`,
+              background: data.syncArrival ? 'rgba(34, 211, 238, 0.08)' : THEME.card,
+              backdropFilter: 'blur(20px)',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              marginBottom: '1rem',
+              boxShadow: data.syncArrival ? '0 0 30px rgba(34, 211, 238, 0.15)' : 'none',
+            }}
+          >
+            <div style={{ fontSize: '2rem', flexShrink: 0 }}>⏱️</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '15px', fontWeight: '600', color: data.syncArrival ? THEME.cyan : THEME.text, marginBottom: '3px' }}>
+                Sync Arrival
+              </div>
+              <div style={{ fontSize: '12px', color: THEME.muted, lineHeight: '1.5' }}>
+                Find flights that land within 60 minutes of each other
+              </div>
+            </div>
+            <div style={{
+              width: '40px', height: '22px', borderRadius: '11px',
+              background: data.syncArrival ? THEME.cyan : 'rgba(255,255,255,0.15)',
+              position: 'relative', transition: 'all 0.2s', flexShrink: 0,
+            }}>
+              <div style={{
+                width: '18px', height: '18px', borderRadius: '50%', background: 'white',
+                position: 'absolute', top: '2px',
+                left: data.syncArrival ? '20px' : '2px',
+                transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+              }} />
+            </div>
+          </div>
+        )}
 
       <button
   onClick={() => navigate('/')}
