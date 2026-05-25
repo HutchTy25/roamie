@@ -1109,7 +1109,8 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
               budget: { label: 'Budget', price: Math.round(base * 0.6 / 5) * 5 },
             }
             const active = tierData[hotelTier]
-            const hotelLink = `https://www.google.com/travel/hotels/${encodeURIComponent(dest.name)}`
+            const priceFilter = hotelTier === 'budget' ? '?price=1' : hotelTier === 'value' ? '?price=2' : '?price=3,4'
+            const hotelLink = `https://www.google.com/travel/hotels/${encodeURIComponent(dest.name)}${priceFilter}`
             return (
               <div style={{ marginBottom: '1rem' }}>
                 <div style={{
@@ -1169,7 +1170,7 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    Find hotels
+                    Find {active.label} hotels
                   </a>
                 </div>
               </div>
