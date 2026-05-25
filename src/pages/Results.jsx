@@ -477,7 +477,7 @@ Return ONLY this JSON, no markdown, no explanation:
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 3000,
+        max_tokens: 4000,
         messages: [{ role: 'user', content: breakdownPrompt }],
         flightPrices,
         quizData: {
@@ -614,7 +614,9 @@ Return ONLY this JSON, no markdown, no explanation:
   - P2 total round trip from ${data.p2.city}: ${prices.p2 ? prices.p2 : 'estimate needed'} USD`
     }).join('\n')
 
-    return `You are Roamie. Here are 3 destinations already selected for a couple. Add detailed cost breakdowns using the REAL flight prices provided.
+    return `You must respond with valid JSON only. No markdown, no explanation, no backticks. Just a raw JSON array of destination objects.
+
+You are Roamie. Here are 3 destinations already selected for a couple. Add detailed cost breakdowns using the REAL flight prices provided.
 
 PARTNER DETAILS:
 - Partner 1: ${data.p1.city} | Currency: ${data.p1.currency} (${p1sym}) | Budget: ${p1sym}${data.p1.maxSpend.toLocaleString()}
