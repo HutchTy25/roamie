@@ -614,37 +614,49 @@ Return ONLY this JSON, no markdown, no explanation:
   - P2 total round trip from ${data.p2.city}: ${prices.p2 ? prices.p2 : 'estimate needed'} USD`
     }).join('\n')
 
-    return `You must respond with valid JSON only. No markdown, no explanation, no backticks. Just a raw JSON array of destination objects.
+    return `You are a travel expert. Return a JSON array with one object per destination. Raw JSON only — no markdown, no backticks, no explanation, nothing before or after the array.
 
-You are Roamie. Here are 3 destinations already selected for a couple. Add detailed cost breakdowns using the REAL flight prices provided.
-
-PARTNER DETAILS:
-- Partner 1: ${data.p1.city} | Currency: ${data.p1.currency} (${p1sym}) | Budget: ${p1sym}${data.p1.maxSpend.toLocaleString()}
-- Partner 2: ${data.p2.city} | Currency: ${data.p2.currency} (${p2sym}) | Budget: ${p2sym}${data.p2.maxSpend.toLocaleString()}
+TRIP CONTEXT:
+- Partner 1: ${data.p1.city} | ${data.p1.currency} | Budget ${p1sym}${data.p1.maxSpend.toLocaleString()}
+- Partner 2: ${data.p2.city} | ${data.p2.currency} | Budget ${p2sym}${data.p2.maxSpend.toLocaleString()}
 - Dates: ${data.dates.from} to ${data.dates.to}
-- Routing: ${data.routing}
 - Accommodation: ${data.accommodation}
 
-REAL FLIGHT PRICES (use these exactly, do not estimate or change them):
+FLIGHT PRICES (use for routing_note context only):
 ${flightContext}
 
-DESTINATIONS TO ADD BREAKDOWN TO:
-${JSON.stringify(destinations, null, 2)}
+DESTINATIONS:
+${(destinations?.destinations || []).map(d => d.name).join('\n')}
 
-For each destination add these fields:
-- cost_breakdown: { lodging_per_night, food_per_day, activities_total } — plain numbers in USD, your estimates only
-- lodging_note: specific hotel recommendation with price per night
-- routing_note: specific airlines and flight times for both partners
-- fairness_note: one sentence on currency fairness
-- savings_scenario: narrative savings advice only — no calculations, no exact numbers
+Return a JSON array where each object matches this exact shape:
+[
+  {
+    "name": "<destination name exactly as listed above>",
+    "cost_breakdown": {
+      "lodging_per_night": 120,
+      "food_per_day": 55,
+      "activities_total": 180
+    },
+    "lodging_note": "Specific hotel name, neighbourhood, and price per night",
+    "routing_note": "Airlines and approximate flight times for both partners",
+    "fairness_note": "One sentence on whether this trip costs each partner a fair share of their budget",
+    "savings_scenario": "Narrative advice on how this couple could save for this trip — no numbers or calculations",
+    "trip_basics": {
+      "neighborhood": { "name": "Area name", "why": "Why stay here" },
+      "getting_around": [
+        { "method": "Metro", "avg_cost": "$2/ride", "recommended": true },
+        { "method": "Taxi", "avg_cost": "$15 avg", "recommended": false }
+      ],
+      "restaurants": [
+        { "name": "Restaurant name", "cuisine": "Cuisine type", "price": "$$" },
+        { "name": "Restaurant name", "cuisine": "Cuisine type", "price": "$" }
+      ],
+      "stay_tip": "One sentence on the best area to book accommodation"
+    }
+  }
+]
 
-Also add a "trip_basics" object to each destination with this structure:
-- neighborhood: { name, why }
-- getting_around: [{ method, avg_cost, recommended }] (2-3 options)
-- restaurants: [{ name, cuisine, price }] (2 recs)
-- stay_tip: one sentence on best area to book
-
-Return the complete destinations JSON with all fields including trip_basics. Same JSON structure as input but with cost fields and trip_basics added. No markdown, no backticks, no explanation.`
+All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Start your response with [ and end with ].`
   }
 
   function getPhotoQuery() {
