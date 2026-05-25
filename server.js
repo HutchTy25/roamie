@@ -277,7 +277,7 @@ async function checkProAccess(userId, supabase) {
   return cache({ allowed: true, reason: 'trial' })
 }
 
-function computeTripCosts(dest, flightPrices, exchangeRates, data) {
+function computeTripCosts(dest, flightPrices, exchangeRates, data, estimates = null) {
   const p1Rate = exchangeRates?.[data.p1.currency] || 1
   const p2Rate = exchangeRates?.[data.p2.currency] || 1
 
@@ -297,22 +297,28 @@ function computeTripCosts(dest, flightPrices, exchangeRates, data) {
       : p1FlightUsd !== null ? Math.round(p1FlightUsd * p1Rate) : null
   const flights_p2 = p2FlightUsd !== null ? Math.round(p2FlightUsd * p2Rate) : null
 
-  // p1_cost / p2_cost are null until Claude returns lodging/food/activities estimates.
-  // p1_days_income, p2_days_income, and harder_partner all depend on those totals,
-  // so they evaluate to null for now and will be non-null in the next step.
-  const p1_cost = null
-  const p2_cost = null
+  let lodging_per_night = null, lodging_total = null
+  let food_per_day = null, food_total = null, activities_total = null
+  let p1_cost = null, p2_cost = null
+  let p1_days_income = null, p2_days_income = null, harder_partner = null
 
-  const p1_days_income = p1_cost !== null && data.p1.maxSpend
-    ? Math.round(p1_cost / (data.p1.maxSpend / 30))
-    : null
-  const p2_days_income = p2_cost !== null && data.p2.maxSpend
-    ? Math.round(p2_cost / (data.p2.maxSpend / 30))
-    : null
-
-  const harder_partner = p1_cost !== null && p2_cost !== null
-    ? (p1_cost / data.p1.maxSpend >= p2_cost / data.p2.maxSpend ? 'p1' : 'p2')
-    : null
+  if (estimates) {
+    const { lodgingPerNight, foodPerDay, activitiesTotal, nights } = estimates
+    const days = nights + 1
+    lodging_per_night = lodgingPerNight || 0
+    lodging_total     = Math.round(lodging_per_night * nights)
+    food_per_day      = foodPerDay || 0
+    food_total        = Math.round(food_per_day * days)
+    activities_total  = activitiesTotal || 0
+    const stayUsd = lodging_total + food_total + activities_total
+    p1_cost = (flights_p1_total ?? 0) + Math.round(stayUsd * p1Rate)
+    p2_cost = (flights_p2 ?? 0)       + Math.round(stayUsd * p2Rate)
+    p1_days_income = data.p1.maxSpend ? Math.round(p1_cost / (data.p1.maxSpend / 30)) : null
+    p2_days_income = data.p2.maxSpend ? Math.round(p2_cost / (data.p2.maxSpend / 30)) : null
+    harder_partner = data.p1.maxSpend && data.p2.maxSpend
+      ? (p1_cost / data.p1.maxSpend >= p2_cost / data.p2.maxSpend ? 'p1' : 'p2')
+      : null
+  }
 
   return {
     cost_breakdown: {
@@ -320,11 +326,11 @@ function computeTripCosts(dest, flightPrices, exchangeRates, data) {
       flights_p1_leg2,
       flights_p1_total,
       flights_p2,
-      lodging_per_night: null,
-      lodging_total: null,
-      food_per_day: null,
-      food_total: null,
-      activities_total: null,
+      lodging_per_night,
+      lodging_total,
+      food_per_day,
+      food_total,
+      activities_total,
     },
     p1_cost,
     p2_cost,
@@ -432,6 +438,50 @@ const enhancedMessages = messages.map((msg, i) => {
    console.log('Claude response received')
 globalTripCount++
 console.log('Global trip count:', globalTripCount)
+
+  if (isCall2 && exchangeRates) {
+    try {
+      const flightPrices = req.body.flightPrices || {}
+      const quizData    = req.body.quizData    || {}
+      if (Object.keys(flightPrices).length > 0) {
+        const contentText = Array.isArray(claudeResult.content)
+          ? claudeResult.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
+          : ''
+        if (contentText) {
+          const parsed = JSON.parse(contentText)
+          const dests  = Array.isArray(parsed) ? parsed : (parsed.destinations || [])
+          const from   = quizData?.dates?.from
+          const to     = quizData?.dates?.to
+          const nights = from && to
+            ? Math.max(1, Math.round((new Date(to) - new Date(from)) / 86400000))
+            : 5
+          const p1c = quizData.p1?.currency || 'USD'
+          const p2c = quizData.p2?.currency || 'GBP'
+          const enriched = dests.map(dest => {
+            const cb = dest.cost_breakdown || {}
+            const computed = computeTripCosts(
+              dest,
+              flightPrices[dest.name] || {},
+              exchangeRates,
+              { p1: { currency: p1c, maxSpend: quizData.p1?.maxSpend || 0 },
+                p2: { currency: p2c, maxSpend: quizData.p2?.maxSpend || 0 } },
+              { lodgingPerNight: cb.lodging_per_night  || 0,
+                foodPerDay:      cb.food_per_day       || 0,
+                activitiesTotal: cb.activities_total   || 0,
+                nights }
+            )
+            return { ...dest, ...computed }
+          })
+          const enrichedResult = Array.isArray(parsed) ? enriched : { ...parsed, destinations: enriched }
+          console.log('[Call 2 enrichment] computed costs for', enriched.length, 'destinations')
+          return res.json({ ...claudeResult, content: [{ type: 'text', text: JSON.stringify(enrichedResult) }] })
+        }
+      }
+    } catch (e) {
+      console.error('[Call 2 enrichment error]', e.message)
+    }
+  }
+
 res.json(claudeResult)
 
   } catch (err) {
@@ -1215,6 +1265,11 @@ app.get('/api/prewarm', async (req, res) => {
   prewarmFlightCache().catch(e => console.error('[prewarm] Unhandled error:', e))
 })
 
+app.use((err, req, res, next) => {
+  console.error('[FATAL]', err.stack || err)
+  res.status(500).json({ success: false, error: 'Something went wrong on our end. Please try again.' })
+})
+
 app.listen(3001, () => console.log('Server running on port 3001'))
 
 prewarmFlightCache().catch(e => console.error('[prewarm] Startup error:', e))
@@ -1222,3 +1277,11 @@ setInterval(
   () => prewarmFlightCache().catch(e => console.error('[prewarm] Interval error:', e)),
   6 * 60 * 60 * 1000
 )
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[FATAL] Unhandled rejection:', reason)
+})
+
+process.on('uncaughtException', (err) => {
+  console.error('[FATAL] Uncaught exception:', err.stack || err)
+})

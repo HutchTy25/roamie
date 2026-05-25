@@ -476,7 +476,13 @@ Return ONLY this JSON, no markdown, no explanation:
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 3000,
-        messages: [{ role: 'user', content: breakdownPrompt }]
+        messages: [{ role: 'user', content: breakdownPrompt }],
+        flightPrices,
+        quizData: {
+          p1: { currency: data.p1.currency, maxSpend: data.p1.maxSpend },
+          p2: { currency: data.p2.currency, maxSpend: data.p2.maxSpend },
+          dates: data.dates,
+        },
       })
     })
 
@@ -616,33 +622,15 @@ PARTNER DETAILS:
 REAL FLIGHT PRICES (use these exactly, do not estimate or change them):
 ${flightContext}
 
-CURRENCY CONVERSION RULES:
-- All flight prices above are in USD
-- P1 costs (p1_cost, flights_p1_leg1, flights_p1_leg2, flights_p1_total) must be converted from USD to ${data.p1.currency} using the exchange rate provided above
-- P2 costs (p2_cost, flights_p2) must be converted from USD to ${data.p2.currency} using the exchange rate provided above
-- Lodging, food, and activity costs stay in USD (they represent destination costs)
-- Use the exact exchange rate provided — do not estimate or round rates
-
 DESTINATIONS TO ADD BREAKDOWN TO:
 ${JSON.stringify(destinations, null, 2)}
 
-CRITICAL RULES:
-- All numeric values must be plain numbers with NO currency symbols attached
-- p1_cost and p2_cost must be plain numbers only (e.g. 2265 not $2265)
-- All cost_breakdown values must be plain numbers only
-- Use the EXACT flight prices provided above, do not modify them
-
 For each destination add these fields:
-- p1_cost: total trip cost for P1 as plain number in ${data.p1.currency}
-- p2_cost: total trip cost for P2 as plain number in ${data.p2.currency}
-- cost_breakdown: { flights_p1_leg1, flights_p1_leg2, flights_p1_total (all in ${data.p1.currency}), flights_p2 (in ${data.p2.currency}), lodging_per_night, lodging_total, food_per_day, food_total, activities_total (all in USD) } all plain numbers
+- cost_breakdown: { lodging_per_night, food_per_day, activities_total } — plain numbers in USD, your estimates only
 - lodging_note: specific hotel recommendation with price per night
 - routing_note: specific airlines and flight times for both partners
 - fairness_note: one sentence on currency fairness
-- harder_partner: "p1" or "p2"
-- p1_days_income: estimated days of income as number
-- p2_days_income: estimated days of income as number
-- savings_scenario: accurate math — calculate exact gap between budget and cost, divide by weeks, give exact weekly amount
+- savings_scenario: narrative savings advice only — no calculations, no exact numbers
 
 Also add a "trip_basics" object to each destination with this structure:
 - neighborhood: { name, why }
