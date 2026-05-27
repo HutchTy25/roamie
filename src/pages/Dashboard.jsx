@@ -711,7 +711,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
               }
               const wc = weatherCondition()
               const partnerLocalTime = partnerWeather
-                ? new Date((partnerWeather.dt + partnerWeather.timezone) * 1000).toUTCString().match(/(\d+:\d+)/)?.[1]
+                ? new Date(Date.now() + partnerWeather.timezone * 1000).toUTCString().match(/(\d+:\d+)/)?.[1]
                 : null
               return partnerProfile ? (
                 <div className="glass-card" style={{ padding: '20px', marginBottom: '16px', position: 'relative', overflow: 'hidden', boxShadow: `0 0 80px ${timeGlow}, 0 0 32px ${timeGlow}` }}>
