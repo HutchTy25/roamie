@@ -494,10 +494,17 @@ Return ONLY this JSON, no markdown, no explanation:
 
     const fullResult = JSON.parse(text2)
     const secondPassDests = Array.isArray(fullResult) ? fullResult : (fullResult.destinations || [])
-    const mergedDestinations = enrichedDests.map((enriched, i) => ({
-      ...enriched,
-      ...(secondPassDests[i] || {}),
-    }))
+    const mergedDestinations = enrichedDests.map((enriched, i) => {
+      const second = secondPassDests[i] || {}
+      return {
+        ...enriched,
+        ...second,
+        cost_breakdown: {
+          ...enriched.cost_breakdown,
+          ...second.cost_breakdown,
+        },
+      }
+    })
     const mergedResult = { ...firstPassResult, destinations: mergedDestinations }
     setResult(mergedResult)
     setPartialResult(null)
