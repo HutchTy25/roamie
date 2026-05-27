@@ -964,8 +964,12 @@ async function searchDuffelFlightsWithDetail(originIata, destIata, departDate, r
       .sort((a, b) => a.price - b.price)
     if (!sorted.length) return null
     const cheapest = sorted[0]
+    const firstSeg = cheapest.offer.slices?.[0]?.segments?.[0]
     const arrivalAt = cheapest.offer.slices?.[0]?.segments?.at(-1)?.arriving_at || null
-    return { price: Math.round(cheapest.price), arrivalAt }
+    const airline = firstSeg?.marketing_carrier?.name || null
+    const flightNumber = firstSeg?.marketing_carrier_flight_number || null
+    const departureAt = firstSeg?.departing_at || null
+    return { price: Math.round(cheapest.price), arrivalAt, airline, flightNumber, departureAt }
   } catch (e) {
     console.error('Duffel detail search error:', e)
     return null
@@ -1057,6 +1061,9 @@ app.post('/api/flight-prices', [
           const p1Detail = await searchDuffelFlightsWithDetail(p1IATA, destIATA, departDate, returnDate)
           let p2Price = null
           let p2ArrivalAt = null
+          let p2Airline = null
+          let p2FlightNumber = null
+          let p2DepartureAt = null
           if (p1Detail?.arrivalAt) {
             const localMinutes = parseInt(p1Detail.arrivalAt.slice(11, 13)) * 60
                                + parseInt(p1Detail.arrivalAt.slice(14, 16))
@@ -1093,6 +1100,10 @@ app.post('/api/flight-prices', [
                 if (sorted.length) {
                   p2Price = Math.round(sorted[0].price)
                   p2ArrivalAt = sorted[0].offer.slices?.[0]?.segments?.at(-1)?.arriving_at || null
+                  const p2FirstSeg = sorted[0].offer.slices?.[0]?.segments?.[0]
+                  p2Airline = p2FirstSeg?.marketing_carrier?.name || null
+                  p2FlightNumber = p2FirstSeg?.marketing_carrier_flight_number || null
+                  p2DepartureAt = p2FirstSeg?.departing_at || null
                 }
               }
             } catch (e) { console.error(`P2 sync arrival error for ${destName}:`, e) }
@@ -1114,7 +1125,18 @@ app.post('/api/flight-prices', [
             p2: p2Price,
             source: 'duffel',
             synchronized_arrival: syncValid
-              ? { p1_arrives: p1Detail.arrivalAt, p2_arrives: p2ArrivalAt, gap_minutes: gapMinutes }
+              ? {
+                  p1_arrives: p1Detail.arrivalAt,
+                  p2_arrives: p2ArrivalAt,
+                  gap_minutes: gapMinutes,
+                  p1_airline: p1Detail.airline,
+                  p1_flight_number: p1Detail.flightNumber,
+                  p1_departs_at: p1Detail.departureAt,
+                  p2_airline: p2Airline,
+                  p2_flight_number: p2FlightNumber,
+                  p2_departs_at: p2DepartureAt,
+                  dest_iata: destIATA,
+                }
               : null,
           }
         } else {

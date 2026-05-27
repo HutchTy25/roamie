@@ -1210,6 +1210,38 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
                       ? 'Landing at virtually the same time'
                       : `${dest.synchronized_arrival.gap_minutes} min apart — arriving together`}
                   </div>
+                  {dest.synchronized_arrival.p1_airline && dest.synchronized_arrival.dest_iata && (
+                    <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <div style={{ fontSize: '12px', color: THEME.accent, fontWeight: '500' }}>
+                          ✈️ P1: {dest.synchronized_arrival.p1_airline} · {dest.synchronized_arrival.p1_flight_number}
+                        </div>
+                        <button
+                          onClick={() => {
+                            const date = dest.synchronized_arrival.p1_departs_at?.slice(2, 10).replace(/-/g, '')
+                            window.open(`https://www.skyscanner.com/transport/flights/${data.p1.iata}/${dest.synchronized_arrival.dest_iata}/${date}/`, '_blank')
+                          }}
+                          style={{ padding: '7px 14px', background: 'rgba(244,114,182,0.1)', border: '1px solid rgba(244,114,182,0.25)', borderRadius: '100px', color: THEME.accent, fontSize: '12px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}
+                        >
+                          Search on Skyscanner →
+                        </button>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        <div style={{ fontSize: '12px', color: THEME.primary, fontWeight: '500' }}>
+                          ✈️ P2: {dest.synchronized_arrival.p2_airline} · {dest.synchronized_arrival.p2_flight_number}
+                        </div>
+                        <button
+                          onClick={() => {
+                            const date = dest.synchronized_arrival.p2_departs_at?.slice(2, 10).replace(/-/g, '')
+                            window.open(`https://www.skyscanner.com/transport/flights/${data.p2.iata}/${dest.synchronized_arrival.dest_iata}/${date}/`, '_blank')
+                          }}
+                          style={{ padding: '7px 14px', background: 'rgba(124,106,239,0.1)', border: '1px solid rgba(124,106,239,0.25)', borderRadius: '100px', color: THEME.primary, fontSize: '12px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}
+                        >
+                          Search on Skyscanner →
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
