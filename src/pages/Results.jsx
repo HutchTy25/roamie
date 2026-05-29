@@ -383,7 +383,12 @@ async function fetchRecommendations() {
   const p1sym = CURR_SYMBOLS[data.p1.currency] || data.p1.currency
   const p2sym = CURR_SYMBOLS[data.p2.currency] || data.p2.currency
 
-  const destinationPrompt = `You are Roamie, a couples travel planner. Based on these details suggest exactly 3 destinations.
+  const destinationPrompt = `You are Roamie, a couples travel planner. Assign exactly one destination to each of three archetypes: Sanctuary, Odyssey, and Horizon.
+
+Archetype definitions:
+- Sanctuary: Low friction, relaxation-focused. A place to decompress together — coastal ease, slow mornings, minimal planning.
+- Odyssey: Adventure, culture, activities. A destination that gives them stories — museums, hikes, street food, nightlife. High engagement.
+- Horizon: The balanced mix. Neither pure rest nor pure adventure — a destination that surprises them with both.
 
 PARTNER DETAILS:
 - Partner 1: Lives in ${data.p1.city} | Currency: ${data.p1.currency} (${p1sym}) | Max budget: ${p1sym}${data.p1.maxSpend.toLocaleString()} TOTAL
@@ -396,12 +401,61 @@ PARTNER DETAILS:
 
 Return ONLY this JSON, no markdown, no explanation:
 {
-  "destinations": [
-    {
+  "destinations": {
+    "sanctuary": {
       "name": "City, Country",
       "iata": "LIS",
       "country_emoji": "🇵🇹",
-      "tagline": "One warm sentence why this is perfect for them",
+      "tagline": "One warm sentence why this is their sanctuary",
+      "archetype_vibe": "Pure Shared Time & Relaxation",
+      "emotional_justification": "One sentence on why this archetype fits this couple specifically",
+      "why_both": "One sentence on why this works for both partners given their cities and budgets",
+      "vibes": ["relaxed", "coastal"],
+      "best_months": ["Apr", "May"],
+      "why_it_works": "2-3 sentences on why this fits their cities, budgets and vibes",
+      "vibe_match": ["vibe1", "vibe2"],
+      "best_for": "weekend or week or two weeks",
+      "season_note": "Weather for their exact dates with temperatures",
+      "safety_note": "One honest sentence on safety",
+      "reality_strip": {
+        "crowd": "Low or Medium or High",
+        "weather": "Good or Uncertain or Risky",
+        "fairness": "Balanced or Slightly Skewed or Very Skewed",
+        "budget_stretch": "Comfortable or Slight Stretch or Heavy Stretch"
+      }
+    },
+    "odyssey": {
+      "name": "City, Country",
+      "iata": "BCN",
+      "country_emoji": "🇪🇸",
+      "tagline": "One warm sentence why this is their odyssey",
+      "archetype_vibe": "Adventure & Discovery",
+      "emotional_justification": "One sentence on why this archetype fits this couple specifically",
+      "why_both": "One sentence on why this works for both partners given their cities and budgets",
+      "vibes": ["adventure", "culture"],
+      "best_months": ["Jun", "Sep"],
+      "why_it_works": "2-3 sentences on why this fits their cities, budgets and vibes",
+      "vibe_match": ["vibe1", "vibe2"],
+      "best_for": "weekend or week or two weeks",
+      "season_note": "Weather for their exact dates with temperatures",
+      "safety_note": "One honest sentence on safety",
+      "reality_strip": {
+        "crowd": "Low or Medium or High",
+        "weather": "Good or Uncertain or Risky",
+        "fairness": "Balanced or Slightly Skewed or Very Skewed",
+        "budget_stretch": "Comfortable or Slight Stretch or Heavy Stretch"
+      }
+    },
+    "horizon": {
+      "name": "City, Country",
+      "iata": "DUB",
+      "country_emoji": "🇮🇪",
+      "tagline": "One warm sentence why this is their horizon",
+      "archetype_vibe": "The Best of Both",
+      "emotional_justification": "One sentence on why this archetype fits this couple specifically",
+      "why_both": "One sentence on why this works for both partners given their cities and budgets",
+      "vibes": ["relaxed", "culture"],
+      "best_months": ["May", "Jun"],
       "why_it_works": "2-3 sentences on why this fits their cities, budgets and vibes",
       "vibe_match": ["vibe1", "vibe2"],
       "best_for": "weekend or week or two weeks",
@@ -414,7 +468,7 @@ Return ONLY this JSON, no markdown, no explanation:
         "budget_stretch": "Comfortable or Slight Stretch or Heavy Stretch"
       }
     }
-  ],
+  },
   "stretch_goal": {
     "name": "City, Country",
     "country_emoji": "🇬🇷",
@@ -435,7 +489,7 @@ Return ONLY this JSON, no markdown, no explanation:
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 2000,
+        max_tokens: 3500,
         messages: [{ role: 'user', content: destinationPrompt }]
       })
     })
@@ -447,6 +501,11 @@ Return ONLY this JSON, no markdown, no explanation:
       : raw1.replace(/```json|```/g, '').trim()
 
     const firstPassResult = JSON.parse(text1)
+    if (firstPassResult.destinations && !Array.isArray(firstPassResult.destinations)) {
+      firstPassResult.destinations = ['sanctuary', 'odyssey', 'horizon']
+        .map(key => ({ archetype: key, ...firstPassResult.destinations[key] }))
+        .filter(d => d.name)
+    }
     const destNames = firstPassResult.destinations?.map(d => ({ name: d.name, iata: d.iata })) || []
 
     // Show cards immediately — costs will fill in after Call 2
