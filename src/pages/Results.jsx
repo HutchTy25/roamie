@@ -399,6 +399,7 @@ Return ONLY this JSON, no markdown, no explanation:
   "destinations": [
     {
       "name": "City, Country",
+      "iata": "LIS",
       "country_emoji": "🇵🇹",
       "tagline": "One warm sentence why this is perfect for them",
       "why_it_works": "2-3 sentences on why this fits their cities, budgets and vibes",
@@ -446,7 +447,7 @@ Return ONLY this JSON, no markdown, no explanation:
       : raw1.replace(/```json|```/g, '').trim()
 
     const firstPassResult = JSON.parse(text1)
-    const destNames = firstPassResult.destinations?.map(d => d.name) || []
+    const destNames = firstPassResult.destinations?.map(d => ({ name: d.name, iata: d.iata })) || []
 
     // Show cards immediately — costs will fill in after Call 2
     setPartialResult(firstPassResult)
@@ -460,7 +461,7 @@ Return ONLY this JSON, no markdown, no explanation:
     // partialResult immediately so flight costs appear before Call 2 finishes
     const enrichedDests = (firstPassResult.destinations || []).map(dest => ({
       ...dest,
-      ...(flightPrices[dest.name] || {}),
+      ...(flightPrices[dest.iata] || {}),
     }))
     setPartialResult({ ...firstPassResult, destinations: enrichedDests })
 
@@ -496,6 +497,9 @@ Return ONLY this JSON, no markdown, no explanation:
     const secondPassDests = Array.isArray(fullResult) ? fullResult : (fullResult.destinations || [])
     const mergedDestinations = enrichedDests.map((enriched, i) => {
       const second = secondPassDests[i] || {}
+      if (enriched.iata && second.iata && enriched.iata !== second.iata) {
+        console.warn(`[merge mismatch] position ${i}: Call 1 iata=${enriched.iata}, Call 2 iata=${second.iata}`)
+      }
       return {
         ...enriched,
         ...second,
@@ -613,8 +617,9 @@ Return ONLY this JSON, no markdown, no explanation:
   }
 
   function buildBreakdownPrompt(destinations, flightPrices, p1sym, p2sym) {
-    const flightContext = Object.entries(flightPrices).map(([dest, prices]) => {
-      return `${dest}:
+    const flightContext = (destinations?.destinations || []).map(d => {
+      const prices = flightPrices[d.iata] || {}
+      return `${d.name}:
   - P1 total round trip from ${data.p1.city}: ${prices.p1 ? prices.p1 : 'estimate needed'} USD
   - P1 breakdown: leg1 (${data.p1.city}→${data.p2.city}): ${prices.p1_breakdown?.leg1 || 'N/A'} USD, leg2 (${data.p2.city}→destination): ${prices.p1_breakdown?.leg2 || 'N/A'} USD
   - P2 total round trip from ${data.p2.city}: ${prices.p2 ? prices.p2 : 'estimate needed'} USD`
@@ -638,6 +643,7 @@ Return a JSON array where each object matches this exact shape:
 [
   {
     "name": "<destination name exactly as listed above>",
+    "iata": "<3-letter IATA code>",
     "cost_breakdown": {
       "lodging_per_night": 120,
       "food_per_day": 55,

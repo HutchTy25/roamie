@@ -468,7 +468,7 @@ console.log('Global trip count:', globalTripCount)
             const cb = dest.cost_breakdown || {}
             const computed = computeTripCosts(
               dest,
-              flightPrices[dest.name] || {},
+              flightPrices[dest.iata] || flightPrices[dest.name] || {},
               exchangeRates,
               { p1: { currency: p1c, maxSpend: quizData.p1?.maxSpend || 0 },
                 p2: { currency: p2c, maxSpend: quizData.p2?.maxSpend || 0 } },
@@ -1006,7 +1006,10 @@ app.post('/api/flight-prices', [
 
     console.log('Flight prices request:', { p1City, p2City, p1IATA, p2IATA, departDate, returnDate, routing })
 
-    const cacheKey = [p1IATA, p2IATA, destinations.slice().sort().join('|'), departDate, routing,
+    const destIataSorted = destinations
+      .map(d => (typeof d === 'object' ? d.iata : getCityIATA(d.split(',')[0].trim())))
+      .filter(Boolean).sort().join('|')
+    const cacheKey = [p1IATA, p2IATA, destIataSorted, departDate, routing,
                       p1Currency || '', p2Currency || ''].join('::')
     const cached = globalRouteCache.get(cacheKey)
     if (cached && Date.now() - cached.timestamp < ROUTE_CACHE_TTL) {
@@ -1038,20 +1041,24 @@ app.post('/api/flight-prices', [
 
   const limit = pLimit(4)
 
-  await Promise.all(destinations.map(destName => limit(async () => {
-    const destIATA = getCityIATA(destName.split(',')[0].trim())
+  await Promise.all(destinations.map(dest => limit(async () => {
+    const destName = typeof dest === 'object' ? dest.name : dest
+    const destIATA = (typeof dest === 'object' && dest.iata)
+      ? dest.iata
+      : getCityIATA(destName.split(',')[0].trim())
+    const resultKey = destIATA || destName
     console.log(`Destination: ${destName} → IATA: ${destIATA}`)
 
     if (!destIATA) {
       console.log(`No IATA for ${destName}, skipping`)
-      priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
+      priceResults[resultKey] = { p1: null, p2: null, source: 'estimate' }
       return
     }
 
     try {
       if (sameCity) {
         const price = await searchDuffelFlights(p1IATA, destIATA, departDate, returnDate)
-        priceResults[destName] = {
+        priceResults[resultKey] = {
           p1: price ? Math.round(price / 2) : null,
           p2: price ? Math.round(price / 2) : null,
           source: price ? 'duffel' : 'estimate'
@@ -1120,7 +1127,7 @@ app.post('/api/flight-prices', [
             p2Price = await searchDuffelFlights(p2IATA, destIATA, departDate, returnDate)
           }
           console.log(`Sync arrival for ${destName} — P1: ${p1Detail?.price}, P2: ${p2Price}, gap: ${gapMinutes}min, valid: ${syncValid}`)
-          priceResults[destName] = {
+          priceResults[resultKey] = {
             p1: p1Detail?.price || null,
             p2: p2Price,
             source: 'duffel',
@@ -1145,7 +1152,7 @@ app.post('/api/flight-prices', [
             p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
           ])
           console.log(`Meet prices for ${destName} — P1: ${p1Price}, P2: ${p2Price}`)
-          priceResults[destName] = { p1: p1Price, p2: p2Price, source: 'duffel' }
+          priceResults[resultKey] = { p1: p1Price, p2: p2Price, source: 'duffel' }
         }
       } else if (routing === 'fly_together') {
         const [p1ToP2Price, bothToDestPrice] = await Promise.all([
@@ -1154,7 +1161,7 @@ app.post('/api/flight-prices', [
         ])
         const p2ToDestPrice = bothToDestPrice
         console.log(`Fly together prices for ${destName} — P1toP2: ${p1ToP2Price}, BothToDest: ${bothToDestPrice}, P2toDest: ${p2ToDestPrice}`)
-        priceResults[destName] = {
+        priceResults[resultKey] = {
           p1: (p1ToP2Price || 0) + (bothToDestPrice || 0),
           p2: p2ToDestPrice || 0,
           p1_breakdown: {
@@ -1166,7 +1173,7 @@ app.post('/api/flight-prices', [
       }
     } catch (e) {
       console.error(`Flight price error for ${destName}:`, e)
-      priceResults[destName] = { p1: null, p2: null, source: 'estimate' }
+      priceResults[resultKey] = { p1: null, p2: null, source: 'estimate' }
     }
   })))
     console.log('Final price results:', JSON.stringify(priceResults))
