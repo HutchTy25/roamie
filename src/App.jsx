@@ -1,9 +1,8 @@
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { supabase } from './supabase'
 import Home from './pages/Home'
-import Enrollment from './pages/Enrollment'
 import Quiz from './pages/Quiz'
 import Results from './pages/Results'
 import Success from './pages/Success'
@@ -21,7 +20,6 @@ export default function App() {
   const [session, setSession] = useState(undefined)
   const [profile, setProfile] = useState(undefined)
   const [showUpdate, setShowUpdate] = useState(false)
-  const navigate = useNavigate()
 
   const { updateServiceWorker } = useRegisterSW({
     onNeedRefresh() { setShowUpdate(true) },
@@ -57,15 +55,7 @@ export default function App() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
-      if (session) {
-        fetchProfile(session.user.id)
-        const enrolled = localStorage.getItem('roamie_enrollment_result')
-        if (enrolled) {
-          const parsed = JSON.parse(enrolled)
-          localStorage.removeItem('roamie_enrollment_result')
-          navigate('/results', { state: { result: parsed.result, data: parsed.data, fromEnrollment: true } })
-        }
-      }
+      if (session) fetchProfile(session.user.id)
       else setProfile(null)
     })
 
@@ -119,9 +109,7 @@ export default function App() {
         </div>
       )}
       <Routes>
-      <Route path="/" element={<Enrollment />} />
-      <Route path="/enroll" element={<Enrollment />} />
-      <Route path="/home" element={<Home session={session} />} />
+      <Route path="/" element={<Home session={session} />} />
       <Route path="/quiz" element={<Quiz session={session} />} />
       <Route path="/results" element={<Results />} />
       <Route path="/success" element={<Success />} />
