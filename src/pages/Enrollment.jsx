@@ -363,8 +363,7 @@ export default function Enrollment() {
         { headers: { 'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET } }
       )
       const json = await res.json()
-      console.log('[airport-search]', json)
-      setSuggestions(Array.isArray(json) ? json.slice(0, 5) : [])
+      setSuggestions(Array.isArray(json) ? json.slice(0, 5) : Array.isArray(json.suggestions) ? json.suggestions.slice(0, 5) : [])
     } catch {
       setSuggestions([])
     }
