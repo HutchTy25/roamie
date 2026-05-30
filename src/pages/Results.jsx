@@ -992,7 +992,7 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
           fontWeight: '500',
           textAlign: 'center',
         }}>
-          {isStretch ? '✦ Stretch goal' : activeCard === 0 ? '✦ Best match' : `Option ${activeCard + 1}`}
+          {isStretch ? '✦ Stretch goal' : dest.archetype === 'sanctuary' ? '🌿 Sanctuary' : dest.archetype === 'odyssey' ? '⚡ Odyssey' : dest.archetype === 'horizon' ? '🌅 Horizon' : `Option ${activeCard + 1}`}
         </div>
 
         {/* ======================== */}
