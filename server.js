@@ -43,17 +43,31 @@ app.use(cors({
     'http://localhost:4173',
   ],
   methods: ['GET', 'POST'],
- allowedHeaders: ['Content-Type', 'stripe-signature', 'x-roamie-secret'],
+ allowedHeaders: ['Content-Type', 'stripe-signature', 'x-roamie-secret', 'Authorization'],
   credentials: false,
 }))
 app.use(express.json())
-app.use('/api/messages', (req, res, next) => {
+async function requireAppSecret(req, res, next) {
   const secret = req.headers['x-roamie-secret']
-  if (secret !== process.env.ROAMIE_SECRET) {
-    return res.status(403).json({ error: 'Forbidden' })
+  if (secret === process.env.ROAMIE_SECRET) return next()
+  const authHeader = req.headers['authorization']
+  if (authHeader?.startsWith('Bearer ')) {
+    const { data: { user } } = await supabase.auth.getUser(authHeader.slice(7))
+    if (user) return next()
   }
+  return res.status(403).json({ error: 'Forbidden' })
+}
+
+async function requireAuth(req, res, next) {
+  const authHeader = req.headers['authorization']
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized' })
+  }
+  const { data: { user }, error } = await supabase.auth.getUser(authHeader.slice(7))
+  if (error || !user) return res.status(401).json({ error: 'Unauthorized' })
+  req.user = user
   next()
-})
+}
 app.set('trust proxy', 1)
 
 const apiLimiter = rateLimit({
@@ -340,7 +354,7 @@ function computeTripCosts(dest, flightPrices, exchangeRates, data, estimates = n
   }
 }
 
-app.post('/api/messages', [
+app.post('/api/messages', requireAppSecret, [
   body('messages').isArray().notEmpty(),
   body('messages.*.role').isIn(['user', 'assistant']),
   body('messages.*.content').isString().trim().isLength({ max: 50000 }),
@@ -611,6 +625,10 @@ app.post('/api/verify-subscription', [
       expand: ['subscription'],
     })
 
+    if (session.metadata?.userId !== userId) {
+      return res.status(403).json({ error: 'Forbidden: session does not belong to this user' })
+    }
+
     const sub = session.subscription
     if (!sub || sub.status !== 'active') {
       return res.json({ success: false })
@@ -644,7 +662,7 @@ app.post('/api/verify-subscription', [
   }
 })
 
-app.post('/api/trip-basics', [
+app.post('/api/trip-basics', requireAppSecret, [
   body('destination').isString().trim().notEmpty(),
   body('neighborhood').isString().trim().optional(),
   body('vibe').isArray().optional(),
@@ -745,10 +763,9 @@ Respond ONLY with valid JSON no markdown no backticks:
     res.status(500).json({ error: err.message })
   }
 })
-app.post('/api/create-invite', async (req, res) => {
+app.post('/api/create-invite', requireAuth, async (req, res) => {
   try {
-    const { userId } = req.body
-    if (!userId) return res.status(400).json({ error: 'Missing userId' })
+    const userId = req.user.id
 
     // Check if user already has a couple
     const { data: existingCouple } = await supabase
@@ -784,10 +801,11 @@ app.post('/api/create-invite', async (req, res) => {
   }
 })
 
-app.post('/api/accept-invite', async (req, res) => {
+app.post('/api/accept-invite', requireAuth, async (req, res) => {
   try {
-    const { inviteCode, userId } = req.body
-    if (!inviteCode || !userId) return res.status(400).json({ error: 'Missing fields' })
+    const userId = req.user.id
+    const { inviteCode } = req.body
+    if (!inviteCode) return res.status(400).json({ error: 'Missing inviteCode' })
 
     // Find the couple
     const { data: couple, error: findError } = await supabase
@@ -835,10 +853,9 @@ app.post('/api/accept-invite', async (req, res) => {
   }
 })
 
-app.post('/api/disconnect', async (req, res) => {
+app.post('/api/disconnect', requireAuth, async (req, res) => {
   try {
-    const { userId } = req.body
-    if (!userId) return res.status(400).json({ error: 'Missing userId' })
+    const userId = req.user.id
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -976,7 +993,7 @@ async function searchDuffelFlightsWithDetail(originIata, destIata, departDate, r
   }
 }
 
-app.post('/api/flight-prices', [
+app.post('/api/flight-prices', requireAppSecret, [
   body('p1City').isString().trim().notEmpty(),
   body('p2City').isString().trim().notEmpty(),
   body('destinations').isArray().notEmpty(),
@@ -1410,9 +1427,7 @@ async function prewarmFlightCache() {
   console.log(`[prewarm] Done — ${fetched} fetched, ${skipped} skipped, ${errors} errors`)
 }
 
-app.get('/api/prewarm', async (req, res) => {
-  if (req.headers['x-roamie-secret'] !== process.env.ROAMIE_SECRET)
-    return res.status(403).json({ error: 'Forbidden' })
+app.get('/api/prewarm', requireAppSecret, async (req, res) => {
   res.json({ message: 'Pre-warm started' })
   prewarmFlightCache().catch(e => console.error('[prewarm] Unhandled error:', e))
 })

@@ -376,7 +376,7 @@ const [p2Prefilled, setP2Prefilled] = useState(false)
   try {
     const res = await fetch(
       `https://roamie-61ib.onrender.com/api/airport-search?q=${encodeURIComponent(city)}`,
-      { headers: { 'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET } }
+      { headers: {} }
     )
     const json = await res.json()
     if (partner === 'p1') {

@@ -104,7 +104,7 @@ useEffect(() => {
     try {
       const res = await fetch(
         `https://roamie-61ib.onrender.com/api/iata-lookup?city=${encodeURIComponent(homeCity)}`,
-        { headers: { 'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET } }
+        { headers: {} }
       )
       const data = await res.json()
      if (data.matches?.length > 0) {
@@ -298,7 +298,7 @@ navigate('/dashboard')
       try {
         const res = await fetch(
           `https://roamie-61ib.onrender.com/api/nearest-airport?lat=${pos.coords.latitude}&lng=${pos.coords.longitude}`,
-          { headers: { 'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET } }
+          { headers: {} }
         )
         const data = await res.json()
         if (data.iata) {

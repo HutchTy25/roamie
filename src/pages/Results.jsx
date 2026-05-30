@@ -161,6 +161,7 @@ export default function Results() {
   const [error, setError] = useState(false)
   const [paywallHit, setPaywallHit] = useState(false)
   const [userId, setUserId] = useState(null)
+  const [accessToken, setAccessToken] = useState(null)
   const [pendingUpgradePlan, setPendingUpgradePlan] = useState(null)
   const isPro = localStorage.getItem('roamie_paid') === 'true'
   const [activeCard, setActiveCard] = useState(0)
@@ -198,7 +199,10 @@ export default function Results() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setUserId(session.user.id)
+      if (session) {
+        setUserId(session.user.id)
+        setAccessToken(session.access_token)
+      }
     })
   }, [])
 
@@ -480,7 +484,7 @@ Return ONLY this JSON, no markdown, no explanation:
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+        ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
@@ -526,7 +530,7 @@ Return ONLY this JSON, no markdown, no explanation:
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+        ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
@@ -584,7 +588,7 @@ Return ONLY this JSON, no markdown, no explanation:
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
         },
         body: JSON.stringify({
           p1City: data.p1.city,
@@ -643,7 +647,7 @@ Return ONLY this JSON, no markdown, no explanation:
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
         },
         body: JSON.stringify({
   p1City: data.p1.city,

@@ -47,11 +47,12 @@ export default function VisitResults() {
 
   async function fetchPrices() {
     try {
+      const { data: { session: authSession } } = await supabase.auth.getSession()
       const res = await fetch('https://roamie-61ib.onrender.com/api/flight-prices', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+          ...(authSession?.access_token ? { 'Authorization': `Bearer ${authSession.access_token}` } : {}),
         },
         body: JSON.stringify({
           p1City: data.p1.city,

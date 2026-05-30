@@ -73,9 +73,9 @@ export default function Connect({ session }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+          'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ userId: session.user.id })
+        body: JSON.stringify({})
       })
       const data = await res.json()
       setInviteCode(data.invite_code)
@@ -103,9 +103,9 @@ export default function Connect({ session }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+          'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ inviteCode: code, userId: session.user.id })
+        body: JSON.stringify({ inviteCode: code })
       })
       const data = await res.json()
       if (data.success) {
@@ -129,9 +129,9 @@ export default function Connect({ session }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-roamie-secret': import.meta.env.VITE_ROAMIE_SECRET,
+          'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ userId: session.user.id }),
+        body: JSON.stringify({}),
       })
       if (!res.ok) {
         const { error } = await res.json()
