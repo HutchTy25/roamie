@@ -170,6 +170,7 @@ export default function Results() {
   const [showSummary, setShowSummary] = useState(false)
   const [tripBasics, setTripBasics] = useState(null)
   const [tripSaved, setTripSaved] = useState(false)
+  const [signupExpandGate, setSignupExpandGate] = useState(false)
   const [cancelToast, setCancelToast] = useState(false)
   const [partialResult, setPartialResult] = useState(null)
   const fetchedPhotos = useRef(new Set())
@@ -265,6 +266,7 @@ export default function Results() {
     setTripBasics(null)
     setExpanded(false)
     setTripSaved(false)
+    setSignupExpandGate(false)
   }, [activeCard])
 
   useEffect(() => {
@@ -368,13 +370,6 @@ function handleTouchEnd(e) {
   }
 
 async function fetchRecommendations() {
-  const tripCount = parseInt(localStorage.getItem('roamie_trip_count') || '0', 10)
-  if (tripCount >= 3 && !userId && localStorage.getItem('roamie_paid') !== 'true') {
-    setPaywallHit(true)
-    setLoading(false)
-    return
-  }
-
   if (data.tripMode === 'visit') {
     await fetchVisitPrices()
     return
@@ -1098,71 +1093,55 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
           padding: '1.25rem',
           border: `1px solid ${THEME.border}`,
           boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+          position: 'relative',
         }}>
 
-          {!isPro && !userId && activeCard > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '2rem 1rem', gap: '0.75rem' }}>
+          {/* Signup overlay — cards 2+3 for logged-out users, or expand gate on any card */}
+          {((!userId && activeCard > 0) || signupExpandGate) && (
+            <div style={{
+              position: 'absolute', inset: 0, zIndex: 10, borderRadius: '20px',
+              background: 'rgba(26,27,38,0.92)', backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: '12px', padding: '2rem', textAlign: 'center',
+            }}>
               <div style={{ fontSize: '28px' }}>🔒</div>
-              <div style={{ fontSize: '17px', fontWeight: '600', color: THEME.text, textAlign: 'center' }}>
-                Unlock all 3 destinations
-              </div>
-              <div style={{ fontSize: '13px', color: THEME.muted, textAlign: 'center', lineHeight: '1.5' }}>
-                Create a free account — it&apos;s free
+              <div style={{ fontSize: '15px', color: THEME.text, fontWeight: '500', lineHeight: '1.5' }}>
+                Create a free account to unlock all destinations
               </div>
               <button
                 onClick={() => navigate('/login')}
-                style={{
-                  marginTop: '0.5rem',
-                  background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`,
-                  border: 'none',
-                  borderRadius: '100px',
-                  padding: '14px 32px',
-                  color: '#fff',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  boxShadow: `0 0 24px rgba(244,114,182,0.3)`,
-                }}
+                style={{ background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`, border: 'none', borderRadius: '100px', padding: '14px 32px', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: 'pointer', boxShadow: `0 0 24px rgba(244,114,182,0.3)` }}
               >
-                Create free account
+                Create free account →
               </button>
+              {signupExpandGate && (
+                <button
+                  onClick={() => setSignupExpandGate(false)}
+                  style={{ background: 'none', border: 'none', color: THEME.muted, fontSize: '13px', cursor: 'pointer', marginTop: '4px' }}
+                >
+                  Not now
+                </button>
+              )}
             </div>
-          ) : (
-            <>
+          )}
+
           {/* Cost pills */}
           {!isStretch && (
-            isPro ? (
-              costsLoading ? (
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`, animation: 'skeletonPulse 1.5s ease-in-out infinite' }} />
-                  <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`, animation: 'skeletonPulse 1.5s ease-in-out infinite 0.3s' }} />
-                </div>
-              ) : (
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap', animation: 'fadeSlideUp 0.4s ease both' }}>
-                  <div style={{ background: 'rgba(244,114,182,0.12)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: '100px', padding: '10px 16px', fontSize: '13px', flex: 1, minWidth: '140px' }}>
-                    <span style={{ color: THEME.muted, marginRight: '6px' }}>P1</span>
-                    <span style={{ color: THEME.accent, fontWeight: '600', fontSize: '16px' }}>{p1sym}{dest.p1_cost?.toLocaleString()}</span>
-                  </div>
-                  <div style={{ background: 'rgba(124,106,239,0.12)', border: '1px solid rgba(124,106,239,0.3)', borderRadius: '100px', padding: '10px 16px', fontSize: '13px', flex: 1, minWidth: '140px' }}>
-                    <span style={{ color: THEME.muted, marginRight: '6px' }}>P2</span>
-                    <span style={{ color: THEME.primary, fontWeight: '600', fontSize: '16px' }}>{p2sym}{dest.p2_cost?.toLocaleString()}</span>
-                  </div>
-                </div>
-              )
+            costsLoading ? (
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`, animation: 'skeletonPulse 1.5s ease-in-out infinite' }} />
+                <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`, animation: 'skeletonPulse 1.5s ease-in-out infinite 0.3s' }} />
+              </div>
             ) : (
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                  <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`, animation: 'skeletonPulse 1.5s ease-in-out infinite' }} />
-                  <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`, animation: 'skeletonPulse 1.5s ease-in-out infinite' }} />
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap', animation: 'fadeSlideUp 0.4s ease both' }}>
+                <div style={{ background: 'rgba(244,114,182,0.12)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: '100px', padding: '10px 16px', fontSize: '13px', flex: 1, minWidth: '140px' }}>
+                  <span style={{ color: THEME.muted, marginRight: '6px' }}>P1</span>
+                  <span style={{ color: THEME.accent, fontWeight: '600', fontSize: '16px' }}>{p1sym}{dest.p1_cost?.toLocaleString()}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '14px' }}>🔒</span>
-                  <button
-                    onClick={() => startCheckout('founding')}
-                    style={{ background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`, border: 'none', borderRadius: '100px', padding: '7px 18px', color: '#fff', fontSize: '12px', fontWeight: '600', cursor: 'pointer', boxShadow: `0 0 16px rgba(244,114,182,0.3)` }}
-                  >
-                    Unlock with Pro
-                  </button>
+                <div style={{ background: 'rgba(124,106,239,0.12)', border: '1px solid rgba(124,106,239,0.3)', borderRadius: '100px', padding: '10px 16px', fontSize: '13px', flex: 1, minWidth: '140px' }}>
+                  <span style={{ color: THEME.muted, marginRight: '6px' }}>P2</span>
+                  <span style={{ color: THEME.primary, fontWeight: '600', fontSize: '16px' }}>{p2sym}{dest.p2_cost?.toLocaleString()}</span>
                 </div>
               </div>
             )
@@ -1181,10 +1160,11 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
             </div>
           )}
 
-          {/* Expand button — pro users only, hidden until costs are loaded */}
-          {!isStretch && isPro && !costsLoading && (
+          {/* Expand button */}
+          {!isStretch && !costsLoading && (
             <button
               onClick={() => {
+                if (!userId) { setSignupExpandGate(true); return }
                 setExpanded(e => !e)
                 if (!expanded && dest.trip_basics) setTripBasics(dest.trip_basics)
               }}
@@ -1473,8 +1453,6 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
                 swipe to explore
               </div>
             </div>
-          )}
-            </>
           )}
 
         </div>
