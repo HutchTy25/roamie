@@ -70,22 +70,24 @@ async function requireAuth(req, res, next) {
 }
 app.set('trust proxy', 1)
 
-const apiLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 25, // max 25 requests per IP per hour
-  message: { error: 'Too many requests, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-})
+function makeLimit(max) {
+  return rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max,
+    message: { error: 'Too many requests, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  })
+}
 
-const waitlistLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 5,
-  message: { error: 'Too many requests, please try again later.' },
-})
-
-app.use('/api/messages', apiLimiter)
-app.use('/api/waitlist', waitlistLimiter)
+app.use('/api/messages',            makeLimit(10))
+app.use('/api/trip-basics',         makeLimit(10))
+app.use('/api/flight-prices',       makeLimit(20))
+app.use('/api/verify-subscription', makeLimit(5))
+app.use('/api/create-invite',       makeLimit(10))
+app.use('/api/accept-invite',       makeLimit(10))
+app.use('/api/disconnect',          makeLimit(10))
+app.use('/api/waitlist',            makeLimit(5))
 
 function httpsPost(hostname, path, headers, body) {
   return new Promise((resolve, reject) => {
