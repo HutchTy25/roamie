@@ -469,8 +469,23 @@ function computeEmpathyMirror(cost_breakdown, p1City, p2City, p1Currency, p2Curr
 
   if (!winWin && Math.abs(col1 - col2) / Math.max(col1, col2) < 0.1) return null
 
+  const p1Stretch = foodP1Home / foodP1
+  const p2Stretch = foodP2Home / foodP2
+
+  let verdict
+  if (winWin) {
+    verdict = null
+  } else if (Math.abs(p1Stretch - p2Stretch) < 0.1) {
+    verdict = "This destination costs you both roughly the same in real terms."
+  } else if (p1Stretch > p2Stretch) {
+    verdict = `This trip stretches your budget more than your partner's — ${p1City?.split(',')[0]} has a lower cost of living than ${destCity?.split(',')[0]}, so every spend hits harder for you.`
+  } else {
+    verdict = `This trip stretches your partner's budget more than yours — ${p2City?.split(',')[0]} has a lower cost of living than ${destCity?.split(',')[0]}, so every spend hits harder for them.`
+  }
+
   return {
     type: winWin ? 'win_win' : 'mirror',
+    verdict,
     p1: {
       city: p1City?.split(',')[0].trim(),
       currency: p1Currency,

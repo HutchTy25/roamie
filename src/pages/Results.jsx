@@ -1162,13 +1162,18 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
                 const em = dest.cost_breakdown.empathy_mirror
                 return (
                   <>
-                    <div style={{ marginBottom: '8px' }}>
-                      <div>🍽 A meal out costs {p1sym}{em.p1.food_at_dest} here — back home in {em.p1.city} that same spend feels like {p1sym}{em.p1.food_feels_like}</div>
-                      <div style={{ marginTop: '4px' }}>🏨 A night's stay costs {p1sym}{em.p1.lodging_at_dest} here — back home in {em.p1.city} that feels like {p1sym}{em.p1.lodging_feels_like}</div>
-                    </div>
-                    <div>
-                      <div>🍽 A meal out costs {p2sym}{em.p2.food_at_dest} here — back home in {em.p2.city} that same spend feels like {p2sym}{em.p2.food_feels_like}</div>
-                      <div style={{ marginTop: '4px' }}>🏨 A night's stay costs {p2sym}{em.p2.lodging_at_dest} here — back home in {em.p2.city} that feels like {p2sym}{em.p2.lodging_feels_like}</div>
+                    {em.verdict && (
+                      <div style={{ fontWeight: '600', fontSize: '13px', marginBottom: '10px' }}>{em.verdict}</div>
+                    )}
+                    <div style={{ fontSize: '11px', opacity: 0.75 }}>
+                      <div style={{ marginBottom: '8px' }}>
+                        <div>🍽 A meal out costs {p1sym}{em.p1.food_at_dest} here — back home in {em.p1.city} that same spend feels like {p1sym}{em.p1.food_feels_like}</div>
+                        <div style={{ marginTop: '4px' }}>🏨 A night's stay costs {p1sym}{em.p1.lodging_at_dest} here — back home in {em.p1.city} that feels like {p1sym}{em.p1.lodging_feels_like}</div>
+                      </div>
+                      <div>
+                        <div>🍽 A meal out costs {p2sym}{em.p2.food_at_dest} here — back home in {em.p2.city} that same spend feels like {p2sym}{em.p2.food_feels_like}</div>
+                        <div style={{ marginTop: '4px' }}>🏨 A night's stay costs {p2sym}{em.p2.lodging_at_dest} here — back home in {em.p2.city} that feels like {p2sym}{em.p2.lodging_feels_like}</div>
+                      </div>
                     </div>
                   </>
                 )
