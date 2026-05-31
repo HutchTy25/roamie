@@ -1256,6 +1256,20 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
             </div>
           )}
 
+          {/* Wise affiliate link */}
+          {userId && data.p1.currency !== data.p2.currency && (
+            <div style={{ textAlign: 'center', marginBottom: '0.75rem' }}>
+              <a
+                href="https://wi.se/roamietravel"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: '11px', color: THEME.muted, textDecoration: 'none' }}
+              >
+                💸 Sending money internationally? Save on transfers with Wise →
+              </a>
+            </div>
+          )}
+
           {/* Expand button */}
           {!isStretch && !costsLoading && (
             <button
