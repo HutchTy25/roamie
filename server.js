@@ -46,6 +46,30 @@ app.use(cors({
  allowedHeaders: ['Content-Type', 'stripe-signature', 'x-roamie-secret', 'Authorization'],
   credentials: false,
 }))
+app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature']
+  let event
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET)
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message)
+    return res.status(400).json({ error: err.message })
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object
+    const userId = session.metadata?.userId
+    const subscriptionId = session.subscription
+    if (userId && subscriptionId) {
+      activatePro(userId, subscriptionId).catch(e =>
+        console.error('[webhook] activatePro error:', e)
+      )
+    }
+  }
+
+  res.json({ received: true })
+})
+
 app.use(express.json())
 async function requireAppSecret(req, res, next) {
   const secret = req.headers['x-roamie-secret']
@@ -68,6 +92,49 @@ async function requireAuth(req, res, next) {
   req.user = user
   next()
 }
+
+async function activatePro(userId, subscriptionId) {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('couple_id')
+    .eq('id', userId)
+    .single()
+
+  await supabase
+    .from('profiles')
+    .update({ is_pro: true, stripe_subscription_id: subscriptionId })
+    .eq('id', userId)
+  console.log(`[activatePro] Profile ${userId} upgraded to pro`)
+
+  proAccessCache.delete(userId)
+
+  if (profile?.couple_id) {
+    const { data: couple } = await supabase
+      .from('couples')
+      .select('partner1_id, partner2_id')
+      .eq('id', profile.couple_id)
+      .single()
+
+    const partnerId = couple?.partner1_id === userId
+      ? couple?.partner2_id
+      : couple?.partner1_id
+
+    await supabase
+      .from('couples')
+      .update({ is_pro: true, stripe_subscription_id: subscriptionId })
+      .eq('id', profile.couple_id)
+
+    if (partnerId) {
+      await supabase
+        .from('profiles')
+        .update({ is_pro: true, stripe_subscription_id: subscriptionId })
+        .eq('id', partnerId)
+      console.log(`[activatePro] Partner ${partnerId} upgraded to pro`)
+      proAccessCache.delete(partnerId)
+    }
+  }
+}
+
 app.set('trust proxy', 1)
 
 function makeLimit(max) {
@@ -636,27 +703,7 @@ app.post('/api/verify-subscription', [
       return res.json({ success: false })
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('couple_id')
-      .eq('id', userId)
-      .single()
-
-    await supabase
-      .from('profiles')
-      .update({ is_pro: true, stripe_subscription_id: sub.id })
-      .eq('id', userId)
-    console.log(`Profile ${userId} upgraded to pro via subscription ${sub.id}`)
-
-    if (profile?.couple_id) {
-      await supabase
-        .from('couples')
-        .update({ is_pro: true, stripe_subscription_id: sub.id })
-        .eq('id', profile.couple_id)
-      console.log(`Couple ${profile.couple_id} upgraded to pro via subscription ${sub.id}`)
-    }
-
-    proAccessCache.delete(userId)
+    await activatePro(userId, sub.id)
     res.json({ success: true, subscriptionId: sub.id })
   } catch (err) {
     console.error('Verify subscription error:', err)

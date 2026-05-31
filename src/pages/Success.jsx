@@ -64,7 +64,10 @@ export default function Success() {
       }
       const res = await fetch('https://roamie-61ib.onrender.com/api/verify-subscription', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ sessionId, userId })
       })
       const data = await res.json()
