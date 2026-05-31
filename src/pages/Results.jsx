@@ -161,7 +161,6 @@ export default function Results() {
   const [error, setError] = useState(false)
   const [paywallHit, setPaywallHit] = useState(false)
   const [userId, setUserId] = useState(null)
-  const [accessToken, setAccessToken] = useState(null)
   const [pendingUpgradePlan, setPendingUpgradePlan] = useState(null)
   const isPro = localStorage.getItem('roamie_paid') === 'true'
   const [activeCard, setActiveCard] = useState(0)
@@ -202,7 +201,6 @@ export default function Results() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setUserId(session.user.id)
-        setAccessToken(session.access_token)
       }
     })
   }, [])
@@ -482,12 +480,14 @@ Return ONLY this JSON, no markdown, no explanation:
   try {
     setMessageIndex(0)
 
+    const { data: { session: s1 } } = await supabase.auth.getSession()
+    const authHeaders = {
+      'Content-Type': 'application/json',
+      ...(s1?.access_token ? { 'Authorization': `Bearer ${s1.access_token}` } : {}),
+    }
     const res1 = await fetch('https://roamie-61ib.onrender.com/api/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
-      },
+      headers: authHeaders,
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 3500,
@@ -528,12 +528,14 @@ Return ONLY this JSON, no markdown, no explanation:
     setMessageIndex(4)
     const breakdownPrompt = buildBreakdownPrompt(firstPassResult, flightPrices, p1sym, p2sym)
 
+    const { data: { session: s2 } } = await supabase.auth.getSession()
+    const authHeaders2 = {
+      'Content-Type': 'application/json',
+      ...(s2?.access_token ? { 'Authorization': `Bearer ${s2.access_token}` } : {}),
+    }
     const res2 = await fetch('https://roamie-61ib.onrender.com/api/messages', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
-      },
+      headers: authHeaders2,
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 4000,
@@ -586,12 +588,14 @@ Return ONLY this JSON, no markdown, no explanation:
 
   async function fetchVisitPrices() {
     try {
+      const { data: { session: visitSession } } = await supabase.auth.getSession()
+      const visitAuthHeaders = {
+        'Content-Type': 'application/json',
+        ...(visitSession?.access_token ? { 'Authorization': `Bearer ${visitSession.access_token}` } : {}),
+      }
       const res = await fetch('https://roamie-61ib.onrender.com/api/flight-prices', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
-        },
+        headers: visitAuthHeaders,
         body: JSON.stringify({
           p1City: data.p1.city,
           p2City: data.p2.city,
@@ -645,12 +649,14 @@ Return ONLY this JSON, no markdown, no explanation:
 
   async function fetchRealFlightPrices(destNames) {
     try {
+      const { data: { session: flightSession } } = await supabase.auth.getSession()
+      const flightAuthHeaders = {
+        'Content-Type': 'application/json',
+        ...(flightSession?.access_token ? { 'Authorization': `Bearer ${flightSession.access_token}` } : {}),
+      }
       const res = await fetch('https://roamie-61ib.onrender.com/api/flight-prices', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
-        },
+        headers: flightAuthHeaders,
         body: JSON.stringify({
   p1City: data.p1.city,
   p2City: data.p2.city,

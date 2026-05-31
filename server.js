@@ -76,8 +76,12 @@ async function requireAppSecret(req, res, next) {
   if (secret === process.env.ROAMIE_SECRET) return next()
   const authHeader = req.headers['authorization']
   if (authHeader?.startsWith('Bearer ')) {
-    const { data: { user } } = await supabase.auth.getUser(authHeader.slice(7))
-    if (user) return next()
+    try {
+      const { data: { user } } = await supabase.auth.getUser(authHeader.slice(7))
+      if (user) return next()
+    } catch (e) {
+      console.error('[requireAppSecret] getUser error:', e.message)
+    }
   }
   return res.status(403).json({ error: 'Forbidden' })
 }
