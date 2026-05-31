@@ -20,6 +20,25 @@ function cleanDestName(name) {
   return name?.replace(/^[A-Z]{2,3}\s+/, '') ?? ''
 }
 
+const COL_INDEX_CLIENT = {
+  'Memphis': 41.2, 'New York': 100.0, 'Los Angeles': 87.3,
+  'Chicago': 71.4, 'Houston': 58.2, 'Atlanta': 59.1,
+  'Dallas': 62.3, 'Miami': 75.6, 'Seattle': 84.1,
+  'Boston': 91.2, 'San Francisco': 104.3, 'Denver': 72.8,
+  'Manchester': 62.1, 'London': 95.4, 'Dublin': 89.2,
+  'Amsterdam': 88.7, 'Paris': 91.3, 'Berlin': 72.4,
+  'Barcelona': 65.2, 'Lisbon': 52.3, 'Rome': 68.4,
+  'Stockholm': 87.6, 'Toronto': 76.3, 'Vancouver': 79.8,
+  'Sydney': 84.2, 'Melbourne': 81.3, 'Auckland': 78.4,
+  'Dubai': 71.2, 'Singapore': 88.6, 'Tokyo': 82.3,
+  'Seoul': 68.4, 'Mumbai': 28.3, 'Cape Town': 32.1,
+  'São Paulo': 38.4, 'Mexico City': 35.2, 'Nairobi': 29.4
+}
+
+function getCOLIndex(city) {
+  return COL_INDEX_CLIENT[city?.split(',')[0].trim()] || 65
+}
+
 // Starfield
 function Starfield() {
   const stars = Array.from({ length: 40 }, (_, i) => ({
@@ -384,10 +403,17 @@ async function fetchRecommendations() {
 
   const destinationPrompt = `You are Roamie, a couples travel planner. Assign exactly one destination to each of three archetypes: Sanctuary, Odyssey, and Horizon.
 
+PURCHASING POWER CONTEXT (use this to guide archetype assignment):
+- Partner 1 home city: ${data.p1.city} | Cost of Living Index: ${getCOLIndex(data.p1.city)}
+- Partner 2 home city: ${data.p2.city} | Cost of Living Index: ${getCOLIndex(data.p2.city)}
+- A destination with COL significantly below both indices = Sanctuary territory
+- A destination with COL above both indices = Odyssey territory
+- A destination with COL between or near both indices = Horizon territory
+
 Archetype definitions:
-- Sanctuary: Low friction, relaxation-focused. A place to decompress together — coastal ease, slow mornings, minimal planning.
-- Odyssey: Adventure, culture, activities. A destination that gives them stories — museums, hikes, street food, nightlife. High engagement.
-- Horizon: The balanced mix. Neither pure rest nor pure adventure — a destination that surprises them with both.
+- Sanctuary: MUST be a purchasing power haven for BOTH partners. The destination COL must be meaningfully lower than both home cities — costs feel lighter than home for both people. Think beach towns, Southeast Asia, Southern Europe, affordable coastal cities. This is financial breathing room + relaxation combined. Never pick an expensive city for Sanctuary.
+- Odyssey: Adventure, culture, activities. COL can be higher — the financial stretch is part of the adventure. It's okay if this destination costs more than home for one or both partners. The experience justifies it. Museums, hikes, street food, nightlife, high engagement.
+- Horizon: The balanced middle. COL should be roughly comparable to or slightly below both partners' home cities. Neither a financial stretch nor a steal — comfortable and fair for both. The destination surprises them with both rest and exploration without breaking the bank.
 
 PARTNER DETAILS:
 - Partner 1: Lives in ${data.p1.city} | Currency: ${data.p1.currency} (${p1sym}) | Max budget: ${p1sym}${data.p1.maxSpend.toLocaleString()} TOTAL
@@ -1124,12 +1150,30 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
               : { background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`, color: 'rgba(255,255,255,0.75)' }
             ),
           }}>
-            {dest.cost_breakdown.empathy_mirror.type === 'win_win' && (
-              <div style={{ fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px', fontWeight: '600' }}>
-                ✦ High Leverage
-              </div>
+            {dest.cost_breakdown.empathy_mirror.type === 'win_win' ? (
+              <>
+                <div style={{ fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px', fontWeight: '600' }}>
+                  ✦ High Leverage Destination
+                </div>
+                Your currencies both go further here — local costs are meaningfully cheaper than both your home cities. Enjoy the breathing room.
+              </>
+            ) : (
+              (() => {
+                const em = dest.cost_breakdown.empathy_mirror
+                return (
+                  <>
+                    <div style={{ marginBottom: '8px' }}>
+                      <div>🍽 A meal out costs {p1sym}{em.p1.food_at_dest} here — back home in {em.p1.city} that same spend feels like {p1sym}{em.p1.food_feels_like}</div>
+                      <div style={{ marginTop: '4px' }}>🏨 A night's stay costs {p1sym}{em.p1.lodging_at_dest} here — back home in {em.p1.city} that feels like {p1sym}{em.p1.lodging_feels_like}</div>
+                    </div>
+                    <div>
+                      <div>🍽 A meal out costs {p2sym}{em.p2.food_at_dest} here — back home in {em.p2.city} that same spend feels like {p2sym}{em.p2.food_feels_like}</div>
+                      <div style={{ marginTop: '4px' }}>🏨 A night's stay costs {p2sym}{em.p2.lodging_at_dest} here — back home in {em.p2.city} that feels like {p2sym}{em.p2.lodging_feels_like}</div>
+                    </div>
+                  </>
+                )
+              })()
             )}
-            {dest.cost_breakdown.empathy_mirror.message}
           </div>
         )}
 

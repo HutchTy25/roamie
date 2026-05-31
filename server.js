@@ -442,35 +442,54 @@ const COL_INDEX = {
   'São Paulo': 38.4, 'Mexico City': 35.2, 'Nairobi': 29.4
 }
 
-function computeEmpathyMirror(p1_cost, p2_cost, p1City, p2City, p1Currency, p2Currency, destCity) {
+function computeEmpathyMirror(cost_breakdown, p1City, p2City, p1Currency, p2Currency, destCity, exchangeRates) {
   const col1 = COL_INDEX[p1City?.split(',')[0].trim()] || 65
   const col2 = COL_INDEX[p2City?.split(',')[0].trim()] || 65
-  const destCol = COL_INDEX[destCity?.split(',')[0].trim()] || 60
+  const destCol = COL_INDEX[destCity?.split(',')[0].trim()] || 65
+
+  const foodUSD = cost_breakdown?.food_per_day || null
+  const lodgingUSD = cost_breakdown?.lodging_per_night || null
+
+  if (!foodUSD || !lodgingUSD) return null
+
+  const p1Rate = exchangeRates?.[p1Currency] || 1
+  const p2Rate = exchangeRates?.[p2Currency] || 1
+
+  const foodP1 = Math.round(foodUSD * p1Rate)
+  const foodP2 = Math.round(foodUSD * p2Rate)
+  const foodP1Home = Math.round(foodP1 * (col1 / destCol))
+  const foodP2Home = Math.round(foodP2 * (col2 / destCol))
+
+  const lodgingP1 = Math.round(lodgingUSD * p1Rate)
+  const lodgingP2 = Math.round(lodgingUSD * p2Rate)
+  const lodgingP1Home = Math.round(lodgingP1 * (col1 / destCol))
+  const lodgingP2Home = Math.round(lodgingP2 * (col2 / destCol))
 
   const winWin = destCol < col1 * 0.8 && destCol < col2 * 0.8
-  if (winWin) {
-    return {
-      type: 'win_win',
-      message: `High Leverage Destination: Your ${p1Currency} and ${p2Currency} both carry maximum purchasing power here. Local costs are significantly cheaper than both your home cities — enjoy the extra breathing room.`
-    }
-  }
 
-  if (Math.abs(col1 - col2) / Math.max(col1, col2) < 0.1) return null
-
-  const weightRatio = col1 / col2
-  const p2Mirror = Math.round(p2_cost * weightRatio)
-  const harder = col1 > col2 ? 'p1' : 'p2'
+  if (!winWin && Math.abs(col1 - col2) / Math.max(col1, col2) < 0.1) return null
 
   return {
-    type: 'mirror',
-    harder_partner: harder,
-    p2_mirror_amount: p2Mirror,
-    p2_currency: p2Currency,
-    p1_city: p1City?.split(',')[0].trim(),
-    p2_city: p2City?.split(',')[0].trim(),
-    message: harder === 'p1'
-      ? `This trip costs ${p1City?.split(',')[0]} the same as you spending ${p2Currency} ${p2Mirror.toLocaleString()} back home in ${p2City?.split(',')[0]}.`
-      : `This trip costs ${p2City?.split(',')[0]} the same as you spending ${p1Currency} ${p1_cost?.toLocaleString()} back home in ${p1City?.split(',')[0]}.`
+    type: winWin ? 'win_win' : 'mirror',
+    p1: {
+      city: p1City?.split(',')[0].trim(),
+      currency: p1Currency,
+      food_at_dest: foodP1,
+      food_feels_like: foodP1Home,
+      lodging_at_dest: lodgingP1,
+      lodging_feels_like: lodgingP1Home,
+    },
+    p2: {
+      city: p2City?.split(',')[0].trim(),
+      currency: p2Currency,
+      food_at_dest: foodP2,
+      food_feels_like: foodP2Home,
+      lodging_at_dest: lodgingP2,
+      lodging_feels_like: lodgingP2Home,
+    },
+    dest_col: destCol,
+    p1_col: col1,
+    p2_col: col2,
   }
 }
 
@@ -612,13 +631,13 @@ console.log('Global trip count:', globalTripCount)
                 nights }
             )
             const empathy = computeEmpathyMirror(
-              computed.p1_cost,
-              computed.p2_cost,
+              dest.cost_breakdown,
               quizData.p1?.city,
               quizData.p2?.city,
               p1c,
               p2c,
-              dest.name
+              dest.name,
+              exchangeRates
             )
             if (empathy) computed.cost_breakdown.empathy_mirror = empathy
             return { ...dest, ...computed }
