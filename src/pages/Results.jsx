@@ -172,6 +172,7 @@ export default function Results() {
   const [tripBasics, setTripBasics] = useState(null)
   const [tripSaved, setTripSaved] = useState(false)
   const [signupExpandGate, setSignupExpandGate] = useState(false)
+  const [empathyExpanded, setEmpathyExpanded] = useState(false)
   const [cancelToast, setCancelToast] = useState(false)
   const [partialResult, setPartialResult] = useState(null)
   const fetchedPhotos = useRef(new Set())
@@ -271,6 +272,7 @@ export default function Results() {
     setExpanded(false)
     setTripSaved(false)
     setSignupExpandGate(false)
+    setEmpathyExpanded(false)
   }, [activeCard])
 
   useEffect(() => {
@@ -538,8 +540,8 @@ Return ONLY this JSON, no markdown, no explanation:
         messages: [{ role: 'user', content: breakdownPrompt }],
         flightPrices,
         quizData: {
-          p1: { currency: data.p1.currency, maxSpend: data.p1.maxSpend },
-          p2: { currency: data.p2.currency, maxSpend: data.p2.maxSpend },
+          p1: { city: data.p1.city, currency: data.p1.currency, maxSpend: data.p1.maxSpend },
+          p2: { city: data.p2.city, currency: data.p2.currency, maxSpend: data.p2.maxSpend },
           dates: data.dates,
         },
       })
@@ -1037,8 +1039,6 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
                 {[
                   { label: dest.reality_strip.crowd, icon: '👥' },
                   { label: dest.reality_strip.weather, icon: '☀️' },
-                  { label: dest.reality_strip.fairness, icon: '⚖️' },
-                  { label: dest.reality_strip.budget_stretch, icon: '💰' },
                 ].map(item => (
                   <div key={item.label} style={{
                     background: 'rgba(30,32,48,0.85)',
@@ -1056,6 +1056,22 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
                     {item.icon} {item.label}
                   </div>
                 ))}
+                {/* Fairness chip — static on Sanctuary, tappable on Odyssey/Horizon */}
+                {dest.archetype === 'sanctuary' || !dest.cost_breakdown?.empathy_mirror ? (
+                  <div style={{ background: 'rgba(30,32,48,0.85)', backdropFilter: 'blur(12px)', borderRadius: '100px', padding: '4px 10px', fontSize: '10px', color: THEME.text, display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', border: `1px solid ${THEME.border}` }}>
+                    ⚖️ {dest.reality_strip.fairness}
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => setEmpathyExpanded(e => !e)}
+                    style={{ background: empathyExpanded ? 'rgba(244,114,182,0.18)' : 'rgba(30,32,48,0.85)', backdropFilter: 'blur(12px)', borderRadius: '100px', padding: '4px 10px', fontSize: '10px', color: empathyExpanded ? THEME.accent : THEME.text, display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', border: `1px solid ${empathyExpanded ? 'rgba(244,114,182,0.5)' : THEME.border}`, cursor: 'pointer', userSelect: 'none' }}
+                  >
+                    ⚖️ Fairness {empathyExpanded ? '▲' : '▼'}
+                  </div>
+                )}
+                <div style={{ background: 'rgba(30,32,48,0.85)', backdropFilter: 'blur(12px)', borderRadius: '100px', padding: '4px 10px', fontSize: '10px', color: THEME.text, display: 'flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap', border: `1px solid ${THEME.border}` }}>
+                  💰 {dest.reality_strip.budget_stretch}
+                </div>
               </div>
             )}
 
@@ -1087,6 +1103,29 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
             </div>
           </div>
         </div>
+
+        {/* Empathy mirror panel */}
+        {empathyExpanded && dest.cost_breakdown?.empathy_mirror && (
+          <div style={{
+            borderRadius: '16px',
+            padding: '14px 16px',
+            marginBottom: '0.5rem',
+            fontSize: '13px',
+            lineHeight: '1.6',
+            animation: 'fadeSlideUp 0.25s ease both',
+            ...(dest.cost_breakdown.empathy_mirror.type === 'win_win'
+              ? { background: 'rgba(34,211,238,0.08)', border: '1px solid rgba(34,211,238,0.25)', color: THEME.cyan }
+              : { background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`, color: 'rgba(255,255,255,0.75)' }
+            ),
+          }}>
+            {dest.cost_breakdown.empathy_mirror.type === 'win_win' && (
+              <div style={{ fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '6px', fontWeight: '600' }}>
+                ✦ High Leverage
+              </div>
+            )}
+            {dest.cost_breakdown.empathy_mirror.message}
+          </div>
+        )}
 
         {/* Glassmorphism info card */}
         <div style={{

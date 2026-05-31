@@ -423,6 +423,53 @@ function computeTripCosts(dest, flightPrices, exchangeRates, data, estimates = n
   }
 }
 
+const COL_INDEX = {
+  'Memphis': 41.2, 'New York': 100.0, 'Los Angeles': 87.3,
+  'Chicago': 71.4, 'Houston': 58.2, 'Atlanta': 59.1,
+  'Dallas': 62.3, 'Miami': 75.6, 'Seattle': 84.1,
+  'Boston': 91.2, 'San Francisco': 104.3, 'Denver': 72.8,
+  'Manchester': 62.1, 'London': 95.4, 'Dublin': 89.2,
+  'Amsterdam': 88.7, 'Paris': 91.3, 'Berlin': 72.4,
+  'Barcelona': 65.2, 'Lisbon': 52.3, 'Rome': 68.4,
+  'Stockholm': 87.6, 'Toronto': 76.3, 'Vancouver': 79.8,
+  'Sydney': 84.2, 'Melbourne': 81.3, 'Auckland': 78.4,
+  'Dubai': 71.2, 'Singapore': 88.6, 'Tokyo': 82.3,
+  'Seoul': 68.4, 'Mumbai': 28.3, 'Cape Town': 32.1,
+  'São Paulo': 38.4, 'Mexico City': 35.2, 'Nairobi': 29.4
+}
+
+function computeEmpathyMirror(p1_cost, p2_cost, p1City, p2City, p1Currency, p2Currency, destCity) {
+  const col1 = COL_INDEX[p1City?.split(',')[0].trim()] || 65
+  const col2 = COL_INDEX[p2City?.split(',')[0].trim()] || 65
+  const destCol = COL_INDEX[destCity?.split(',')[0].trim()] || 60
+
+  const winWin = destCol < col1 * 0.8 && destCol < col2 * 0.8
+  if (winWin) {
+    return {
+      type: 'win_win',
+      message: `High Leverage Destination: Your ${p1Currency} and ${p2Currency} both carry maximum purchasing power here. Local costs are significantly cheaper than both your home cities — enjoy the extra breathing room.`
+    }
+  }
+
+  if (Math.abs(col1 - col2) / Math.max(col1, col2) < 0.1) return null
+
+  const weightRatio = col1 / col2
+  const p2Mirror = Math.round(p2_cost * weightRatio)
+  const harder = col1 > col2 ? 'p1' : 'p2'
+
+  return {
+    type: 'mirror',
+    harder_partner: harder,
+    p2_mirror_amount: p2Mirror,
+    p2_currency: p2Currency,
+    p1_city: p1City?.split(',')[0].trim(),
+    p2_city: p2City?.split(',')[0].trim(),
+    message: harder === 'p1'
+      ? `This trip costs ${p1City?.split(',')[0]} the same as you spending ${p2Currency} ${p2Mirror.toLocaleString()} back home in ${p2City?.split(',')[0]}.`
+      : `This trip costs ${p2City?.split(',')[0]} the same as you spending ${p1Currency} ${p1_cost?.toLocaleString()} back home in ${p1City?.split(',')[0]}.`
+  }
+}
+
 app.post('/api/messages', requireAppSecret, [
   body('messages').isArray().notEmpty(),
   body('messages.*.role').isIn(['user', 'assistant']),
@@ -560,6 +607,16 @@ console.log('Global trip count:', globalTripCount)
                 activitiesTotal: cb.activities_total   || 0,
                 nights }
             )
+            const empathy = computeEmpathyMirror(
+              computed.p1_cost,
+              computed.p2_cost,
+              quizData.p1?.city,
+              quizData.p2?.city,
+              p1c,
+              p2c,
+              dest.name
+            )
+            if (empathy) computed.cost_breakdown.empathy_mirror = empathy
             return { ...dest, ...computed }
           })
           const enrichedResult = Array.isArray(parsed) ? enriched : { ...parsed, destinations: enriched }
