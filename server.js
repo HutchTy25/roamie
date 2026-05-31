@@ -428,24 +428,26 @@ function computeTripCosts(dest, flightPrices, exchangeRates, data, estimates = n
 }
 
 const COL_INDEX = {
-  'Memphis': 41.2, 'New York': 100.0, 'Los Angeles': 87.3,
-  'Chicago': 71.4, 'Houston': 58.2, 'Atlanta': 59.1,
-  'Dallas': 62.3, 'Miami': 75.6, 'Seattle': 84.1,
-  'Boston': 91.2, 'San Francisco': 104.3, 'Denver': 72.8,
-  'Manchester': 62.1, 'London': 95.4, 'Dublin': 89.2,
-  'Amsterdam': 88.7, 'Paris': 91.3, 'Berlin': 72.4,
-  'Barcelona': 65.2, 'Lisbon': 52.3, 'Rome': 68.4,
-  'Stockholm': 87.6, 'Toronto': 76.3, 'Vancouver': 79.8,
-  'Sydney': 84.2, 'Melbourne': 81.3, 'Auckland': 78.4,
-  'Dubai': 71.2, 'Singapore': 88.6, 'Tokyo': 82.3,
-  'Seoul': 68.4, 'Mumbai': 28.3, 'Cape Town': 32.1,
-  'São Paulo': 38.4, 'Mexico City': 35.2, 'Nairobi': 29.4
+  'NYC': 100.0, 'HNL': 98.2, 'SFO': 97.6, 'SEA': 90.3, 'LAX': 81.5,
+  'MIA': 79.5, 'ORD': 76.0, 'ATL': 75.3, 'DEN': 75.1, 'DFW': 72.9,
+  'PHX': 71.6, 'MSP': 71.5, 'BNA': 70.3, 'CLT': 69.8, 'MCO': 69.0,
+  'IND': 69.0, 'YYJ': 68.7, 'MEM': 64.2, 'YVR': 62.7, 'YTO': 61.4,
+  'YYC': 61.0, 'IAH': 60.6, 'SAT': 58.8, 'YUL': 58.4, 'YEG': 58.3,
+  'CVG': 54.6, 'ZRH': 118.5, 'GVA': 116.5, 'OSL': 90.2, 'TLV': 91.4,
+  'LHR': 87.5, 'SIN': 87.7, 'CPH': 85.7, 'AMS': 82.6, 'CDG': 78.6,
+  'ARN': 78.6, 'DUB': 76.7, 'MUC': 76.1, 'FRA': 74.0, 'VIE': 73.9,
+  'BRU': 73.5, 'MXP': 73.1, 'EDI': 73.0, 'HAM': 71.9, 'MAN': 70.0,
+  'TXL': 70.0, 'FLR': 69.5, 'GOT': 68.7, 'BHX': 68.6, 'GLA': 67.8,
+  'HKG': 75.2, 'ICN': 68.2, 'SYD': 75.1, 'CBR': 71.2, 'MEL': 70.8,
+  'DXB': 58.0, 'AUH': 52.6, 'NRT': 51.1, 'BNE': 57.5, 'WLG': 59.3,
+  'AKL': 59.1, 'CHC': 55.0, 'LIS': 54.5, 'TLL': 52.7, 'FCO': 51.0,
+  'BCN': 50.6, 'MAD': 48.9, 'OPO': 50.2
 }
 
-function computeEmpathyMirror(cost_breakdown, p1City, p2City, p1Currency, p2Currency, destCity, exchangeRates) {
-  const col1 = COL_INDEX[p1City?.split(',')[0].trim()] || 65
-  const col2 = COL_INDEX[p2City?.split(',')[0].trim()] || 65
-  const destCol = COL_INDEX[destCity?.split(',')[0].trim()] || 65
+function computeEmpathyMirror(cost_breakdown, p1Iata, p2Iata, p1Currency, p2Currency, destIata, exchangeRates, p1CityName, p2CityName, destCityName) {
+  const col1 = COL_INDEX[p1Iata] || 65
+  const col2 = COL_INDEX[p2Iata] || 65
+  const destCol = COL_INDEX[destIata] || 65
 
   const foodUSD = cost_breakdown?.food_per_day || null
   const lodgingUSD = cost_breakdown?.lodging_per_night || null
@@ -454,18 +456,21 @@ function computeEmpathyMirror(cost_breakdown, p1City, p2City, p1Currency, p2Curr
 
   const p1Rate = exchangeRates?.[p1Currency] || 1
   const p2Rate = exchangeRates?.[p2Currency] || 1
-  const crossRateToP2 = p2Rate / p1Rate
-  const crossRateToP1 = p1Rate / p2Rate
 
   const foodP1 = Math.round(foodUSD * p1Rate)
   const foodP2 = Math.round(foodUSD * p2Rate)
   const lodgingP1 = Math.round(lodgingUSD * p1Rate)
   const lodgingP2 = Math.round(lodgingUSD * p2Rate)
 
-  const p1FoodFeelsToP2 = Math.round(foodP1 * (col2 / col1) * crossRateToP2)
-  const p1LodgingFeelsToP2 = Math.round(lodgingP1 * (col2 / col1) * crossRateToP2)
-  const p2FoodFeelsToP1 = Math.round(foodP2 * (col1 / col2) * crossRateToP1)
-  const p2LodgingFeelsToP1 = Math.round(lodgingP2 * (col1 / col2) * crossRateToP1)
+  const p1FoodPsychUSD = foodUSD * (destCol / col1)
+  const p2FoodPsychUSD = foodUSD * (destCol / col2)
+  const p1LodgingPsychUSD = lodgingUSD * (destCol / col1)
+  const p2LodgingPsychUSD = lodgingUSD * (destCol / col2)
+
+  const p1FoodFeelsToP2 = Math.round(p1FoodPsychUSD * p2Rate)
+  const p1LodgingFeelsToP2 = Math.round(p1LodgingPsychUSD * p2Rate)
+  const p2FoodFeelsToP1 = Math.round(p2FoodPsychUSD * p1Rate)
+  const p2LodgingFeelsToP1 = Math.round(p2LodgingPsychUSD * p1Rate)
 
   const winWin = destCol < col1 * 0.8 && destCol < col2 * 0.8
 
@@ -480,22 +485,22 @@ function computeEmpathyMirror(cost_breakdown, p1City, p2City, p1Currency, p2Curr
   } else if (Math.abs(p1Stretch - p2Stretch) < 0.1) {
     verdict = "This destination costs you both roughly the same in real terms."
   } else if (p1Stretch > p2Stretch) {
-    verdict = `This trip stretches your budget more than your partner's — ${p1City?.split(',')[0]} has a lower cost of living than ${destCity?.split(',')[0]}, so every spend hits harder for you.`
+    verdict = `This trip stretches your budget more than your partner's — ${p1CityName?.split(',')[0]} has a lower cost of living than ${destCityName?.split(',')[0]}, so every spend hits harder for you.`
   } else {
-    verdict = `This trip stretches your partner's budget more than yours — ${p2City?.split(',')[0]} has a lower cost of living than ${destCity?.split(',')[0]}, so every spend hits harder for them.`
+    verdict = `This trip stretches your partner's budget more than yours — ${p2CityName?.split(',')[0]} has a lower cost of living than ${destCityName?.split(',')[0]}, so every spend hits harder for them.`
   }
 
   return {
     type: winWin ? 'win_win' : 'mirror',
     verdict,
     p1: {
-      city: p1City?.split(',')[0].trim(),
+      city: p1CityName?.split(',')[0].trim(),
       currency: p1Currency,
       food_at_dest: foodP1,
       lodging_at_dest: lodgingP1,
     },
     p2: {
-      city: p2City?.split(',')[0].trim(),
+      city: p2CityName?.split(',')[0].trim(),
       currency: p2Currency,
       food_at_dest: foodP2,
       lodging_at_dest: lodgingP2,
@@ -649,12 +654,15 @@ console.log('Global trip count:', globalTripCount)
             )
             const empathy = computeEmpathyMirror(
               dest.cost_breakdown,
-              quizData.p1?.city,
-              quizData.p2?.city,
+              getCityIATA(quizData.p1?.city),
+              getCityIATA(quizData.p2?.city),
               p1c,
               p2c,
-              dest.name,
-              exchangeRates
+              dest.iata,
+              exchangeRates,
+              quizData.p1?.city,
+              quizData.p2?.city,
+              dest.name
             )
             if (empathy) computed.cost_breakdown.empathy_mirror = empathy
             return { ...dest, ...computed }

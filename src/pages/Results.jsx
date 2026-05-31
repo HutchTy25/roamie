@@ -21,22 +21,24 @@ function cleanDestName(name) {
 }
 
 const COL_INDEX_CLIENT = {
-  'Memphis': 41.2, 'New York': 100.0, 'Los Angeles': 87.3,
-  'Chicago': 71.4, 'Houston': 58.2, 'Atlanta': 59.1,
-  'Dallas': 62.3, 'Miami': 75.6, 'Seattle': 84.1,
-  'Boston': 91.2, 'San Francisco': 104.3, 'Denver': 72.8,
-  'Manchester': 62.1, 'London': 95.4, 'Dublin': 89.2,
-  'Amsterdam': 88.7, 'Paris': 91.3, 'Berlin': 72.4,
-  'Barcelona': 65.2, 'Lisbon': 52.3, 'Rome': 68.4,
-  'Stockholm': 87.6, 'Toronto': 76.3, 'Vancouver': 79.8,
-  'Sydney': 84.2, 'Melbourne': 81.3, 'Auckland': 78.4,
-  'Dubai': 71.2, 'Singapore': 88.6, 'Tokyo': 82.3,
-  'Seoul': 68.4, 'Mumbai': 28.3, 'Cape Town': 32.1,
-  'São Paulo': 38.4, 'Mexico City': 35.2, 'Nairobi': 29.4
+  'NYC': 100.0, 'HNL': 98.2, 'SFO': 97.6, 'SEA': 90.3, 'LAX': 81.5,
+  'MIA': 79.5, 'ORD': 76.0, 'ATL': 75.3, 'DEN': 75.1, 'DFW': 72.9,
+  'PHX': 71.6, 'MSP': 71.5, 'BNA': 70.3, 'CLT': 69.8, 'MCO': 69.0,
+  'IND': 69.0, 'YYJ': 68.7, 'MEM': 64.2, 'YVR': 62.7, 'YTO': 61.4,
+  'YYC': 61.0, 'IAH': 60.6, 'SAT': 58.8, 'YUL': 58.4, 'YEG': 58.3,
+  'CVG': 54.6, 'ZRH': 118.5, 'GVA': 116.5, 'OSL': 90.2, 'TLV': 91.4,
+  'LHR': 87.5, 'SIN': 87.7, 'CPH': 85.7, 'AMS': 82.6, 'CDG': 78.6,
+  'ARN': 78.6, 'DUB': 76.7, 'MUC': 76.1, 'FRA': 74.0, 'VIE': 73.9,
+  'BRU': 73.5, 'MXP': 73.1, 'EDI': 73.0, 'HAM': 71.9, 'MAN': 70.0,
+  'TXL': 70.0, 'FLR': 69.5, 'GOT': 68.7, 'BHX': 68.6, 'GLA': 67.8,
+  'HKG': 75.2, 'ICN': 68.2, 'SYD': 75.1, 'CBR': 71.2, 'MEL': 70.8,
+  'DXB': 58.0, 'AUH': 52.6, 'NRT': 51.1, 'BNE': 57.5, 'WLG': 59.3,
+  'AKL': 59.1, 'CHC': 55.0, 'LIS': 54.5, 'TLL': 52.7, 'FCO': 51.0,
+  'BCN': 50.6, 'MAD': 48.9, 'OPO': 50.2
 }
 
-function getCOLIndex(city) {
-  return COL_INDEX_CLIENT[city?.split(',')[0].trim()] || 65
+function getCOLIndex(iata) {
+  return COL_INDEX_CLIENT[iata] || 65
 }
 
 // Starfield
@@ -404,8 +406,8 @@ async function fetchRecommendations() {
   const destinationPrompt = `You are Roamie, a couples travel planner. Assign exactly one destination to each of three archetypes: Sanctuary, Odyssey, and Horizon.
 
 PURCHASING POWER CONTEXT (use this to guide archetype assignment):
-- Partner 1 home city: ${data.p1.city} | Cost of Living Index: ${getCOLIndex(data.p1.city)}
-- Partner 2 home city: ${data.p2.city} | Cost of Living Index: ${getCOLIndex(data.p2.city)}
+- Partner 1 home city: ${data.p1.city} | Cost of Living Index: ${getCOLIndex(data.p1.iata)}
+- Partner 2 home city: ${data.p2.city} | Cost of Living Index: ${getCOLIndex(data.p2.iata)}
 - A destination with COL significantly below both indices = Sanctuary territory
 - A destination with COL above both indices = Odyssey territory
 - A destination with COL between or near both indices = Horizon territory
