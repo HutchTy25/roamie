@@ -1165,15 +1165,11 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
                     {em.verdict && (
                       <div style={{ fontWeight: '600', fontSize: '13px', marginBottom: '10px' }}>{em.verdict}</div>
                     )}
-                    <div style={{ fontSize: '11px', opacity: 0.75 }}>
-                      <div style={{ marginBottom: '8px' }}>
-                        <div>🍽 A meal out costs {p1sym}{em.p1.food_at_dest} here — back home in {em.p1.city} that same spend feels like {p1sym}{em.p1.food_feels_like}</div>
-                        <div style={{ marginTop: '4px' }}>🏨 A night's stay costs {p1sym}{em.p1.lodging_at_dest} here — back home in {em.p1.city} that feels like {p1sym}{em.p1.lodging_feels_like}</div>
-                      </div>
-                      <div>
-                        <div>🍽 A meal out costs {p2sym}{em.p2.food_at_dest} here — back home in {em.p2.city} that same spend feels like {p2sym}{em.p2.food_feels_like}</div>
-                        <div style={{ marginTop: '4px' }}>🏨 A night's stay costs {p2sym}{em.p2.lodging_at_dest} here — back home in {em.p2.city} that feels like {p2sym}{em.p2.lodging_feels_like}</div>
-                      </div>
+                    <div style={{ fontSize: '11px', opacity: 0.75, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div>A meal here costs you {p1sym}{em.p1.food_at_dest}. That same financial hit feels like {p2sym}{em.p1FoodFeelsToP2} to your partner in {em.p2.city}.</div>
+                      <div>A meal here costs your partner {p2sym}{em.p2.food_at_dest}. That feels like {p1sym}{em.p2FoodFeelsToP1} to you in {em.p1.city}.</div>
+                      <div>A night's stay costs you {p1sym}{em.p1.lodging_at_dest}. That feels like {p2sym}{em.p1LodgingFeelsToP2} to your partner in {em.p2.city}.</div>
+                      <div>A night's stay costs your partner {p2sym}{em.p2.lodging_at_dest}. That feels like {p1sym}{em.p2LodgingFeelsToP1} to you in {em.p1.city}.</div>
                     </div>
                   </>
                 )

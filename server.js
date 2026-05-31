@@ -454,23 +454,25 @@ function computeEmpathyMirror(cost_breakdown, p1City, p2City, p1Currency, p2Curr
 
   const p1Rate = exchangeRates?.[p1Currency] || 1
   const p2Rate = exchangeRates?.[p2Currency] || 1
+  const crossRateToP2 = p2Rate / p1Rate
+  const crossRateToP1 = p1Rate / p2Rate
 
   const foodP1 = Math.round(foodUSD * p1Rate)
   const foodP2 = Math.round(foodUSD * p2Rate)
-  const foodP1Home = Math.round(foodP1 * (col1 / destCol))
-  const foodP2Home = Math.round(foodP2 * (col2 / destCol))
-
   const lodgingP1 = Math.round(lodgingUSD * p1Rate)
   const lodgingP2 = Math.round(lodgingUSD * p2Rate)
-  const lodgingP1Home = Math.round(lodgingP1 * (col1 / destCol))
-  const lodgingP2Home = Math.round(lodgingP2 * (col2 / destCol))
+
+  const p1FoodFeelsToP2 = Math.round(foodP1 * (col2 / col1) * crossRateToP2)
+  const p1LodgingFeelsToP2 = Math.round(lodgingP1 * (col2 / col1) * crossRateToP2)
+  const p2FoodFeelsToP1 = Math.round(foodP2 * (col1 / col2) * crossRateToP1)
+  const p2LodgingFeelsToP1 = Math.round(lodgingP2 * (col1 / col2) * crossRateToP1)
 
   const winWin = destCol < col1 * 0.8 && destCol < col2 * 0.8
 
   if (!winWin && Math.abs(col1 - col2) / Math.max(col1, col2) < 0.1) return null
 
-  const p1Stretch = foodP1Home / foodP1
-  const p2Stretch = foodP2Home / foodP2
+  const p1Stretch = col1 / destCol
+  const p2Stretch = col2 / destCol
 
   let verdict
   if (winWin) {
@@ -490,18 +492,18 @@ function computeEmpathyMirror(cost_breakdown, p1City, p2City, p1Currency, p2Curr
       city: p1City?.split(',')[0].trim(),
       currency: p1Currency,
       food_at_dest: foodP1,
-      food_feels_like: foodP1Home,
       lodging_at_dest: lodgingP1,
-      lodging_feels_like: lodgingP1Home,
     },
     p2: {
       city: p2City?.split(',')[0].trim(),
       currency: p2Currency,
       food_at_dest: foodP2,
-      food_feels_like: foodP2Home,
       lodging_at_dest: lodgingP2,
-      lodging_feels_like: lodgingP2Home,
     },
+    p1FoodFeelsToP2,
+    p1LodgingFeelsToP2,
+    p2FoodFeelsToP1,
+    p2LodgingFeelsToP1,
     dest_col: destCol,
     p1_col: col1,
     p2_col: col2,
