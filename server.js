@@ -816,6 +816,28 @@ app.post('/api/verify-subscription', [
   }
 })
 
+app.post('/api/create-portal-session', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id
+
+    const existing = await stripe.customers.search({
+      query: `metadata['userId']:'${userId}'`,
+      limit: 1,
+    })
+    const customer = existing.data[0]
+    if (!customer) return res.status(404).json({ error: 'No Stripe customer found for this user' })
+
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: customer.id,
+      return_url: 'https://roamietravel.app/dashboard',
+    })
+    res.json({ url: portalSession.url })
+  } catch (err) {
+    console.error('Portal session error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
+
 app.post('/api/trip-basics', requireAppSecret, [
   body('destination').isString().trim().notEmpty(),
   body('neighborhood').isString().trim().optional(),

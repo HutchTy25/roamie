@@ -1049,18 +1049,17 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
               {[
                 { label: 'Partner Sync', value: partnerProfile ? `Connected to ${partnerName}` : 'Not connected', action: () => navigate('/connect') },
-                { label: 'Subscription', value: 'Free tier', action: null },
               ].map(item => (
-                <div 
-                  key={item.label} 
-                  onClick={item.action} 
+                <div
+                  key={item.label}
+                  onClick={item.action}
                   className="glass-card"
-                  style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    padding: '16px 20px', 
-                    cursor: item.action ? 'pointer' : 'default' 
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '16px 20px',
+                    cursor: item.action ? 'pointer' : 'default'
                   }}
                 >
                   <div style={{ fontSize: '14px', color: colors.text }}>{item.label}</div>
@@ -1069,6 +1068,44 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
                   </div>
                 </div>
               ))}
+              <div
+                className="glass-card"
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px' }}
+              >
+                <div style={{ fontSize: '14px', color: colors.text }}>Subscription</div>
+                {myProfile?.is_pro ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      color: colors.bg,
+                      background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`,
+                      padding: '3px 10px',
+                      borderRadius: '100px',
+                    }}>Pro</span>
+                    <button
+                      onClick={async () => {
+                        const { data: { session: portalSession } } = await supabase.auth.getSession()
+                        const res = await fetch('https://roamie-61ib.onrender.com/api/create-portal-session', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${portalSession?.access_token}`,
+                          },
+                          body: JSON.stringify({}),
+                        })
+                        const { url } = await res.json()
+                        if (url) window.location.href = url
+                      }}
+                      style={{ fontSize: '13px', color: colors.primary, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    >
+                      Manage →
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '13px', color: colors.textMuted }}>Free tier</div>
+                )}
+              </div>
             </div>
 
             <button 
