@@ -358,7 +358,7 @@ async function checkProAccess(userId, supabase) {
   }
 
   const searchCount = profile.search_count || 0
-  if (searchCount >= 3) return cache({ allowed: false, reason: 'limit_reached' })
+  if (searchCount >= 1) return cache({ allowed: false, reason: 'limit_reached' })
 
   await supabase.from('profiles').update({ search_count: searchCount + 1 }).eq('id', userId)
   return cache({ allowed: true, reason: 'trial' })
@@ -536,7 +536,7 @@ app.post('/api/messages', requireAppSecret, [
     if (userId) {
       const access = await checkProAccess(userId, supabase)
       if (!access.allowed) {
-        return res.status(402).json({ error: 'upgrade_required', message: 'Upgrade to Roamie Pro to continue searching' })
+        return res.status(402).json({ error: 'upgrade_required', message: "You've used your free search" })
       }
     }
 
@@ -1226,7 +1226,7 @@ app.post('/api/flight-prices', requireAppSecret, [
     if (userId) {
       const access = await checkProAccess(userId, supabase)
       if (!access.allowed) {
-        return res.status(402).json({ error: 'upgrade_required', message: 'Upgrade to Roamie Pro to continue searching' })
+        return res.status(402).json({ error: 'upgrade_required', message: "You've used your free search" })
       }
     }
 
