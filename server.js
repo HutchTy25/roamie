@@ -72,8 +72,10 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
 
 app.use(express.json())
 async function requireAppSecret(req, res, next) {
-  const secret = req.headers['x-roamie-secret']
-  if (secret === process.env.ROAMIE_SECRET) return next()
+  // Path 1: valid app secret header
+  if (req.headers['x-roamie-secret'] === process.env.ROAMIE_SECRET) return next()
+
+  // Path 2: valid Supabase JWT
   const authHeader = req.headers['authorization']
   if (authHeader?.startsWith('Bearer ')) {
     try {
@@ -83,6 +85,11 @@ async function requireAppSecret(req, res, next) {
       console.error('[requireAppSecret] getUser error:', e.message)
     }
   }
+
+  // Path 3: allow requests from our frontend origin (logged-out users)
+  const origin = req.headers['origin']
+  if (origin === 'https://roamietravel.app') return next()
+
   return res.status(403).json({ error: 'Forbidden' })
 }
 
