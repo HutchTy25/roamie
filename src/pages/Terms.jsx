@@ -62,11 +62,8 @@ export default function Terms() {
         </Section>
 
         <Section title="3. Pricing and Purchases">
-          <P>Roamie offers the following paid features:</P>
-          <ul style={{ paddingLeft: '20px', marginBottom: '10px' }}>
-            <Li><strong style={{ color: THEME.text }}>Breakdown unlock (one-time):</strong> A one-time payment of $3.99 USD to unlock the full cost breakdown for a trip result. This is a one-time charge, not a subscription.</Li>
-          </ul>
-          <P>All prices are displayed in USD. Charges are processed by Stripe. By completing a purchase, you authorise the stated charge to your payment method.</P>
+          <P>Roamie Pro is a subscription priced at <strong style={{ color: THEME.text }}>$5.99 USD per couple per month</strong>. A subscription gives both partners unlimited trip searches and full cost breakdowns.</P>
+          <P>All prices are displayed in USD. Charges are processed by Stripe and billed monthly. You may cancel at any time from your account dashboard. By starting a subscription, you authorise the recurring monthly charge to your payment method.</P>
         </Section>
 
         <Section title="4. Refund Policy">

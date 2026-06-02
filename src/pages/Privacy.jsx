@@ -56,7 +56,7 @@ export default function Privacy() {
             <Li><strong style={{ color: THEME.text }}>Account data:</strong> Your email address when you sign up or log in via Supabase Auth.</Li>
             <Li><strong style={{ color: THEME.text }}>Travel preferences:</strong> Cities, budgets, travel dates, accommodation type, and travel vibes you enter during the quiz.</Li>
             <Li><strong style={{ color: THEME.text }}>Location (city):</strong> The home city you provide — we never request GPS or device location.</Li>
-            <Li><strong style={{ color: THEME.text }}>Payment information:</strong> If you purchase a breakdown unlock, Stripe processes your card. We do not store card numbers — only a Stripe customer ID and payment confirmation.</Li>
+            <Li><strong style={{ color: THEME.text }}>Payment information:</strong> If you subscribe to Roamie Pro, Stripe processes your card. We do not store card numbers — only a Stripe customer ID and subscription status.</Li>
             <Li><strong style={{ color: THEME.text }}>Usage data:</strong> Pages visited, button clicks, and session events collected via PostHog analytics.</Li>
           </ul>
           <P>We do not collect passport details, real names, or precise GPS coordinates.</P>
@@ -66,8 +66,8 @@ export default function Privacy() {
           <ul style={{ paddingLeft: '20px', marginBottom: '10px' }}>
             <Li>To generate personalised trip recommendations using the AI model (Claude by Anthropic).</Li>
             <Li>To authenticate your account and save your trip history.</Li>
-            <Li>To process one-time payments for breakdown unlocks via Stripe.</Li>
-            <Li>To send transactional emails (e.g. waitlist confirmation) — we do not send unsolicited marketing unless you opt in.</Li>
+            <Li>To process subscription payments via Stripe.</Li>
+            <Li>To send transactional emails — we do not send unsolicited marketing unless you opt in.</Li>
             <Li>To analyse product usage and improve the service (PostHog).</Li>
           </ul>
         </Section>
@@ -77,7 +77,7 @@ export default function Privacy() {
         </Section>
 
         <Section title="5. Payments — Stripe">
-          <P>Payments are handled by Stripe, Inc. When you complete a purchase, your card details are entered directly into Stripe's secure form and never touch our servers. We store only a Stripe customer ID and a record of whether your breakdown is unlocked. Stripe's privacy policy is available at stripe.com/privacy.</P>
+          <P>Payments are handled by Stripe, Inc. When you subscribe, your card details are entered directly into Stripe's secure form and never touch our servers. We store only a Stripe customer ID and your subscription status. Stripe's privacy policy is available at stripe.com/privacy.</P>
         </Section>
 
         <Section title="6. Analytics — PostHog">

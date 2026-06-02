@@ -6,7 +6,6 @@ import Home from './pages/Home'
 import Quiz from './pages/Quiz'
 import Results from './pages/Results'
 import Success from './pages/Success'
-import Gate from './pages/Gate'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Connect from './pages/Connect'
@@ -113,7 +112,6 @@ export default function App() {
       <Route path="/quiz" element={<Quiz session={session} />} />
       <Route path="/results" element={<Results />} />
       <Route path="/success" element={<Success />} />
-      <Route path="/gate" element={<Gate />} />
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={needsOnboarding ? <Navigate to="/onboarding" replace /> : <Dashboard session={session} />} />
       <Route path="/connect" element={<Connect session={session} />} />

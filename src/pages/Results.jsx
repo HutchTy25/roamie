@@ -73,104 +73,6 @@ function Starfield() {
   )
 }
 
-function EmailCapture() {
-  const [email, setEmail] = useState('')
-  const [submitted, setSubmitted] = useState(false)
-  const [loading, setLoading] = useState(false)
-
-  async function submit() {
-    if (!email.includes('@')) return
-    setLoading(true)
-    try {
-      await fetch('https://roamie-61ib.onrender.com/api/waitlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-      })
-      setSubmitted(true)
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (submitted) return (
-    <div style={{
-      padding: '2rem 1.5rem',
-      textAlign: 'center',
-      borderTop: `1px solid ${THEME.border}`,
-      background: 'rgba(124, 106, 239, 0.05)',
-    }}>
-      <div style={{ fontSize: '1.5rem', marginBottom: '8px', color: THEME.accent }}>✦</div>
-      <div style={{ fontSize: '1.1rem', marginBottom: '6px', color: THEME.text, fontWeight: '500' }}>
-        You&apos;re in.
-      </div>
-      <div style={{ fontSize: '13px', color: THEME.muted }}>
-        We&apos;ll keep you posted on new features.
-      </div>
-    </div>
-  )
-
-  return (
-    <div style={{
-      padding: '2rem 1.5rem',
-      borderTop: `1px solid ${THEME.border}`,
-      background: 'rgba(244, 114, 182, 0.03)',
-    }}>
-      <div style={{ textAlign: 'center', marginBottom: '1.25rem' }}>
-        <div style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: THEME.accent, marginBottom: '8px', fontWeight: '500' }}>
-          Early access
-        </div>
-        <div style={{ fontSize: '1.2rem', marginBottom: '6px', color: THEME.text, fontWeight: '500' }}>
-          Want to be first to know?
-        </div>
-        <div style={{ fontSize: '13px', color: THEME.muted, lineHeight: '1.6' }}>
-          We&apos;re building new features for couples. Drop your email and we&apos;ll keep you in the loop.
-        </div>
-      </div>
-      <div style={{ display: 'flex', gap: '8px', maxWidth: '400px', margin: '0 auto' }}>
-        <input
-          type="email"
-          placeholder="your@email.com"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && submit()}
-          style={{
-            flex: 1,
-            fontSize: '14px',
-            padding: '12px 16px',
-            background: 'rgba(30, 32, 48, 0.8)',
-            border: `1px solid ${THEME.border}`,
-            borderRadius: '100px',
-            color: THEME.text,
-            outline: 'none',
-          }}
-        />
-        <button
-          onClick={submit}
-          disabled={loading || !email.includes('@')}
-          style={{
-            background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`,
-            border: 'none',
-            borderRadius: '100px',
-            padding: '12px 20px',
-            color: '#fff',
-            fontSize: '13px',
-            fontWeight: '600',
-            cursor: loading ? 'wait' : 'pointer',
-            opacity: !email.includes('@') ? 0.4 : 1,
-            whiteSpace: 'nowrap',
-            transition: 'opacity 0.2s',
-          }}
-        >
-          {loading ? '...' : 'Join'}
-        </button>
-      </div>
-    </div>
-  )
-}
-
 export default function Results() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -195,6 +97,7 @@ export default function Results() {
   const [empathyExpanded, setEmpathyExpanded] = useState(false)
   const [cancelToast, setCancelToast] = useState(false)
   const [partialResult, setPartialResult] = useState(null)
+  const [proExpandGate, setProExpandGate] = useState(false)
   const fetchedPhotos = useRef(new Set())
 
   const loadingMessages = [
@@ -252,9 +155,6 @@ export default function Results() {
       return
     }
 
-    if (params.get('beta') === 'true') {
-      localStorage.setItem('roamie_paid', 'true')
-    }
     const plan = location.state?.plan || params.get('plan')
     const trigger = location.state?.triggerUpgrade || params.get('triggerUpgrade') === 'true'
     if (trigger && plan) setPendingUpgradePlan(plan)
@@ -292,6 +192,7 @@ export default function Results() {
     setTripSaved(false)
     setSignupExpandGate(false)
     setEmpathyExpanded(false)
+    setProExpandGate(false)
   }, [activeCard])
 
   useEffect(() => {
@@ -398,6 +299,16 @@ async function fetchRecommendations() {
   if (data.tripMode === 'visit') {
     await fetchVisitPrices()
     return
+  }
+
+  const { data: { session: limitSession } } = await supabase.auth.getSession()
+  if (limitSession && !isPro) {
+    const tripCount = parseInt(localStorage.getItem('roamie_trip_count') || '0', 10)
+    if (tripCount >= 1) {
+      setLoading(false)
+      setPaywallHit(true)
+      return
+    }
   }
 
   const p1sym = CURR_SYMBOLS[data.p1.currency] || data.p1.currency
@@ -891,14 +802,14 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '2rem', background: THEME.bg, textAlign: 'center' }}>
       <Starfield />
       <div style={{ fontSize: '40px', position: 'relative', zIndex: 1 }}>🔒</div>
-      <h2 style={{ fontSize: '22px', fontWeight: '700', color: THEME.text, margin: 0, position: 'relative', zIndex: 1 }}>You've used your 3 free searches</h2>
+      <h2 style={{ fontSize: '22px', fontWeight: '700', color: THEME.text, margin: 0, position: 'relative', zIndex: 1 }}>You've used your free search</h2>
       <p style={{ fontSize: '14px', color: THEME.muted, margin: 0, maxWidth: '280px', lineHeight: '1.5', position: 'relative', zIndex: 1 }}>Upgrade to Roamie Pro to keep planning trips together.</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxWidth: '300px', position: 'relative', zIndex: 1 }}>
         <button
           onClick={() => startCheckout('founding')}
           style={{ padding: '14px', background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`, border: 'none', borderRadius: '14px', color: '#fff', fontSize: '15px', fontWeight: '600', cursor: 'pointer', boxShadow: `0 0 24px rgba(244,114,182,0.3)` }}
         >
-          Join Roamie — $5.99/month (founding rate)
+          Join Roamie Pro — $5.99/couple/month
         </button>
       </div>
     </div>
@@ -1193,7 +1104,7 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
         }}>
 
           {/* Signup overlay — cards 2+3 for logged-out users, or expand gate on any card */}
-          {((!userId && activeCard > 0) || signupExpandGate) && (
+          {((!userId && activeCard > 0) || signupExpandGate || proExpandGate) && (
             <div style={{
               position: 'absolute', inset: 0, zIndex: 10, borderRadius: '20px',
               background: 'rgba(26,27,38,0.92)', backdropFilter: 'blur(16px)',
@@ -1201,23 +1112,46 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
               display: 'flex', flexDirection: 'column', alignItems: 'center',
               justifyContent: 'center', gap: '12px', padding: '2rem', textAlign: 'center',
             }}>
-              <div style={{ fontSize: '28px' }}>🔒</div>
-              <div style={{ fontSize: '15px', color: THEME.text, fontWeight: '500', lineHeight: '1.5' }}>
-                Create a free account to unlock all destinations
-              </div>
-              <button
-                onClick={() => navigate('/login')}
-                style={{ background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`, border: 'none', borderRadius: '100px', padding: '14px 32px', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: 'pointer', boxShadow: `0 0 24px rgba(244,114,182,0.3)` }}
-              >
-                Create free account →
-              </button>
-              {signupExpandGate && (
-                <button
-                  onClick={() => setSignupExpandGate(false)}
-                  style={{ background: 'none', border: 'none', color: THEME.muted, fontSize: '13px', cursor: 'pointer', marginTop: '4px' }}
-                >
-                  Not now
-                </button>
+              {proExpandGate ? (
+                <>
+                  <div style={{ fontSize: '28px' }}>✦</div>
+                  <div style={{ fontSize: '15px', color: THEME.text, fontWeight: '500', lineHeight: '1.5' }}>
+                    Unlock full breakdown with Pro
+                  </div>
+                  <button
+                    onClick={() => startCheckout('founding')}
+                    style={{ background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`, border: 'none', borderRadius: '100px', padding: '14px 32px', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: 'pointer', boxShadow: `0 0 24px rgba(244,114,182,0.3)` }}
+                  >
+                    Upgrade to Pro →
+                  </button>
+                  <button
+                    onClick={() => setProExpandGate(false)}
+                    style={{ background: 'none', border: 'none', color: THEME.muted, fontSize: '13px', cursor: 'pointer', marginTop: '4px' }}
+                  >
+                    Not now
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: '28px' }}>🔒</div>
+                  <div style={{ fontSize: '15px', color: THEME.text, fontWeight: '500', lineHeight: '1.5' }}>
+                    Create a free account to unlock all destinations
+                  </div>
+                  <button
+                    onClick={() => navigate('/login')}
+                    style={{ background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`, border: 'none', borderRadius: '100px', padding: '14px 32px', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: 'pointer', boxShadow: `0 0 24px rgba(244,114,182,0.3)` }}
+                  >
+                    Create free account →
+                  </button>
+                  {signupExpandGate && (
+                    <button
+                      onClick={() => setSignupExpandGate(false)}
+                      style={{ background: 'none', border: 'none', color: THEME.muted, fontSize: '13px', cursor: 'pointer', marginTop: '4px' }}
+                    >
+                      Not now
+                    </button>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -1275,6 +1209,7 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
             <button
               onClick={() => {
                 if (!userId) { setSignupExpandGate(true); return }
+                if (!isPro) { setProExpandGate(true); return }
                 setExpanded(e => !e)
                 if (!expanded && dest.trip_basics) setTripBasics(dest.trip_basics)
               }}
@@ -1586,8 +1521,6 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
         </div>
       )}
 
-      {/* Email capture */}
-      <EmailCapture />
 
       {/* Summary card modal */}
       {showSummary && (
