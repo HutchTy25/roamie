@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../supabase'
 
 const cleanDestName = (name) => name?.replace(/^[A-Z]{2,3} /, '') ?? name
@@ -43,6 +43,8 @@ const getAmbientGlow = () => {
 
 export default function Dashboard({ session }) {
   const navigate = useNavigate()
+  const location = useLocation()
+  const [proToast, setProToast] = useState(false)
   const [trips, setTrips] = useState([])
   const [loading, setLoading] = useState(true)
   const [partnerProfile, setPartnerProfile] = useState(null)
@@ -93,6 +95,14 @@ useEffect(() => {
   useEffect(() => {
     const interval = setInterval(() => setAmbientGlow(getAmbientGlow()), 60000)
     return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    if (location.state?.proUpgrade) {
+      setProToast(true)
+      const t = setTimeout(() => setProToast(false), 5000)
+      return () => clearTimeout(t)
+    }
   }, [])
 
   async function fetchData() {
@@ -228,6 +238,22 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
       {ambientGlow.secondaryGlow && <div style={{ position: "fixed", inset: 0, background: ambientGlow.secondaryGlow, pointerEvents: "none", zIndex: 1 }} />}
       {ambientGlow.pulse && <div style={{ position: "fixed", inset: 0, background: ambientGlow.gradient, pointerEvents: "none", zIndex: 1, opacity: 0.3, animation: "pulse 4s ease-in-out infinite" }} />}
       {partnerWeather && <div style={{ position: "fixed", inset: 0, background: `radial-gradient(ellipse 70% 40% at 50% 0%, ${timeGlow.replace('0.4', '0.10')} 0%, transparent 60%)`, pointerEvents: "none", zIndex: 1 }} />}
+
+      {proToast && (
+        <div style={{
+          position: 'fixed', top: '1.25rem', left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9999, background: 'linear-gradient(135deg, #22D3EE, #7C6AEF)',
+          borderRadius: '100px', padding: '12px 20px', color: '#fff',
+          fontSize: '14px', fontWeight: '600', boxShadow: '0 4px 24px rgba(34,211,238,0.35)',
+          display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap',
+        }}>
+          <span>✦</span> Welcome to Roamie Pro — enjoy unlimited searches!
+          <button onClick={() => setProToast(false)} style={{
+            marginLeft: '4px', background: 'none', border: 'none',
+            color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: 0,
+          }}>×</button>
+        </div>
+      )}
 
       {/* Global styles */}
       <style>{`

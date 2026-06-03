@@ -67,6 +67,27 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
     }
   }
 
+  if (event.type === 'customer.subscription.deleted') {
+    const subscriptionId = event.data.object.id
+    deactivatePro(subscriptionId).catch(e =>
+      console.error('[webhook] deactivatePro error:', e)
+    )
+  }
+
+  if (event.type === 'customer.subscription.updated') {
+    const sub = event.data.object
+    if (sub.status === 'canceled' || sub.status === 'unpaid') {
+      deactivatePro(sub.id).catch(e =>
+        console.error('[webhook] deactivatePro error:', e)
+      )
+    }
+  }
+
+  if (event.type === 'invoice.payment_failed') {
+    const subscriptionId = event.data.object.subscription
+    console.log(`[webhook] Payment failed for subscription ${subscriptionId} — Stripe will retry`)
+  }
+
   res.json({ received: true })
 })
 
@@ -102,6 +123,53 @@ async function requireAuth(req, res, next) {
   if (error || !user) return res.status(401).json({ error: 'Unauthorized' })
   req.user = user
   next()
+}
+
+async function deactivatePro(subscriptionId) {
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, couple_id')
+    .eq('stripe_subscription_id', subscriptionId)
+    .single()
+
+  if (!profile) {
+    console.warn(`[deactivatePro] No profile found for subscription ${subscriptionId}`)
+    return
+  }
+
+  await supabase
+    .from('profiles')
+    .update({ is_pro: false, stripe_subscription_id: null })
+    .eq('id', profile.id)
+  console.log(`[deactivatePro] Profile ${profile.id} downgraded from pro`)
+  proAccessCache.delete(profile.id)
+
+  if (profile.couple_id) {
+    const { data: couple } = await supabase
+      .from('couples')
+      .select('partner1_id, partner2_id')
+      .eq('id', profile.couple_id)
+      .single()
+
+    await supabase
+      .from('couples')
+      .update({ is_pro: false, stripe_subscription_id: null })
+      .eq('id', profile.couple_id)
+    console.log(`[deactivatePro] Couple ${profile.couple_id} downgraded from pro`)
+
+    const partnerId = couple?.partner1_id === profile.id
+      ? couple?.partner2_id
+      : couple?.partner1_id
+
+    if (partnerId) {
+      await supabase
+        .from('profiles')
+        .update({ is_pro: false, stripe_subscription_id: null })
+        .eq('id', partnerId)
+      console.log(`[deactivatePro] Partner ${partnerId} downgraded from pro`)
+      proAccessCache.delete(partnerId)
+    }
+  }
 }
 
 async function activatePro(userId, subscriptionId) {
