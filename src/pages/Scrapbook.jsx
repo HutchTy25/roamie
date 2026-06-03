@@ -1,9 +1,11 @@
 import { useState, useCallback, useRef, useMemo, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, Check, Camera, ChevronLeft, Send, Trash2, ImagePlus } from 'lucide-react'
 import { supabase } from '../supabase'
 
 export default function Scrapbook({ session, profile, partnerProfile }) {
+  const navigate = useNavigate()
   const myName = profile?.display_name || session?.user?.user_metadata?.full_name?.split(' ')[0] || 'You'
   const partnerName = partnerProfile?.display_name || 'Partner'
   const partnerPresent = !!partnerProfile
@@ -30,26 +32,30 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
   useEffect(() => {
     if (!profile?.couple_id) return
     async function fetchDestinations() {
-      const { data } = await supabase
+      const { data: dests } = await supabase
         .from('destinations')
-        .select('id, name, cover_photo, visit_date, destination_photos(photo_url), destination_messages(id, text, sender, timestamp)')
+        .select('id, name, cover_photo, visit_date')
         .eq('couple_id', profile.couple_id)
         .order('created_at', { ascending: false })
-      if (data) {
-        setDestinations(data.map(d => ({
+
+      if (!dests) return
+
+      const enriched = await Promise.all(dests.map(async (d) => {
+        const [{ data: photos }, { data: messages }] = await Promise.all([
+          supabase.from('destination_photos').select('photo_url').eq('destination_id', d.id),
+          supabase.from('destination_messages').select('id, text, sender, timestamp').eq('destination_id', d.id).order('created_at', { ascending: true })
+        ])
+        return {
           id: d.id,
           name: d.name,
           coverPhoto: d.cover_photo,
           visitDate: d.visit_date || 'Date TBD',
-          photos: (d.destination_photos || []).map(p => p.photo_url),
-          chatMessages: (d.destination_messages || []).map(m => ({
-            id: m.id,
-            text: m.text,
-            sender: m.sender,
-            timestamp: m.timestamp,
-          })),
-        })))
-      }
+          photos: (photos || []).map(p => p.photo_url),
+          chatMessages: (messages || []).map(m => ({ id: m.id, text: m.text, sender: m.sender, timestamp: m.timestamp }))
+        }
+      }))
+
+      setDestinations(enriched)
     }
     fetchDestinations()
   }, [profile?.couple_id])
@@ -284,8 +290,15 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
         </div>
       )}
 
-      {/* Title */}
+      {/* Title + back button */}
       <div style={{ paddingTop: '24px', paddingBottom: '12px', paddingLeft: '24px', paddingRight: '24px', position: 'relative', zIndex: 10 }}>
+        <button
+          onClick={() => navigate('/dashboard')}
+          style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', fontSize: '13px', padding: 0, marginBottom: '8px' }}
+        >
+          <ChevronLeft size={14} />
+          Dashboard
+        </button>
         <h1 style={{ fontSize: '20px', fontWeight: '500', color: 'rgba(255,255,255,0.9)', fontFamily: 'Georgia, serif', margin: 0 }}>Our Adventures</h1>
         <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>Double-tap to open, hold to delete</p>
       </div>
