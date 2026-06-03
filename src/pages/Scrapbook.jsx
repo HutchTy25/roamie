@@ -25,6 +25,8 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
   const chatEndRef = useRef(null)
   const longPressTimer = useRef(null)
   const lastTapTime = useRef({})
+  const coverPhotoInputRef = useRef(null)
+  const memoryPhotoInputRef = useRef(null)
 
   const TABLE_SIZE = 900
   const CARD_WIDTH = 150
@@ -252,15 +254,48 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
   }, [newCardName, newCardDate, profile?.couple_id, destinations.length])
 
   const handleCoverPhotoUpload = useCallback(() => {
-    // TODO: trigger file input, upload to Supabase Storage, update cover_photo
+    coverPhotoInputRef.current?.click()
   }, [])
 
+  const handleCoverPhotoChange = useCallback(async (e) => {
+    const file = e.target.files?.[0]
+    if (!file || !selectedDestination || !profile?.couple_id) return
+    const ext = file.name.split('.').pop()
+    const path = `${profile.couple_id}/${selectedDestination.id}/cover.${ext}`
+    const { error } = await supabase.storage.from('scrapbook').upload(path, file, { upsert: true })
+    if (error) return
+    const { data: { publicUrl } } = supabase.storage.from('scrapbook').getPublicUrl(path)
+    await supabase.from('destinations').update({ cover_photo: publicUrl }).eq('id', selectedDestination.id)
+    setDestinations(prev => prev.map(d => d.id === selectedDestination.id ? { ...d, coverPhoto: publicUrl } : d))
+    setSelectedDestination(prev => prev ? { ...prev, coverPhoto: publicUrl } : null)
+    e.target.value = ''
+  }, [selectedDestination, profile?.couple_id])
+
   const handleAddMemoryPhoto = useCallback(() => {
-    // TODO: trigger file input, upload to Supabase Storage, insert into destination_photos
+    memoryPhotoInputRef.current?.click()
   }, [])
+
+  const handleMemoryPhotoChange = useCallback(async (e) => {
+    const file = e.target.files?.[0]
+    if (!file || !selectedDestination || !profile?.couple_id) return
+    const ext = file.name.split('.').pop()
+    const filename = `${Date.now()}.${ext}`
+    const path = `${profile.couple_id}/${selectedDestination.id}/${filename}`
+    const { error } = await supabase.storage.from('scrapbook').upload(path, file)
+    if (error) return
+    const { data: { publicUrl } } = supabase.storage.from('scrapbook').getPublicUrl(path)
+    await supabase.from('destination_photos').insert({ destination_id: selectedDestination.id, photo_url: publicUrl })
+    setDestinations(prev => prev.map(d => d.id === selectedDestination.id ? { ...d, photos: [...d.photos, publicUrl] } : d))
+    setSelectedDestination(prev => prev ? { ...prev, photos: [...prev.photos, publicUrl] } : null)
+    e.target.value = ''
+  }, [selectedDestination, profile?.couple_id])
 
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#0A0A0C' }}>
+      {/* Hidden file inputs */}
+      <input ref={coverPhotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleCoverPhotoChange} />
+      <input ref={memoryPhotoInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleMemoryPhotoChange} />
+
       {/* Ambient light */}
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 100% 60% at 50% -10%, rgba(124,106,239,0.08) 0%, transparent 50%)' }} />
 
