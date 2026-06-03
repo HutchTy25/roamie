@@ -43,10 +43,12 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
       if (!dests) return
 
       const enriched = await Promise.all(dests.map(async (d) => {
-        const [{ data: photos }, { data: messages }] = await Promise.all([
+        const [{ data: photos, error: photoError }, { data: messages, error: msgError }] = await Promise.all([
           supabase.from('destination_photos').select('photo_url').eq('destination_id', d.id),
           supabase.from('destination_messages').select('id, text, sender, timestamp').eq('destination_id', d.id).order('created_at', { ascending: true })
         ])
+        if (photoError) console.error('Photos error:', photoError)
+        if (msgError) console.error('Messages error:', msgError)
         return {
           id: d.id,
           name: d.name,
