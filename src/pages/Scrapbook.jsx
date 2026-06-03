@@ -44,7 +44,7 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
 
       const enriched = await Promise.all(dests.map(async (d) => {
         const [{ data: photos, error: photoError }, { data: messages, error: msgError }] = await Promise.all([
-          supabase.from('destination_photos').select('photo_url').eq('destination_id', d.id),
+          supabase.from('destination_photos').select('url').eq('destination_id', d.id),
           supabase.from('destination_messages').select('id, text, sender, timestamp').eq('destination_id', d.id).order('created_at', { ascending: true })
         ])
         if (photoError) console.error('Photos error:', photoError)
@@ -54,7 +54,7 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
           name: d.name,
           coverPhoto: d.cover_photo,
           visitDate: d.visit_date || 'Date TBD',
-          photos: (photos || []).map(p => p.photo_url),
+          photos: (photos || []).map(p => p.url),
           chatMessages: (messages || []).map(m => ({ id: m.id, text: m.text, sender: m.sender, timestamp: m.timestamp }))
         }
       }))
@@ -286,7 +286,7 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
     const { error } = await supabase.storage.from('scrapbook').upload(path, file)
     if (error) return
     const { data: { publicUrl } } = supabase.storage.from('scrapbook').getPublicUrl(path)
-    await supabase.from('destination_photos').insert({ destination_id: selectedDestination.id, photo_url: publicUrl })
+    await supabase.from('destination_photos').insert({ destination_id: selectedDestination.id, url: publicUrl })
     setDestinations(prev => prev.map(d => d.id === selectedDestination.id ? { ...d, photos: [...d.photos, publicUrl] } : d))
     setSelectedDestination(prev => prev ? { ...prev, photos: [...prev.photos, publicUrl] } : null)
     e.target.value = ''
