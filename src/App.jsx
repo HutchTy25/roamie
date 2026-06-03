@@ -11,7 +11,7 @@ import Dashboard from './pages/Dashboard'
 import Connect from './pages/Connect'
 import Onboarding from './pages/Onboarding'
 import VisitResults from './pages/VisitResults'
-import Orbit from './pages/Orbit'
+import Scrapbook from './pages/Scrapbook'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 
@@ -117,7 +117,7 @@ export default function App() {
       <Route path="/connect" element={<Connect session={session} />} />
       <Route path="/onboarding" element={<Onboarding session={session} onComplete={() => fetchProfile(session.user.id)} />} />
       <Route path="/visit-results" element={<VisitResults />} />
-      <Route path="/orbit" element={<Orbit session={session} />} />
+      <Route path="/scrapbook" element={<Scrapbook session={session} profile={profile} />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
     </Routes>

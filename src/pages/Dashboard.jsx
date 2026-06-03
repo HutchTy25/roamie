@@ -71,7 +71,7 @@ export default function Dashboard({ session }) {
 
   const navItems = [
     { id: 'home', label: 'Plan', icon: 'M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z' },
-    { id: 'orbit', label: 'Orbit', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
+    { id: 'scrapbook', label: 'Scrapbook', icon: 'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z' },
     { id: 'saved', label: 'Saved', icon: 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z' },
     { id: 'checklist', label: 'Checklist', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
     { id: 'profile', label: 'Us', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
@@ -942,30 +942,6 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
           </div>
         )}
 
-        {/* ORBIT TAB */}
-        {activeTab === 'orbit' && (
-          <div style={{ animation: 'fadeSlideUp 0.4s ease', textAlign: 'center', paddingTop: '40px' }}>
-            <div style={{ 
-              width: '80px', 
-              height: '80px', 
-              borderRadius: '50%',
-              background: `linear-gradient(135deg, ${colors.primary}, ${colors.pink})`,
-              margin: '0 auto 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: `0 0 40px ${colors.primary}40`,
-              animation: 'pulseGlow 3s ease-in-out infinite'
-            }}>
-              <span style={{ fontSize: '32px' }}>🪐</span>
-            </div>
-            <div style={{ fontSize: '22px', fontWeight: '600', color: colors.text, marginBottom: '8px' }}>Your Orbit</div>
-            <div style={{ fontSize: '14px', color: colors.textMuted, lineHeight: '1.6', maxWidth: '280px', margin: '0 auto' }}>
-              A shared space for trip ideas, restaurants, and date plans. Coming soon.
-            </div>
-          </div>
-        )}
-
         {/* CHECKLIST TAB */}
         {activeTab === 'checklist' && (
           <div style={{ animation: 'fadeSlideUp 0.4s ease', textAlign: 'center', paddingTop: '40px' }}>
@@ -1185,8 +1161,8 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
                 onClick={() => {
   if (item.id === 'home') {
     navigate('/quiz')
-  } else if (item.id === 'orbit') {
-    navigate('/orbit')
+  } else if (item.id === 'scrapbook') {
+    navigate('/scrapbook')
   } else {
     setActiveTab(item.id)
   }
