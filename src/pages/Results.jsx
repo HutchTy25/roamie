@@ -875,6 +875,8 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
         @keyframes fadeIn { from{opacity:0} to{opacity:1} }
         @keyframes twinkle { 0%,100%{opacity:0.2} 50%{opacity:0.8} }
         @keyframes skeletonPulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
+        @keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
+        @keyframes progressFill { from{width:0%} to{width:95%} }
       `}</style>
 
       <div
@@ -1046,6 +1048,25 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
                 {dest.tagline}
               </div>
             </div>
+
+            {/* Loading progress bar */}
+            <div style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: '3px',
+              overflow: 'hidden',
+              opacity: costsLoading ? 1 : 0,
+              transition: 'opacity 0.5s ease',
+              pointerEvents: 'none',
+            }}>
+              <div style={{
+                height: '100%',
+                background: 'linear-gradient(90deg, #7C6AEF, #F472B6)',
+                animation: 'progressFill 10s ease-out forwards',
+              }} />
+            </div>
           </div>
         </div>
 
@@ -1160,8 +1181,8 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
           {!isStretch && (
             costsLoading ? (
               <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`, animation: 'skeletonPulse 1.5s ease-in-out infinite' }} />
-                <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${THEME.border}`, animation: 'skeletonPulse 1.5s ease-in-out infinite 0.3s' }} />
+                <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', border: `1px solid ${THEME.border}`, background: 'linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.04) 75%)', backgroundSize: '400% 100%', animation: 'shimmer 1.5s ease-in-out infinite' }} />
+                <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', border: `1px solid ${THEME.border}`, background: 'linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.04) 75%)', backgroundSize: '400% 100%', animation: 'shimmer 1.5s ease-in-out infinite 0.25s' }} />
               </div>
             ) : (
               <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap', animation: 'fadeSlideUp 0.4s ease both' }}>
