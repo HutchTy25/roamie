@@ -311,6 +311,15 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
     await supabase.from('destination_photos').delete().eq('url', photoUrl)
   }, [selectedDestination])
 
+  const handleSetCover = useCallback(async (photoUrl) => {
+    if (!selectedDestination) return
+    await supabase.from('destinations').update({ cover_photo: photoUrl }).eq('id', selectedDestination.id)
+    setDestinations(prev =>
+      prev.map(d => d.id === selectedDestination.id ? { ...d, coverPhoto: photoUrl } : d)
+    )
+    setSelectedDestination(prev => prev ? { ...prev, coverPhoto: photoUrl } : null)
+  }, [selectedDestination])
+
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#0A0A0C' }}>
       {/* Hidden file inputs */}
@@ -414,6 +423,7 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
           {destinations.map((destination) => {
             const pos = activePositions[destination.id] || initialPositions[destination.id]
             if (!pos) return null
+            const displayPhoto = destination.coverPhoto || destination.photos?.[0] || null
             return (
               <motion.div
                 key={destination.id}
@@ -438,8 +448,8 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
                 {/* Polaroid card */}
                 <div style={{ width: CARD_WIDTH, background: '#FAFAF8', padding: '8px 8px 35px 8px', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5), 0 4px 10px rgba(0,0,0,0.4)', transform: 'translate(-50%, -50%)', cursor: 'grab' }}>
                   <div style={{ aspectRatio: '4/3', borderRadius: '4px', overflow: 'hidden', position: 'relative', background: '#e5e5e5' }}>
-                    {destination.coverPhoto ? (
-                      <img src={destination.coverPhoto} alt={destination.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} crossOrigin="anonymous" draggable={false} />
+                    {displayPhoto ? (
+                      <img src={displayPhoto} alt={destination.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} crossOrigin="anonymous" draggable={false} />
                     ) : (
                       <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #E5E5E5, #D1D1D1)' }}>
                         <Camera size={32} color="#9ca3af" />
@@ -565,6 +575,27 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
                           <line x1="1" y1="1" x2="9" y2="9" />
                           <line x1="9" y1="1" x2="1" y2="9" />
                         </svg>
+                      </button>
+                      <button
+                        onClick={() => handleSetCover(photo)}
+                        style={{
+                          position: 'absolute',
+                          bottom: '4px',
+                          left: '4px',
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          background: photo === selectedDestination.coverPhoto ? 'rgba(251,191,36,0.9)' : 'rgba(0,0,0,0.6)',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 0,
+                          zIndex: 1,
+                        }}
+                      >
+                        <span style={{ fontSize: '10px', lineHeight: 1, color: photo === selectedDestination.coverPhoto ? '#1A1B26' : 'white' }}>★</span>
                       </button>
                     </div>
                   ))}
