@@ -292,6 +292,25 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
     e.target.value = ''
   }, [selectedDestination, profile?.couple_id])
 
+  const handleDeletePhoto = useCallback(async (photoUrl) => {
+    if (!selectedDestination) return
+    // Optimistic removal
+    setSelectedDestination(prev =>
+      prev ? { ...prev, photos: prev.photos.filter(p => p !== photoUrl) } : null
+    )
+    setDestinations(prev =>
+      prev.map(d =>
+        d.id === selectedDestination.id
+          ? { ...d, photos: d.photos.filter(p => p !== photoUrl) }
+          : d
+      )
+    )
+    // Derive storage path from public URL (everything after /scrapbook/)
+    const storagePath = photoUrl.split('/scrapbook/')[1]
+    if (storagePath) await supabase.storage.from('scrapbook').remove([storagePath])
+    await supabase.from('destination_photos').delete().eq('url', photoUrl)
+  }, [selectedDestination])
+
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#0A0A0C' }}>
       {/* Hidden file inputs */}
@@ -519,8 +538,34 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
                 <h3 style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px' }}>Photos</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                   {selectedDestination.photos.map((photo, i) => (
-                    <div key={i} style={{ aspectRatio: '1', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
-                      <img src={photo} alt={`Memory ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} crossOrigin="anonymous" />
+                    <div key={i} style={{ aspectRatio: '1', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', position: 'relative' }}>
+                      <div style={{ position: 'absolute', inset: 0, borderRadius: '12px', overflow: 'hidden' }}>
+                        <img src={photo} alt={`Memory ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} crossOrigin="anonymous" />
+                      </div>
+                      <button
+                        onClick={() => handleDeletePhoto(photo)}
+                        style={{
+                          position: 'absolute',
+                          top: '4px',
+                          right: '4px',
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          background: 'rgba(0,0,0,0.6)',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: 0,
+                          zIndex: 1,
+                        }}
+                      >
+                        <svg width="8" height="8" viewBox="0 0 10 10" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round">
+                          <line x1="1" y1="1" x2="9" y2="9" />
+                          <line x1="9" y1="1" x2="1" y2="9" />
+                        </svg>
+                      </button>
                     </div>
                   ))}
                   <button onClick={handleAddMemoryPhoto} style={{ aspectRatio: '1', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', background: 'rgba(30,32,48,0.5)', border: '1px dashed rgba(124,106,239,0.3)', cursor: 'pointer' }}>
