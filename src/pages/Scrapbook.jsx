@@ -127,6 +127,7 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
 
   const handleCardDragEnd = useCallback((destinationId, _, info) => {
     setIsDraggingCard(false)
+    if (Math.abs(info.offset.x) < 5 && Math.abs(info.offset.y) < 5) return
     const friction = 0.05
     const finalX = info.offset.x + info.velocity.x * friction
     const finalY = info.offset.y + info.velocity.y * friction
@@ -149,7 +150,7 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
 
   const handleTableDrag = useCallback((_, info) => {
     if (isDraggingCard) return
-    const damping = 0.4
+    const damping = 0.25
     const maxOffset = TABLE_SIZE / 4
     setTableOffset({
       x: Math.max(-maxOffset, Math.min(maxOffset, info.offset.x * damping)),
@@ -160,7 +161,7 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
   const handleTableDragEnd = useCallback((_, info) => {
     setIsDraggingTable(false)
     if (isDraggingCard) return
-    const damping = 0.4
+    const damping = 0.25
     const maxOffset = TABLE_SIZE / 4
     setTableOffset((prev) => ({
       x: Math.max(-maxOffset, Math.min(maxOffset, prev.x + info.offset.x * damping)),
@@ -383,7 +384,7 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
         style={{ flex: 1, position: 'relative', cursor: 'grab' }}
         drag={!isDraggingCard}
         dragMomentum={false}
-        dragElastic={0.01}
+        dragElastic={0.05}
         dragConstraints={{ left: -150, right: 150, top: -150, bottom: 150 }}
         onDragStart={handleTableDragStart}
         onDrag={handleTableDrag}
@@ -430,10 +431,11 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
                 style={{ position: 'absolute', left: TABLE_SIZE / 2, top: TABLE_SIZE / 2, zIndex: pos.zIndex, touchAction: 'none' }}
                 initial={false}
                 animate={{ x: pos.x, y: pos.y, rotate: pos.rotation }}
-                transition={{ type: 'spring', stiffness: 180, damping: 26, mass: 1 }}
+                transition={{ type: 'spring', stiffness: 120, damping: 20, mass: 1 }}
                 drag
                 dragMomentum={false}
-                dragElastic={0.03}
+                dragElastic={0.08}
+                dragTransition={{ bounceStiffness: 300, bounceDamping: 30 }}
                 onDragStart={handleCardDragStart}
                 onDragEnd={(e, info) => handleCardDragEnd(destination.id, e, info)}
                 onClick={(e) => { e.stopPropagation(); handleCardTap(destination) }}

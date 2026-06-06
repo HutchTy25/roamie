@@ -175,9 +175,14 @@ async function deactivatePro(subscriptionId) {
 async function activatePro(userId, subscriptionId) {
   const { data: profile } = await supabase
     .from('profiles')
-    .select('couple_id')
+    .select('couple_id, is_pro')
     .eq('id', userId)
     .single()
+
+  if (profile?.is_pro) {
+    console.log(`[activatePro] ${userId} already pro, skipping duplicate activation`)
+    return
+  }
 
   await supabase
     .from('profiles')
