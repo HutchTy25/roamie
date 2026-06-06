@@ -128,7 +128,7 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
   const handleCardDragEnd = useCallback((destinationId, _, info) => {
     setIsDraggingCard(false)
     if (Math.abs(info.offset.x) < 5 && Math.abs(info.offset.y) < 5) return
-    const friction = 0.05
+    const friction = 0.08
     const finalX = info.offset.x + info.velocity.x * friction
     const finalY = info.offset.y + info.velocity.y * friction
     const spinAmount = info.velocity.x * 0.003
@@ -431,7 +431,7 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
                 style={{ position: 'absolute', left: TABLE_SIZE / 2, top: TABLE_SIZE / 2, zIndex: pos.zIndex, touchAction: 'none' }}
                 initial={false}
                 animate={{ x: pos.x, y: pos.y, rotate: pos.rotation }}
-                transition={{ type: 'spring', stiffness: 120, damping: 20, mass: 1 }}
+                transition={{ type: 'spring', stiffness: 80, damping: 18, mass: 1.5 }}
                 drag
                 dragMomentum={false}
                 dragElastic={0.08}
