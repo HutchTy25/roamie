@@ -22,6 +22,8 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
   const [showAddCard, setShowAddCard] = useState(false)
   const [newCardName, setNewCardName] = useState('')
   const [newCardDate, setNewCardDate] = useState('')
+  const [editingField, setEditingField] = useState(null)
+  const [editingValue, setEditingValue] = useState('')
   const chatEndRef = useRef(null)
   const longPressTimer = useRef(null)
   const lastTapTime = useRef({})
@@ -171,6 +173,7 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
 
   const handleCloseDetail = useCallback(() => {
     setSelectedDestination(null)
+    setEditingField(null)
   }, [])
 
   const handleSendMessage = useCallback(async () => {
@@ -321,6 +324,20 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
     setSelectedDestination(prev => prev ? { ...prev, coverPhoto: photoUrl } : null)
   }, [selectedDestination])
 
+  const handleSaveField = useCallback(async (field, value) => {
+    if (!selectedDestination) return
+    const trimmed = value.trim()
+    if (!trimmed) { setEditingField(null); return }
+    const col = field === 'name' ? 'name' : 'visit_date'
+    const stateKey = field === 'name' ? 'name' : 'visitDate'
+    await supabase.from('destinations').update({ [col]: trimmed }).eq('id', selectedDestination.id)
+    setDestinations(prev =>
+      prev.map(d => d.id === selectedDestination.id ? { ...d, [stateKey]: trimmed } : d)
+    )
+    setSelectedDestination(prev => prev ? { ...prev, [stateKey]: trimmed } : null)
+    setEditingField(null)
+  }, [selectedDestination])
+
   return (
     <div style={{ width: '100%', height: '100vh', position: 'relative', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#0A0A0C' }}>
       {/* Hidden file inputs */}
@@ -384,7 +401,8 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
         style={{ flex: 1, position: 'relative', cursor: 'grab' }}
         drag={!isDraggingCard}
         dragMomentum={false}
-        dragElastic={0.05}
+        dragElastic={0.12}
+        dragTransition={{ bounceStiffness: 150, bounceDamping: 20, power: 0.3, timeConstant: 300 }}
         dragConstraints={{ left: -150, right: 150, top: -150, bottom: 150 }}
         onDragStart={handleTableDragStart}
         onDrag={handleTableDrag}
@@ -538,8 +556,40 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
               </div>
 
               <div style={{ position: 'absolute', bottom: '16px', left: '20px', right: '20px' }}>
-                <h1 style={{ fontSize: '24px', color: 'white', fontFamily: 'Georgia, serif', margin: 0 }}>{selectedDestination.name}</h1>
-                <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', marginTop: '4px' }}>Visited: {selectedDestination.visitDate}</p>
+                {editingField === 'name' ? (
+                  <input
+                    autoFocus
+                    value={editingValue}
+                    onChange={e => setEditingValue(e.target.value)}
+                    onBlur={() => handleSaveField('name', editingValue)}
+                    onKeyDown={e => e.key === 'Enter' && handleSaveField('name', editingValue)}
+                    style={{ fontSize: '24px', color: 'white', fontFamily: 'Georgia, serif', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.4)', outline: 'none', width: '100%', padding: '2px 0' }}
+                  />
+                ) : (
+                  <h1
+                    onClick={() => { setEditingField('name'); setEditingValue(selectedDestination.name) }}
+                    style={{ fontSize: '24px', color: 'white', fontFamily: 'Georgia, serif', margin: 0, cursor: 'text' }}
+                  >
+                    {selectedDestination.name}
+                  </h1>
+                )}
+                {editingField === 'date' ? (
+                  <input
+                    autoFocus
+                    value={editingValue}
+                    onChange={e => setEditingValue(e.target.value)}
+                    onBlur={() => handleSaveField('date', editingValue)}
+                    onKeyDown={e => e.key === 'Enter' && handleSaveField('date', editingValue)}
+                    style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,255,255,0.3)', outline: 'none', marginTop: '4px', width: '100%', padding: '2px 0' }}
+                  />
+                ) : (
+                  <p
+                    onClick={() => { setEditingField('date'); setEditingValue(selectedDestination.visitDate) }}
+                    style={{ fontSize: '14px', color: 'rgba(255,255,255,0.6)', cursor: 'text', margin: '4px 0 0' }}
+                  >
+                    Visited: {selectedDestination.visitDate}
+                  </p>
+                )}
               </div>
             </div>
 
