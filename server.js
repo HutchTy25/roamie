@@ -681,17 +681,28 @@ const enhancedMessages = messages.map((msg, i) => {
       messages: enhancedMessages
     })
 
-    const claudeResult = await httpsPost(
-      'api.anthropic.com',
-      '/v1/messages',
-      {
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      claudeBody
-    )
+    let claudeResult
+    try {
+      claudeResult = await Promise.race([
+        httpsPost(
+          'api.anthropic.com',
+          '/v1/messages',
+          { 'x-api-key': process.env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+          claudeBody
+        ),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Claude timeout')), 35000)
+        ),
+      ])
+    } catch (err) {
+      if (err.message === 'Claude timeout') {
+        console.warn('[/api/messages] Claude timed out after 35s')
+        return res.status(504).json({ error: 'Search timed out. Please try again.' })
+      }
+      throw err
+    }
 
-   console.log('Claude response received')
+    console.log('Claude response received')
 globalTripCount++
 console.log('Global trip count:', globalTripCount)
 
