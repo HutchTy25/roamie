@@ -98,6 +98,7 @@ export default function Results() {
   const [cancelToast, setCancelToast] = useState(false)
   const [partialResult, setPartialResult] = useState(null)
   const [proExpandGate, setProExpandGate] = useState(false)
+  const [flightLoadProgress, setFlightLoadProgress] = useState(0)
   const fetchedPhotos = useRef(new Set())
 
   const loadingMessages = [
@@ -453,8 +454,14 @@ Return ONLY this JSON, no markdown, no explanation:
     setLoading(false)
 
     setMessageIndex(2)
+    setFlightLoadProgress(40)
+    const progressTimer = setTimeout(() => setFlightLoadProgress(75), 2000)
     const flightPrices = await fetchRealFlightPrices(destNames)
+    clearTimeout(progressTimer)
     if (flightPrices === null) return
+
+    setFlightLoadProgress(100)
+    setTimeout(() => setFlightLoadProgress(0), 400)
 
     // Flight prices now include pre-computed cost_breakdown fields — merge onto
     // partialResult immediately so flight costs appear before Call 2 finishes
@@ -1085,7 +1092,8 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
               <div style={{
                 height: '100%',
                 background: 'linear-gradient(90deg, #7C6AEF, #F472B6)',
-                animation: 'progressFill 10s ease-out forwards',
+                width: flightLoadProgress + '%',
+                transition: flightLoadProgress === 0 ? 'none' : 'width 1.5s ease-out',
               }} />
             </div>
           </div>
