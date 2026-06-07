@@ -630,6 +630,15 @@ Return ONLY this JSON, no markdown, no explanation:
   - P2 total round trip from ${data.p2.city}: ${prices.p2 ? prices.p2 : 'estimate needed'} USD`
     }).join('\n')
 
+    const nights = data.dates.from && data.dates.to
+      ? Math.max(1, Math.round((new Date(data.dates.to) - new Date(data.dates.from)) / 86400000))
+      : 5
+
+    const pricingGuidance = (destinations?.destinations || []).map(dest => `- Destination: ${dest.name} | Cost of Living Index: ${getCOLIndex(dest.iata)} (NYC = 100)
+- Accommodation type requested: ${data.accommodation}
+- Trip duration: ${nights} nights
+- Budget context: P1 max spend ${data.p1.maxSpend.toLocaleString()} ${data.p1.currency}, P2 max spend ${data.p2.maxSpend.toLocaleString()} ${data.p2.currency}`).join('\n\n')
+
     return `You are a travel expert. Return a JSON array with one object per destination. Raw JSON only — no markdown, no backticks, no explanation, nothing before or after the array.
 
 TRIP CONTEXT:
@@ -643,6 +652,18 @@ ${flightContext}
 
 DESTINATIONS:
 ${(destinations?.destinations || []).map(d => d.name).join('\n')}
+
+PRICING GUIDANCE (use these to anchor your estimates):
+${pricingGuidance}
+
+Use the COL index to calibrate your estimates:
+- COL 40-55 (budget destinations like Lisbon, Porto, Bangkok): lodging $40-90/night, food $25-45/day
+- COL 55-75 (mid-range like Prague, Barcelona, Dublin): lodging $80-160/night, food $40-70/day
+- COL 75-90 (expensive like Amsterdam, Paris, Sydney): lodging $140-250/night, food $60-90/day
+- COL 90+ (premium like London, NYC, Zurich): lodging $200-400/night, food $80-120/day
+
+Scale within these ranges based on accommodation type: hostel/budget = lower end, hotel = mid, luxury = upper end.
+All values in USD.
 
 Return a JSON array where each object matches this exact shape:
 [
