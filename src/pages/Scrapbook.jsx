@@ -401,8 +401,8 @@ export default function Scrapbook({ session, profile, partnerProfile }) {
         style={{ flex: 1, position: 'relative', cursor: 'grab' }}
         drag={!isDraggingCard}
         dragMomentum={false}
-        dragElastic={0.12}
-        dragTransition={{ bounceStiffness: 150, bounceDamping: 20, power: 0.3, timeConstant: 300 }}
+        dragElastic={0.18}
+        dragTransition={{ bounceStiffness: 80, bounceDamping: 15, power: 0.2, timeConstant: 450 }}
         dragConstraints={{ left: -150, right: 150, top: -150, bottom: 150 }}
         onDragStart={handleTableDragStart}
         onDrag={handleTableDrag}
