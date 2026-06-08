@@ -245,8 +245,8 @@ async function saveTripToSupabase() {
     </div>
   )
 
-  const p1Card = prices[data.p2.city]
-  const p2Card = prices[data.p1.city]
+  const p1Card = prices[data.p2.iata] || prices[data.p2.city]
+  const p2Card = prices[data.p1.iata] || prices[data.p1.city]
   const p1ToP2Price = p1Card?.cost_breakdown?.flights_p1_total ?? p1Card?.p1
   const p2ToP1Price = p2Card?.cost_breakdown?.flights_p2 ?? p2Card?.p2
 
