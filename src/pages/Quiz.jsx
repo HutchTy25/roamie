@@ -1040,6 +1040,7 @@ const [p2Prefilled, setP2Prefilled] = useState(false)
           disabled={!data.dates.from || !data.dates.to}
           onClick={() => {
             posthog.capture('generate_trip_clicked', { mode: data.tripMode, p1_city: data.p1.city, p2_city: data.p2.city, region: data.region, vibes: data.vibes })
+            posthog.capture('search_started', { routing: data.routing, vibes: data.vibes, has_partner: !!data.p2.city })
             navigate('/results', { state: { data } })
           }}
         >

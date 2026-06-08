@@ -286,6 +286,7 @@ async function saveTripToSupabase() {
         stretch_goal: result?.stretch_goal ?? partialResult?.stretch_goal,
       })
       setTripSaved(true)
+      posthog.capture('trip_saved', { archetype: activeDestination.archetype, destination: activeDestination.name })
     } catch (e) {
       console.error('Save trip error:', e)
     }
@@ -303,9 +304,13 @@ function handleTouchEnd(e) {
     if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY) * 2) {
       if (!expanded) {
         if (diffX > 0) {
-          setActiveCard(c => Math.min(c + 1, allCardsLength - 1))
+          const next = Math.min(activeCard + 1, allCardsLength - 1)
+          setActiveCard(next)
+          posthog.capture('card_viewed', { archetype: allCards[next]?.archetype, card_index: next, destination: allCards[next]?.name })
         } else {
-          setActiveCard(c => Math.max(c - 1, 0))
+          const next = Math.max(activeCard - 1, 0)
+          setActiveCard(next)
+          posthog.capture('card_viewed', { archetype: allCards[next]?.archetype, card_index: next, destination: allCards[next]?.name })
         }
       }
     }
@@ -942,7 +947,11 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
           {allCards.map((_, i) => (
             <div
               key={i}
-              onClick={() => { setActiveCard(i); setExpanded(false) }}
+              onClick={() => {
+                setActiveCard(i)
+                setExpanded(false)
+                posthog.capture('card_viewed', { archetype: allCards[i]?.archetype, card_index: i, destination: allCards[i]?.name })
+              }}
               style={{
                 width: i === activeCard ? '24px' : '8px',
                 height: '8px',
@@ -1218,6 +1227,7 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
                 href={`https://www.skyscanner.com/transport/flights/${data.p1.iata || 'anywhere'}/${dest.iata}/${data.dates.from?.slice(2).replace(/-/g, '') || ''}/`}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => posthog.capture('affiliate_clicked', { provider: 'skyscanner', destination: dest.name })}
                 style={{
                   display: 'block',
                   marginBottom: '1rem',
@@ -1281,6 +1291,7 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
               onClick={() => {
                 if (!userId) { setSignupExpandGate(true); return }
                 if (!isPro) { setProExpandGate(true); return }
+                if (!expanded) posthog.capture('details_expanded', { archetype: dest.archetype, destination: dest.name })
                 setExpanded(e => !e)
                 if (!expanded && dest.trip_basics) setTripBasics(dest.trip_basics)
               }}
@@ -1480,21 +1491,21 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
 )}
  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '1rem' }}>
   <div>
-    <button onClick={() => window.open(generateAffiliateLink('booking_flights', { from: data.p1.iata, to: data.p2.iata, depart: data.dates.from, return: data.dates.to }), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.3)', borderRadius: '100px', color: '#FB923C', fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
+    <button onClick={() => { posthog.capture('affiliate_clicked', { provider: 'booking', destination: dest.name }); window.open(generateAffiliateLink('booking_flights', { from: data.p1.iata, to: data.p2.iata, depart: data.dates.from, return: data.dates.to }), '_blank') }} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(251,146,60,0.1)', border: '1px solid rgba(251,146,60,0.3)', borderRadius: '100px', color: '#FB923C', fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
       ✈️ Search flights on Booking.com
     </button>
     <div style={{ textAlign: 'center', fontSize: '11px', color: '#6B7280', marginTop: '6px' }}>
       Opens in browser · complete booking there to confirm your price
     </div>
   </div>
-  <button onClick={() => window.open(generateAffiliateLink('booking', { city: dest.name, checkin: data.dates.from, checkout: data.dates.to }), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '100px', color: THEME.cyan, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
+  <button onClick={() => { posthog.capture('affiliate_clicked', { provider: 'booking', destination: dest.name }); window.open(generateAffiliateLink('booking', { city: dest.name, checkin: data.dates.from, checkout: data.dates.to }), '_blank') }} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '100px', color: THEME.cyan, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
     🏨 Book your stay in {cleanDestName(dest.name)?.split(',')[0]}
   </button>
   <button onClick={() => window.open(generateAffiliateLink('viator', { city: dest.name }), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(124,106,239,0.1)', border: '1px solid rgba(124,106,239,0.3)', borderRadius: '100px', color: THEME.primary, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center', opacity: 0.5, pointerEvents: 'none' }}>
     🎯 Find things to do in {cleanDestName(dest.name)?.split(',')[0]}
     <span style={{ marginLeft: '8px', fontSize: '10px', color: THEME.muted, background: 'rgba(255,255,255,0.08)', borderRadius: '100px', padding: '2px 7px', verticalAlign: 'middle' }}>Soon</span>
   </button>
-  <button onClick={() => window.open(generateAffiliateLink('wise'), '_blank')} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(244,114,182,0.1)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: '100px', color: THEME.accent, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
+  <button onClick={() => { posthog.capture('affiliate_clicked', { provider: 'wise', destination: dest.name }); window.open(generateAffiliateLink('wise'), '_blank') }} style={{ display: 'block', width: '100%', padding: '12px', background: 'rgba(244,114,182,0.1)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: '100px', color: THEME.accent, fontSize: '13px', fontWeight: '500', cursor: 'pointer', textAlign: 'center' }}>
     💸 Send money fee-free with Wise
   </button>
 </div>
