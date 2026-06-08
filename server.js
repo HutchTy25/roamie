@@ -453,11 +453,13 @@ async function checkProAccess(userId, supabase) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('couple_id, search_count')
+    .select('couple_id, search_count, is_pro')
     .eq('id', userId)
     .single()
 
   if (!profile) return cache({ allowed: true })
+
+  if (profile.is_pro) return cache({ allowed: true, reason: 'pro' })
 
   if (profile.couple_id) {
     const { data: couple } = await supabase

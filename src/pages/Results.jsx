@@ -78,7 +78,7 @@ export default function Results({ profile }) {
   const navigate = useNavigate()
   const location_data = location.state?.data
   const savedDataStr = localStorage.getItem('roamie_last_data')
-  const data = location_data || (savedDataStr ? JSON.parse(savedDataStr) : null)
+  const data = location_data || (savedDataStr ? (() => { try { return JSON.parse(savedDataStr) } catch { return null } })() : null)
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
