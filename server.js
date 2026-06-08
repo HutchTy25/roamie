@@ -1253,7 +1253,9 @@ async function searchDuffelFlightsWithDetail(originIata, destIata, departDate, r
     const airline = firstSeg?.marketing_carrier?.name || null
     const flightNumber = firstSeg?.marketing_carrier_flight_number || null
     const departureAt = firstSeg?.departing_at || null
-    return { price: Math.round(cheapest.price), arrivalAt, airline, flightNumber, departureAt }
+    const durationRaw = cheapest.offer.slices?.[0]?.duration || null
+    const stops = (cheapest.offer.slices?.[0]?.segments?.length ?? 1) - 1
+    return { price: Math.round(cheapest.price), arrivalAt, airline, flightNumber, departureAt, durationRaw, stops }
   } catch (e) {
     console.error('Duffel detail search error:', e)
     return null
@@ -1431,12 +1433,22 @@ app.post('/api/flight-prices', requireAppSecret, [
               : null,
           }
         } else {
-          const [p1Price, p2Price] = await Promise.all([
-            p1IATA ? searchDuffelFlights(p1IATA, destIATA, departDate, returnDate) : null,
-            p2IATA ? searchDuffelFlights(p2IATA, destIATA, departDate, returnDate) : null,
+          const [p1Detail, p2Detail] = await Promise.all([
+            p1IATA ? searchDuffelFlightsWithDetail(p1IATA, destIATA, departDate, returnDate) : null,
+            p2IATA ? searchDuffelFlightsWithDetail(p2IATA, destIATA, departDate, returnDate) : null,
           ])
-          console.log(`Meet prices for ${destName} — P1: ${p1Price}, P2: ${p2Price}`)
-          priceResults[resultKey] = { p1: p1Price, p2: p2Price, source: 'duffel' }
+          console.log(`Meet prices for ${destName} — P1: ${p1Detail?.price}, P2: ${p2Detail?.price}`)
+          priceResults[resultKey] = {
+            p1: p1Detail?.price ?? null,
+            p2: p2Detail?.price ?? null,
+            p1_airline: p1Detail?.airline ?? null,
+            p2_airline: p2Detail?.airline ?? null,
+            p1_duration: p1Detail?.durationRaw ?? null,
+            p2_duration: p2Detail?.durationRaw ?? null,
+            p1_stops: p1Detail?.stops ?? null,
+            p2_stops: p2Detail?.stops ?? null,
+            source: 'duffel',
+          }
         }
       } else if (routing === 'fly_together') {
         const [p1ToP2Price, bothToDestPrice] = await Promise.all([

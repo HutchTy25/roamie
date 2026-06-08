@@ -3,6 +3,14 @@ import { supabase } from '../supabase'
 import { generateAffiliateLink } from '../utils/affiliateLinks'
 import { useState, useEffect } from 'react'
 
+function formatDuration(iso) {
+  if (!iso) return null
+  const h = iso.match(/(\d+)H/)?.[1]
+  const m = iso.match(/(\d+)M/)?.[1]
+  if (!h && !m) return null
+  return [h && `${h}h`, m && `${m}m`].filter(Boolean).join(' ')
+}
+
 const CURR_SYMBOLS = {
   USD: '$', GBP: '£', EUR: '€', CAD: 'C$', AUD: 'A$',
   NZD: 'NZ$', JPY: '¥', CNY: '¥', KRW: '₩', PHP: '₱',
@@ -63,6 +71,8 @@ export default function VisitResults() {
           dates: `${data.dates.from} to ${data.dates.to}`,
           routing: 'meet',
           sameCity: false,
+          p1Currency: data.p1.currency,
+          p2Currency: data.p2.currency,
         })
       })
       const result = await res.json()
@@ -235,8 +245,10 @@ async function saveTripToSupabase() {
     </div>
   )
 
-  const p1ToP2Price = prices[data.p2.city]?.p1
-  const p2ToP1Price = prices[data.p1.city]?.p2
+  const p1Card = prices[data.p2.city]
+  const p2Card = prices[data.p1.city]
+  const p1ToP2Price = p1Card?.cost_breakdown?.flights_p1_total ?? p1Card?.p1
+  const p2ToP1Price = p2Card?.cost_breakdown?.flights_p2 ?? p2Card?.p2
 
   return (
     <div style={{ 
@@ -368,10 +380,10 @@ async function saveTripToSupabase() {
               </div>
               <div style={{ fontSize: '13px', color: '#8B8FA3' }}>round trip</div>
             </div>
-            <div style={{ 
-              fontSize: '13px', 
-              color: '#8B8FA3', 
-              marginBottom: '1rem',
+            <div style={{
+              fontSize: '13px',
+              color: '#8B8FA3',
+              marginBottom: '0.75rem',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
@@ -381,28 +393,15 @@ async function saveTripToSupabase() {
               </svg>
               Real price from Duffel
             </div>
-
-            {/* Money saver */}
-            <div style={{
-              background: 'rgba(244,114,182,0.1)',
-              border: '1px solid rgba(244,114,182,0.2)',
-              borderRadius: '12px',
-              padding: '12px 14px',
-            }}>
-              <div style={{ 
-                fontSize: '11px', 
-                color: '#F472B6', 
-                fontWeight: '600', 
-                marginBottom: '4px', 
-                textTransform: 'uppercase', 
-                letterSpacing: '0.08em' 
-              }}>
-                Money Saver Tip
+            {(p1Card?.p1_airline || p1Card?.p1_duration || p1Card?.p1_stops != null) && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '13px', color: '#8B8FA3' }}>
+                {p1Card.p1_airline && <span>{p1Card.p1_airline}</span>}
+                {p1Card.p1_duration && <span>⏱ {formatDuration(p1Card.p1_duration)}</span>}
+                {p1Card.p1_stops != null && (
+                  <span>{p1Card.p1_stops === 0 ? 'Direct' : `${p1Card.p1_stops} stop${p1Card.p1_stops > 1 ? 's' : ''}`}</span>
+                )}
               </div>
-              <div style={{ fontSize: '12px', color: '#8B8FA3', lineHeight: '1.6' }}>
-                Book 6-8 weeks in advance for this route. Flying Tuesday or Wednesday typically saves 15-20% vs weekends.
-              </div>
-            </div>
+            )}
           </>
         ) : (
           <div style={{ fontSize: '14px', color: '#8B8FA3', padding: '1rem 0' }}>
@@ -448,10 +447,10 @@ async function saveTripToSupabase() {
               </div>
               <div style={{ fontSize: '13px', color: '#8B8FA3' }}>round trip</div>
             </div>
-            <div style={{ 
-              fontSize: '13px', 
-              color: '#8B8FA3', 
-              marginBottom: '1rem',
+            <div style={{
+              fontSize: '13px',
+              color: '#8B8FA3',
+              marginBottom: '0.75rem',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
@@ -461,28 +460,15 @@ async function saveTripToSupabase() {
               </svg>
               Real price from Duffel
             </div>
-
-            {/* Money saver */}
-            <div style={{
-              background: 'rgba(34,211,238,0.1)',
-              border: '1px solid rgba(34,211,238,0.2)',
-              borderRadius: '12px',
-              padding: '12px 14px',
-            }}>
-              <div style={{ 
-                fontSize: '11px', 
-                color: '#22D3EE', 
-                fontWeight: '600', 
-                marginBottom: '4px', 
-                textTransform: 'uppercase', 
-                letterSpacing: '0.08em' 
-              }}>
-                Money Saver Tip
+            {(p2Card?.p2_airline || p2Card?.p2_duration || p2Card?.p2_stops != null) && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '13px', color: '#8B8FA3' }}>
+                {p2Card.p2_airline && <span>{p2Card.p2_airline}</span>}
+                {p2Card.p2_duration && <span>⏱ {formatDuration(p2Card.p2_duration)}</span>}
+                {p2Card.p2_stops != null && (
+                  <span>{p2Card.p2_stops === 0 ? 'Direct' : `${p2Card.p2_stops} stop${p2Card.p2_stops > 1 ? 's' : ''}`}</span>
+                )}
               </div>
-              <div style={{ fontSize: '12px', color: '#8B8FA3', lineHeight: '1.6' }}>
-                Book 6-8 weeks in advance for this route. Flying Tuesday or Wednesday typically saves 15-20% vs weekends.
-              </div>
-            </div>
+            )}
           </>
         ) : (
           <div style={{ fontSize: '14px', color: '#8B8FA3', padding: '1rem 0' }}>
