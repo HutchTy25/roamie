@@ -73,7 +73,7 @@ function Starfield() {
   )
 }
 
-export default function Results() {
+export default function Results({ profile }) {
   const location = useLocation()
   const navigate = useNavigate()
   const location_data = location.state?.data
@@ -85,7 +85,7 @@ export default function Results() {
   const [paywallHit, setPaywallHit] = useState(false)
   const [userId, setUserId] = useState(null)
   const [pendingUpgradePlan, setPendingUpgradePlan] = useState(null)
-  const isPro = localStorage.getItem('roamie_paid') === 'true'
+  const isPro = profile?.is_pro || localStorage.getItem('roamie_paid') === 'true'
   const [activeCard, setActiveCard] = useState(0)
   const [expanded, setExpanded] = useState(false)
   const [photos, setPhotos] = useState({})

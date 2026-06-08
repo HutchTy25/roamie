@@ -211,10 +211,11 @@ async function activatePro(userId, subscriptionId) {
     return
   }
 
-  await supabase
+  const { error: profileErr } = await supabase
     .from('profiles')
     .update({ is_pro: true, stripe_subscription_id: subscriptionId })
     .eq('id', userId)
+  if (profileErr) throw new Error(`Profile update failed: ${profileErr.message}`)
   console.log(`[activatePro] Profile ${userId} upgraded to pro`)
 
   proAccessCache.delete(userId)
@@ -230,16 +231,18 @@ async function activatePro(userId, subscriptionId) {
       ? couple?.partner2_id
       : couple?.partner1_id
 
-    await supabase
+    const { error: coupleErr } = await supabase
       .from('couples')
       .update({ is_pro: true, stripe_subscription_id: subscriptionId })
       .eq('id', profile.couple_id)
+    if (coupleErr) throw new Error(`Couple update failed: ${coupleErr.message}`)
 
     if (partnerId) {
-      await supabase
+      const { error: partnerErr } = await supabase
         .from('profiles')
         .update({ is_pro: true, stripe_subscription_id: subscriptionId })
         .eq('id', partnerId)
+      if (partnerErr) throw new Error(`Partner update failed: ${partnerErr.message}`)
       console.log(`[activatePro] Partner ${partnerId} upgraded to pro`)
       proAccessCache.delete(partnerId)
     }

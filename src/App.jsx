@@ -110,7 +110,7 @@ export default function App() {
       <Routes>
       <Route path="/" element={<Home session={session} />} />
       <Route path="/quiz" element={<Quiz session={session} />} />
-      <Route path="/results" element={<Results />} />
+      <Route path="/results" element={<Results profile={profile} />} />
       <Route path="/success" element={<Success />} />
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={needsOnboarding ? <Navigate to="/onboarding" replace /> : <Dashboard session={session} />} />
