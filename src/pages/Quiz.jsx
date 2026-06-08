@@ -515,7 +515,6 @@ const [p2Prefilled, setP2Prefilled] = useState(false)
         {[
   { id: 'visit', icon: '💑', label: 'Visit each other', desc: 'Find the best price for one partner to visit the other', routing: 'visit', locked: false },
   { id: 'meet', icon: '🛬', label: 'Meet somewhere new', desc: 'Both fly independently to a destination you choose together', routing: 'meet', locked: false },
-  { id: 'explore', icon: '✈️', label: 'Explore together', desc: 'AI finds destinations and figures out the smartest way to get there', routing: 'fly_together', locked: false },
 ].map(m => (
   <div
     key={m.id}
