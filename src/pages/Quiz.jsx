@@ -49,13 +49,16 @@ const CURRENCIES = [
 ]
 
 const VIBES = [
-  { id: 'beach', label: 'Beach & sun' },
-  { id: 'city', label: 'City & culture' },
-  { id: 'nature', label: 'Nature & adventure' },
-  { id: 'romantic', label: 'Romantic escape' },
-  { id: 'foodie', label: 'Foodie & nightlife' },
-  { id: 'landmarks', label: 'Landmark chaser' },
-  { id: 'surprise', label: 'Surprise us' },
+  { id: 'beach',     label: '🏖️ Beach & Sun' },
+  { id: 'city',      label: '🏙️ City & Culture' },
+  { id: 'nature',    label: '🌿 Nature & Adventure' },
+  { id: 'romantic',  label: '💑 Romantic Escape' },
+  { id: 'foodie',    label: '🍜 Foodie Heaven' },
+  { id: 'nightlife', label: '🎉 Nightlife & Party' },
+  { id: 'history',   label: '🏛️ History & Landmarks' },
+  { id: 'winter',    label: '❄️ Winter & Snow' },
+  { id: 'wellness',  label: '🧘 Wellness & Relaxation' },
+  { id: 'surprise',  label: '🎲 Surprise Us' },
 ]
 
 // Starfield component
@@ -947,7 +950,8 @@ const [p2Prefilled, setP2Prefilled] = useState(false)
             {[
               { id: 'surprise', label: 'Surprise us' },
               { id: 'europe', label: 'Europe' },
-              { id: 'se_asia', label: 'SE Asia' },
+              { id: 'se_asia',   label: 'Southeast Asia' },
+              { id: 'east_asia', label: 'East Asia' },
               { id: 'caribbean', label: 'Caribbean' },
               { id: 'latin_america', label: 'Latin America' },
               { id: 'middle_east', label: 'Middle East' },

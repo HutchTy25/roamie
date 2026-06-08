@@ -129,8 +129,6 @@ export default function Results() {
     BRL: 'R$', MXN: 'MX$', COP: 'COL$', ARS: 'AR$', CLP: 'CL$',
   }
 
-  const UNSPLASH_KEY = import.meta.env.VITE_UNSPLASH_KEY
-
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -351,6 +349,7 @@ PARTNER DETAILS:
 - Partner 2: Lives in ${data.p2.city} | Currency: ${data.p2.currency} (${p2sym}) | Max budget: ${p2sym}${data.p2.maxSpend.toLocaleString()} TOTAL
 - Travel dates: ${data.dates.from} to ${data.dates.to}
 - Vibes: ${data.vibes?.join(', ') || 'open to anything'}
+- Vibe context: foodie = culinary-focused destinations with great food scenes; nightlife = vibrant bars and clubs scene; history = heritage sites and ancient landmarks; winter = alpine/ski/snow destinations; wellness = spa, retreat, and slow-travel focused
 - Routing: ${data.routing}
 - Accommodation: ${data.accommodation}
 - Region: ${data.region}
@@ -721,29 +720,13 @@ Return a JSON array where each object matches this exact shape:
 All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Start your response with [ and end with ].`
   }
 
-  function getPhotoQuery() {
-    const vibes = data?.vibes || []
-    if (vibes.includes('beach')) return 'beach sunset travel'
-    if (vibes.includes('city')) return 'cityscape architecture travel'
-    if (vibes.includes('nature')) return 'nature landscape travel'
-    if (vibes.includes('romantic')) return 'romantic travel destination'
-    return 'travel destination landmark'
-  }
-
   async function fetchPhoto(cityName, index) {
     try {
       const city = cityName.split(',')[0].trim()
-      const query = `${city} ${getPhotoQuery()}`
-      const res = await fetch(
-        `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=3&orientation=landscape&order_by=relevant&content_filter=high`,
-        { headers: { Authorization: `Client-ID ${UNSPLASH_KEY}` } }
-      )
+      const res = await fetch(`https://roamie-61ib.onrender.com/api/photo?city=${encodeURIComponent(city)}`)
       const json = await res.json()
-      if (json.results?.length > 0) {
-        const best = json.results.reduce((prev, current) => 
-          (current.likes > prev.likes) ? current : prev
-        )
-        setPhotos(prev => ({ ...prev, [index]: best.urls.regular }))
+      if (json.url) {
+        setPhotos(prev => ({ ...prev, [index]: json.url }))
       }
     } catch (e) {
     }
@@ -1230,6 +1213,27 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
                 <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', border: `1px solid ${THEME.border}`, background: 'linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.04) 75%)', backgroundSize: '400% 100%', animation: 'shimmer 1.5s ease-in-out infinite' }} />
                 <div style={{ flex: 1, minWidth: '140px', height: '44px', borderRadius: '100px', border: `1px solid ${THEME.border}`, background: 'linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.04) 75%)', backgroundSize: '400% 100%', animation: 'shimmer 1.5s ease-in-out infinite 0.25s' }} />
               </div>
+            ) : !dest.p1_cost && !dest.p2_cost ? (
+              <a
+                href={`https://www.skyscanner.com/transport/flights/${data.p1.iata || 'anywhere'}/${dest.iata}/${data.dates.from?.slice(2).replace(/-/g, '') || ''}/`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'block',
+                  marginBottom: '1rem',
+                  padding: '12px 16px',
+                  background: 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${THEME.border}`,
+                  borderRadius: '14px',
+                  fontSize: '13px',
+                  color: THEME.muted,
+                  lineHeight: '1.5',
+                  textDecoration: 'none',
+                  animation: 'fadeSlideUp 0.4s ease both',
+                }}
+              >
+                Flight prices unavailable for these dates — check Skyscanner for live prices →
+              </a>
             ) : (
               <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap', animation: 'fadeSlideUp 0.4s ease both' }}>
                 <div style={{ background: 'rgba(244,114,182,0.12)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: '100px', padding: '10px 16px', fontSize: '13px', flex: 1, minWidth: '140px' }}>
@@ -1336,9 +1340,19 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
                 {dest.why_it_works}
               </div>
 
-              <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '12px', padding: '12px 14px', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.65)', border: `1px solid ${THEME.border}` }}>
-                ✈️ {dest.routing_note}
-              </div>
+              {(() => {
+                const p1Airline = dest.synchronized_arrival?.p1_airline || dest.cost_breakdown?.p1_airline || dest.p1_airline
+                const p1Flight  = dest.synchronized_arrival?.p1_flight_number || dest.cost_breakdown?.p1_flight_number || dest.p1_flight_number
+                const p2Airline = dest.synchronized_arrival?.p2_airline || dest.cost_breakdown?.p2_airline || dest.p2_airline
+                const p2Flight  = dest.synchronized_arrival?.p2_flight_number || dest.cost_breakdown?.p2_flight_number || dest.p2_flight_number
+                if (!p1Airline && !p2Airline) return null
+                return (
+                  <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '12px', padding: '12px 14px', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.65)', border: `1px solid ${THEME.border}`, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {p1Airline && <div>✈️ P1: {p1Airline}{p1Flight ? ` · ${p1Flight}` : ''}</div>}
+                    {p2Airline && <div>✈️ P2: {p2Airline}{p2Flight ? ` · ${p2Flight}` : ''}</div>}
+                  </div>
+                )
+              })()}
 
               {dest.synchronized_arrival && (
                 <div style={{

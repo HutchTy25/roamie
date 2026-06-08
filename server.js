@@ -16,6 +16,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 const ROUTE_CACHE_TTL = 30 * 60 * 1000
 const globalRouteCache = new Map()
 const proAccessCache = new Map()
+const PHOTO_CACHE_TTL = 30 * 24 * 60 * 60 * 1000
+const photoCache = new Map()
 
 const PREWARM_PAIRS = [
   { p1: 'JFK', p2: 'LHR' },
@@ -239,6 +241,7 @@ app.use('/api/create-invite',       makeLimit(10))
 app.use('/api/accept-invite',       makeLimit(10))
 app.use('/api/disconnect',          makeLimit(10))
 app.use('/api/waitlist',            makeLimit(5))
+app.use('/api/photo',               makeLimit(120))
 
 function httpsPost(hostname, path, headers, body) {
   return new Promise((resolve, reject) => {
@@ -1584,6 +1587,31 @@ app.get('/api/airport-search', async (req, res) => {
 
 app.get('/api/trip-count', (req, res) => {
   res.json({ count: globalTripCount })
+})
+
+app.get('/api/photo', async (req, res) => {
+  const city = req.query.city
+  if (!city) return res.status(400).json({ error: 'Missing city' })
+  const key = city.toLowerCase()
+  const cached = photoCache.get(key)
+  if (cached && Date.now() - cached.timestamp < PHOTO_CACHE_TTL) {
+    return res.json({ url: cached.url })
+  }
+  try {
+    const unsplashRes = await fetch(
+      `https://api.unsplash.com/search/photos?query=${encodeURIComponent(city + ' travel destination')}&per_page=3&orientation=landscape&order_by=relevant&content_filter=high`,
+      { headers: { Authorization: `Client-ID ${process.env.VITE_UNSPLASH_KEY}` } }
+    )
+    const json = await unsplashRes.json()
+    const url = json.results?.length > 0
+      ? json.results.reduce((prev, curr) => curr.likes > prev.likes ? curr : prev).urls.regular
+      : null
+    photoCache.set(key, { url, timestamp: Date.now() })
+    res.json({ url })
+  } catch (e) {
+    console.error('Photo fetch error:', e)
+    res.json({ url: null })
+  }
 })
 
 app.get('/api/nearest-airport', (req, res) => {
