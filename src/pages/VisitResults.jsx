@@ -367,10 +367,10 @@ async function saveTripToSupabase() {
 
         {p1ToP2Price ? (
           <>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '0.5rem' }}>
-              <div style={{ 
-                fontFamily: "'Geist', sans-serif", 
-                fontSize: '2.5rem', 
+            <div style={{ marginBottom: '2px' }}>
+              <div style={{
+                fontFamily: "'Geist', sans-serif",
+                fontSize: '2.5rem',
                 fontWeight: '600',
                 background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
                 WebkitBackgroundClip: 'text',
@@ -378,8 +378,8 @@ async function saveTripToSupabase() {
               }}>
                 {p1sym}{p1ToP2Price.toLocaleString()}
               </div>
-              <div style={{ fontSize: '13px', color: '#8B8FA3' }}>round trip</div>
             </div>
+            <div style={{ fontSize: '11px', color: '#8B8FA3', marginBottom: '0.75rem', letterSpacing: '0.04em' }}>round trip</div>
             <div style={{
               fontSize: '13px',
               color: '#8B8FA3',
@@ -434,10 +434,10 @@ async function saveTripToSupabase() {
 
         {p2ToP1Price ? (
           <>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '0.5rem' }}>
-              <div style={{ 
-                fontFamily: "'Geist', sans-serif", 
-                fontSize: '2.5rem', 
+            <div style={{ marginBottom: '2px' }}>
+              <div style={{
+                fontFamily: "'Geist', sans-serif",
+                fontSize: '2.5rem',
                 fontWeight: '600',
                 background: 'linear-gradient(135deg, #22D3EE, #7C6AEF)',
                 WebkitBackgroundClip: 'text',
@@ -445,8 +445,8 @@ async function saveTripToSupabase() {
               }}>
                 {p2sym}{p2ToP1Price.toLocaleString()}
               </div>
-              <div style={{ fontSize: '13px', color: '#8B8FA3' }}>round trip</div>
             </div>
+            <div style={{ fontSize: '11px', color: '#8B8FA3', marginBottom: '0.75rem', letterSpacing: '0.04em' }}>round trip</div>
             <div style={{
               fontSize: '13px',
               color: '#8B8FA3',
