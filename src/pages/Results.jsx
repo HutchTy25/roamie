@@ -99,6 +99,7 @@ export default function Results() {
   const [partialResult, setPartialResult] = useState(null)
   const [proExpandGate, setProExpandGate] = useState(false)
   const [flightLoadProgress, setFlightLoadProgress] = useState(0)
+  const [didYouKnowIndex, setDidYouKnowIndex] = useState(0)
   const fetchedPhotos = useRef(new Set())
 
   const loadingMessages = [
@@ -108,6 +109,14 @@ export default function Results() {
     "Checking weather for your dates...",
     "Calculating fairness between partners...",
     "Almost there — building your breakdown...",
+  ]
+  const DID_YOU_KNOW = [
+    "Did you know? Roamie was built by a solo developer in a long distance relationship 🌍",
+    "Did you know? Roamie searches flights from both your cities at the same time",
+    "Did you know? Roamie shows your trip cost in both partners' currencies automatically",
+    "Did you know? Roamie's Sanctuary destinations are chosen based on purchasing power for both partners",
+    "Did you know? Roamie was built for couples like yours — apart but planning the next reunion",
+    "Did you know? Roamie uses live flight data from 300+ airlines worldwide",
   ]
   const startX = useRef(null)
 
@@ -212,6 +221,14 @@ export default function Results() {
     }, 2500)
     return () => clearInterval(interval)
   }, [loading])
+
+  useEffect(() => {
+    if (!costsLoading) return
+    const interval = setInterval(() => {
+      setDidYouKnowIndex(i => (i + 1) % DID_YOU_KNOW.length)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [costsLoading])
 
   async function startCheckout(plan) {
     if (!userId) {
@@ -1552,6 +1569,22 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
 
         </div>
       </div>
+
+      {/* Did you know */}
+      {costsLoading && (
+        <div style={{
+          textAlign: 'center',
+          padding: '0.5rem 1.5rem 1rem',
+          fontSize: '12px',
+          color: THEME.muted,
+          lineHeight: '1.6',
+          animation: 'fadeIn 0.5s ease',
+          position: 'relative',
+          zIndex: 1,
+        }}>
+          {DID_YOU_KNOW[didYouKnowIndex]}
+        </div>
+      )}
 
       {/* Couple summary */}
       {displayResult.couple_summary && (

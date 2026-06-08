@@ -55,6 +55,10 @@ export default function Dashboard({ session }) {
   const [myProfile, setMyProfile] = useState(null)
   const [ambientGlow, setAmbientGlow] = useState(getAmbientGlow())
   const [partnerWeather, setPartnerWeather] = useState(null)
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [feedbackBug, setFeedbackBug] = useState('')
+  const [feedbackFeature, setFeedbackFeature] = useState('')
+  const [feedbackSent, setFeedbackSent] = useState(false)
 
   // Theme colors - Moonly aesthetic
   const colors = {
@@ -183,6 +187,22 @@ useEffect(() => {
     } finally {
       setUploadingAvatar(false)
     }
+  }
+
+  async function submitFeedback() {
+    if (!feedbackBug.trim() && !feedbackFeature.trim()) return
+    await supabase.from('feedback').insert({
+      user_id: session.user.id,
+      bug_report: feedbackBug.trim() || null,
+      feature_request: feedbackFeature.trim() || null,
+    })
+    setFeedbackSent(true)
+    setTimeout(() => {
+      setShowFeedback(false)
+      setFeedbackBug('')
+      setFeedbackFeature('')
+      setFeedbackSent(false)
+    }, 1500)
   }
 
   const CURR_SYMBOLS = {
@@ -1110,8 +1130,19 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
               </div>
             </div>
 
-            <button 
-              onClick={() => supabase.auth.signOut().then(() => { localStorage.removeItem('roamie_paid'); navigate('/') })} 
+            <button
+              onClick={() => setShowFeedback(true)}
+              style={{
+                background: 'none', border: 'none', color: colors.textMuted,
+                fontSize: '13px', cursor: 'pointer', padding: '8px 0',
+                width: '100%', textAlign: 'center', marginBottom: '12px',
+              }}
+            >
+              💬 Share feedback
+            </button>
+
+            <button
+              onClick={() => supabase.auth.signOut().then(() => { localStorage.removeItem('roamie_paid'); navigate('/') })}
               style={{ 
                 width: '100%', 
                 padding: '16px', 
@@ -1128,6 +1159,62 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
           </div>
         )}
       </div>
+
+      {/* Feedback modal */}
+      {showFeedback && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+            padding: '0 16px 32px',
+          }}
+          onClick={() => setShowFeedback(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', maxWidth: '430px', background: colors.cardSolid,
+              border: `1px solid ${colors.border}`, borderRadius: '24px', padding: '24px',
+            }}
+          >
+            <div style={{ fontSize: '17px', fontWeight: '600', color: colors.text, marginBottom: '20px' }}>Share feedback</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ fontSize: '12px', color: colors.textMuted, display: 'block', marginBottom: '6px' }}>Something isn't working</label>
+                <textarea
+                  value={feedbackBug}
+                  onChange={e => setFeedbackBug(e.target.value)}
+                  placeholder="Describe the issue..."
+                  rows={3}
+                  style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: `1px solid ${colors.border}`, color: colors.text, fontSize: '14px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', color: colors.textMuted, display: 'block', marginBottom: '6px' }}>I wish Roamie could...</label>
+                <textarea
+                  value={feedbackFeature}
+                  onChange={e => setFeedbackFeature(e.target.value)}
+                  placeholder="Share your idea..."
+                  rows={3}
+                  style={{ width: '100%', padding: '12px', borderRadius: '12px', background: 'rgba(255,255,255,0.05)', border: `1px solid ${colors.border}`, color: colors.text, fontSize: '14px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                />
+              </div>
+            </div>
+            {feedbackSent ? (
+              <div style={{ textAlign: 'center', color: '#34D399', fontSize: '14px', padding: '12px 0' }}>✓ Thanks for the feedback!</div>
+            ) : (
+              <button
+                onClick={submitFeedback}
+                disabled={!feedbackBug.trim() && !feedbackFeature.trim()}
+                style={{ width: '100%', padding: '14px', background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`, border: 'none', borderRadius: '100px', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: feedbackBug.trim() || feedbackFeature.trim() ? 'pointer' : 'default', opacity: feedbackBug.trim() || feedbackFeature.trim() ? 1 : 0.4 }}
+              >
+                Submit
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Bottom nav - Moonly style */}
       <div style={{ 
