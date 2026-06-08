@@ -19,6 +19,31 @@ const proAccessCache = new Map()
 const PHOTO_CACHE_TTL = 30 * 24 * 60 * 60 * 1000
 const photoCache = new Map()
 
+function sanitizeInput(str, maxLen = 100) {
+  if (typeof str !== 'string') return ''
+  return str
+    .slice(0, maxLen)
+    .replace(/[`<>]/g, '')
+    .replace(/ignore\s+(previous|all|prior)\s+(instructions?|prompts?|context|rules?)/gi, '')
+    .replace(/disregard\s+(previous|all|prior|the\s+above)\s+(instructions?|prompts?|context)/gi, '')
+    .replace(/system\s*prompt/gi, '')
+    .replace(/\[INST]|\[\/INST]/g, '')
+    .replace(/<\|im_start\|>|<\|im_end\|>/g, '')
+    .trim()
+}
+
+function sanitizeMessageContent(str) {
+  if (typeof str !== 'string') return ''
+  return str
+    .replace(/ignore\s+(previous|all|prior)\s+(instructions?|prompts?|context|rules?)/gi, '')
+    .replace(/disregard\s+(previous|all|prior|the\s+above)\s+(instructions?|prompts?|context)/gi, '')
+    .replace(/system\s*prompt/gi, '')
+    .replace(/\[INST]|\[\/INST]/g, '')
+    .replace(/<\|im_start\|>|<\|im_end\|>/g, '')
+    .replace(/`{3,}/g, '')
+    .trim()
+}
+
 const PREWARM_PAIRS = [
   { p1: 'JFK', p2: 'LHR' },
   { p1: 'JFK', p2: 'LGW' },
@@ -613,7 +638,10 @@ app.post('/api/messages', requireAppSecret, [
 
   try {
     const { userId } = req.body
-    const messages = req.body.messages || []
+    const messages = (req.body.messages || []).map(msg => ({
+      ...msg,
+      content: sanitizeMessageContent(msg.content),
+    }))
     const userMessage = messages[messages.length - 1]?.content || ''
 
     if (userId) {
@@ -944,7 +972,9 @@ app.post('/api/trip-basics', requireAppSecret, [
   }
 
   try {
-    const { destination, vibe, accommodation } = req.body
+    const destination = sanitizeInput(req.body.destination, 100)
+    const vibe = (req.body.vibe || []).map(v => sanitizeInput(v, 50))
+    const { accommodation } = req.body
 
     const perplexityQuery = `For ${destination} in 2026, give me ONLY these specific details in plain text:
 
@@ -1284,8 +1314,10 @@ app.post('/api/flight-prices', requireAppSecret, [
   }
 
   try {
-    const { p1City, p2City, p1Iata, p2Iata, destinations, dates, routing, sameCity, userId,
+    const { p1Iata, p2Iata, destinations, dates, routing, sameCity, userId,
             p1Currency, p2Currency, p1Budget, p2Budget, syncArrival } = req.body
+    const p1City = sanitizeInput(req.body.p1City, 100)
+    const p2City = sanitizeInput(req.body.p2City, 100)
     const dateParts = dates.split(' to ')
     const departDate = dateParts[0]?.trim()
     const returnDate = dateParts[1]?.trim()

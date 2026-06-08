@@ -101,6 +101,7 @@ export default function Results() {
   const [flightLoadProgress, setFlightLoadProgress] = useState(0)
   const [didYouKnowIndex, setDidYouKnowIndex] = useState(0)
   const fetchedPhotos = useRef(new Set())
+  const costsLoading = !!partialResult && !result
 
   const loadingMessages = [
     "Checking flight routes from both cities...",
@@ -757,7 +758,6 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
   const p2sym = CURR_SYMBOLS[data?.p2?.currency] || ''
 
   const displayResult = result || partialResult
-  const costsLoading = !!partialResult && !result
 
   // LOADING STATE
   if (loading && !partialResult) return (
