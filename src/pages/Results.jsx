@@ -93,6 +93,7 @@ export default function Results({ profile }) {
   const [showSummary, setShowSummary] = useState(false)
   const [tripBasics, setTripBasics] = useState(null)
   const [tripSaved, setTripSaved] = useState(false)
+  const [showInstallBanner, setShowInstallBanner] = useState(false)
   const [signupExpandGate, setSignupExpandGate] = useState(false)
   const [empathyExpanded, setEmpathyExpanded] = useState(false)
   const [cancelToast, setCancelToast] = useState(false)
@@ -203,6 +204,14 @@ export default function Results({ profile }) {
     setEmpathyExpanded(false)
     setProExpandGate(false)
   }, [activeCard])
+
+  useEffect(() => {
+    if (!tripSaved) return
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+    if (!isStandalone && !localStorage.getItem('roamie_install_prompted')) {
+      setShowInstallBanner(true)
+    }
+  }, [tripSaved])
 
   useEffect(() => {
     if (!result) return
@@ -553,6 +562,11 @@ Return ONLY this JSON, no markdown, no explanation:
     setLoading(false)
   }
 }
+
+  function dismissInstallBanner() {
+    localStorage.setItem('roamie_install_prompted', 'true')
+    setShowInstallBanner(false)
+  }
 
   async function fetchVisitPrices() {
     try {
@@ -1737,6 +1751,66 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
           </div>
         </div>
       )}
+
+      {showInstallBanner && (() => {
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+        return (
+          <div style={{
+            position: 'fixed',
+            bottom: '80px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 'calc(100% - 3rem)',
+            maxWidth: '400px',
+            background: 'rgba(30, 32, 48, 0.95)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: `1px solid ${THEME.border}`,
+            borderRadius: '20px',
+            padding: '1rem 1.25rem',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            zIndex: 9999,
+            animation: 'fadeSlideUp 0.35s ease both',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+              <div>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  background: `linear-gradient(135deg, ${THEME.accent}, ${THEME.primary})`,
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  marginBottom: '4px',
+                }}>
+                  ✈️ Add Roamie to your home screen
+                </div>
+                <div style={{ fontSize: '12px', color: THEME.muted, lineHeight: '1.5' }}>
+                  {isIOS
+                    ? 'Tap the Share button then Add to Home Screen'
+                    : 'Tap the menu then Add to Home Screen'}
+                </div>
+              </div>
+              <button
+                onClick={dismissInstallBanner}
+                style={{
+                  background: 'none',
+                  border: `1px solid ${THEME.border}`,
+                  borderRadius: '100px',
+                  padding: '6px 14px',
+                  color: THEME.muted,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        )
+      })()}
 
     </div>
   )
