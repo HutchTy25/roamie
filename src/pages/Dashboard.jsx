@@ -59,6 +59,7 @@ export default function Dashboard({ session }) {
   const [feedbackBug, setFeedbackBug] = useState('')
   const [feedbackFeature, setFeedbackFeature] = useState('')
   const [feedbackSent, setFeedbackSent] = useState(false)
+  const [committedTripPhoto, setCommittedTripPhoto] = useState(null)
 
   // Theme colors - Moonly aesthetic
   const colors = {
@@ -108,6 +109,16 @@ useEffect(() => {
       return () => clearTimeout(t)
     }
   }, [])
+
+  useEffect(() => {
+    const ct = trips.find(t => t.committed)
+    if (!ct?.destination_name) return
+    const city = ct.destination_name.split(',')[0].trim()
+    fetch(`https://roamie-61ib.onrender.com/api/photo?city=${encodeURIComponent(city)}`)
+      .then(r => r.json())
+      .then(j => { if (j.url) setCommittedTripPhoto(j.url) })
+      .catch(() => {})
+  }, [trips])
 
   async function fetchData() {
     try {
@@ -281,6 +292,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
         @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.6} }
         @keyframes twinkle { 0%,100%{opacity:0.3} 50%{opacity:1} }
         @keyframes pulseGlow { 0%,100%{box-shadow: 0 0 20px rgba(124,106,239,0.3)} 50%{box-shadow: 0 0 40px rgba(124,106,239,0.5)} }
+        @keyframes heartbeat { 0%,100%{transform:scale(1);opacity:0.15} 50%{transform:scale(1.4);opacity:0.3} }
         .glass-card {
           background: ${colors.card};
           backdrop-filter: blur(20px);
@@ -560,54 +572,91 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
   const daysUntilCommitted = committedTrip.dates_from
     ? Math.ceil((new Date(committedTrip.dates_from) - new Date()) / (1000 * 60 * 60 * 24))
     : null
+  const fmt = d => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'
+  const destLabel = cleanDestName(committedTrip.destination_name) || `${committedTrip.p1_city} → ${committedTrip.p2_city}`
+  const microLines = [
+    'days until you see each other',
+    'days until everything else stops mattering',
+    'days until the wait is over',
+  ]
+  const microLine = daysUntilCommitted > 0 ? microLines[daysUntilCommitted % 3] : 'your trip is here 🎉'
   return (
-    <div className="glass-card" style={{ padding: '20px', marginBottom: '16px' }}>
-      <div style={{ fontSize: '11px', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '16px', textAlign: 'center' }}>🚀 Next Adventure</div>
-      <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-        <div style={{ fontSize: '56px', fontWeight: '700', background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          {daysUntilCommitted > 0 ? daysUntilCommitted : '🎉'}
+    <div className="glass-card" style={{ marginBottom: '16px', minHeight: '220px', overflow: 'hidden', position: 'relative', padding: 0 }}>
+      {/* Photo or gradient background */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: committedTripPhoto
+          ? `url(${committedTripPhoto}) center/cover no-repeat`
+          : `linear-gradient(135deg, rgba(124,106,239,0.3) 0%, rgba(244,114,182,0.2) 100%)`,
+      }} />
+      {/* Dark overlay */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'linear-gradient(to top, rgba(26,27,38,0.97) 0%, rgba(26,27,38,0.75) 50%, rgba(26,27,38,0.5) 100%)',
+      }} />
+      {/* Content */}
+      <div style={{ position: 'relative', zIndex: 1, padding: '20px', display: 'flex', flexDirection: 'column', minHeight: '220px' }}>
+        <div style={{ fontSize: '11px', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px', textAlign: 'center' }}>
+          🚀 Next Adventure
         </div>
-        <div style={{ fontSize: '13px', color: colors.textMuted }}>
-          {daysUntilCommitted > 0 ? 'days until' : 'trip time!'}
+        <div style={{ textAlign: 'center', flex: 1 }}>
+          {/* Pulsing glow */}
+          <div style={{
+            width: '80px', height: '80px', borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(244,114,182,0.4) 0%, transparent 70%)',
+            margin: '0 auto', marginBottom: '-72px',
+            animation: 'heartbeat 2.4s ease-in-out infinite',
+          }} />
+          <div style={{
+            fontSize: '72px', fontWeight: '700', lineHeight: '1',
+            background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`,
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            position: 'relative',
+          }}>
+            {daysUntilCommitted > 0 ? daysUntilCommitted : '🎉'}
+          </div>
+          <div style={{ fontSize: '12px', color: colors.textMuted, marginTop: '6px', fontStyle: 'italic' }}>
+            {microLine}
+          </div>
+          <div style={{ fontSize: '17px', fontWeight: '600', color: colors.pink, marginTop: '10px' }}>
+            {committedTrip.country_emoji} {destLabel}
+          </div>
         </div>
-        <div style={{ fontSize: '18px', fontWeight: '600', color: colors.pink, marginTop: '8px' }}>
-          {committedTrip.country_emoji} {cleanDestName(committedTrip.destination_name) || `${committedTrip.p1_city} → ${committedTrip.p2_city}`}
+        {/* Pills */}
+        <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div style={{
+            background: 'rgba(244,114,182,0.12)', border: '1px solid rgba(244,114,182,0.25)',
+            borderRadius: '100px', padding: '7px 14px',
+            fontSize: '12px', color: colors.pink, fontWeight: '500',
+          }}>
+            ✈️ {fmt(committedTrip.dates_from)} → {fmt(committedTrip.dates_to)}
+          </div>
+          <div style={{
+            background: 'rgba(124,106,239,0.12)', border: '1px solid rgba(124,106,239,0.25)',
+            borderRadius: '100px', padding: '7px 14px',
+            fontSize: '12px', color: colors.primary, fontWeight: '500',
+            maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            📍 {destLabel}
+          </div>
+        </div>
+        {/* Remove link */}
+        <div style={{ textAlign: 'center', marginTop: '12px' }}>
+          <button
+            onClick={async () => {
+              await supabase.from('trips').update({ committed: false, committed_at: null }).eq('id', committedTrip.id)
+              setTrips(prev => prev.map(t => t.id === committedTrip.id ? { ...t, committed: false, committed_at: null } : t))
+            }}
+            style={{
+              background: 'none', border: 'none',
+              color: 'rgba(239,68,68,0.45)', fontSize: '11px',
+              cursor: 'pointer', padding: '4px 0',
+            }}
+          >
+            Remove from planning
+          </button>
         </div>
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', borderTop: `1px solid ${colors.border}` }}>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '13px', fontWeight: '600', color: colors.text }}>{committedTrip.dates_from}</div>
-          <div style={{ fontSize: '11px', color: colors.textMuted }}>Departure</div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '13px', fontWeight: '600', color: colors.text }}>{committedTrip.dates_to}</div>
-          <div style={{ fontSize: '11px', color: colors.textMuted }}>Return</div>
-        </div>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '13px', fontWeight: '600', color: colors.cyan }}>{committedTrip.p1_city} → {committedTrip.p2_city}</div>
-          <div style={{ fontSize: '11px', color: colors.textMuted }}>Route</div>
-        </div>
-      </div>
-      <button
-        onClick={async () => {
-          await supabase.from('trips').update({ committed: false, committed_at: null }).eq('id', committedTrip.id)
-          setTrips(prev => prev.map(t => t.id === committedTrip.id ? { ...t, committed: false, committed_at: null } : t))
-        }}
-        style={{
-          display: 'block',
-          width: '100%',
-          marginTop: '12px',
-          padding: '8px',
-          background: 'none',
-          border: '1px solid rgba(239, 68, 68, 0.25)',
-          borderRadius: '100px',
-          color: 'rgba(239, 68, 68, 0.6)',
-          fontSize: '12px',
-          cursor: 'pointer',
-        }}
-      >
-        Remove from planning
-      </button>
     </div>
   )
 })()}
