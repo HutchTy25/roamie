@@ -604,12 +604,13 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
       {/* Large faint beating heart SVG */}
       <div style={{
         position: 'absolute', top: '50%', left: '50%',
-        transform: 'translate(-50%, -54%)',
+        transform: 'translate(-50%, -50%)',
         animation: 'heartbeat 1.5s ease-in-out infinite',
         pointerEvents: 'none',
         zIndex: 0,
+        opacity: 0.18,
       }}>
-        <svg width="190" height="190" viewBox="0 0 24 24" fill="none">
+        <svg width="200" height="200" viewBox="0 0 24 24" fill="none">
           <defs>
             <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#F472B6" stopOpacity="0.22" />
