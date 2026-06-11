@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Plane, MapPin } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../supabase'
 
@@ -292,7 +293,13 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
         @keyframes pulse { 0%,100%{opacity:0.3} 50%{opacity:0.6} }
         @keyframes twinkle { 0%,100%{opacity:0.3} 50%{opacity:1} }
         @keyframes pulseGlow { 0%,100%{box-shadow: 0 0 20px rgba(124,106,239,0.3)} 50%{box-shadow: 0 0 40px rgba(124,106,239,0.5)} }
-        @keyframes heartbeat { 0%,100%{transform:scale(1);opacity:0.15} 50%{transform:scale(1.4);opacity:0.3} }
+        @keyframes heartbeat {
+          0%   { transform: scale(1); }
+          14%  { transform: scale(1.1); }
+          28%  { transform: scale(1); }
+          42%  { transform: scale(1.07); }
+          70%, 100% { transform: scale(1); }
+        }
         .glass-card {
           background: ${colors.card};
           backdrop-filter: blur(20px);
@@ -581,32 +588,43 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
   ]
   const microLine = daysUntilCommitted > 0 ? microLines[daysUntilCommitted % 3] : 'your trip is here 🎉'
   return (
-    <div className="glass-card" style={{ marginBottom: '16px', minHeight: '220px', overflow: 'hidden', position: 'relative', padding: 0 }}>
-      {/* Photo or gradient background */}
+    <div className="glass-card" style={{ marginBottom: '16px', minHeight: '260px', overflow: 'hidden', position: 'relative', padding: 0 }}>
+      {/* Photo background */}
       <div style={{
         position: 'absolute', inset: 0,
         background: committedTripPhoto
           ? `url(${committedTripPhoto}) center/cover no-repeat`
           : `linear-gradient(135deg, rgba(124,106,239,0.3) 0%, rgba(244,114,182,0.2) 100%)`,
       }} />
-      {/* Dark overlay */}
+      {/* Dark gradient overlay */}
       <div style={{
         position: 'absolute', inset: 0,
-        background: 'linear-gradient(to top, rgba(26,27,38,0.97) 0%, rgba(26,27,38,0.75) 50%, rgba(26,27,38,0.5) 100%)',
+        background: 'linear-gradient(to top, rgba(26,27,38,0.97) 0%, rgba(26,27,38,0.78) 50%, rgba(26,27,38,0.45) 100%)',
       }} />
+      {/* Large faint beating heart SVG */}
+      <div style={{
+        position: 'absolute', top: '50%', left: '50%',
+        transform: 'translate(-50%, -54%)',
+        animation: 'heartbeat 1.5s ease-in-out infinite',
+        pointerEvents: 'none',
+        zIndex: 0,
+      }}>
+        <svg width="190" height="190" viewBox="0 0 24 24" fill="none">
+          <defs>
+            <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#F472B6" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#7C6AEF" stopOpacity="0.10" />
+            </linearGradient>
+          </defs>
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill="url(#heartGrad)" stroke="rgba(244,114,182,0.20)" strokeWidth="0.4" />
+        </svg>
+      </div>
       {/* Content */}
-      <div style={{ position: 'relative', zIndex: 1, padding: '20px', display: 'flex', flexDirection: 'column', minHeight: '220px' }}>
-        <div style={{ fontSize: '11px', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '12px', textAlign: 'center' }}>
-          🚀 Next Adventure
+      <div style={{ position: 'relative', zIndex: 1, padding: '20px', display: 'flex', flexDirection: 'column', minHeight: '260px' }}>
+        <div style={{ fontSize: '11px', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '8px', textAlign: 'center' }}>
+          Counting down
         </div>
         <div style={{ textAlign: 'center', flex: 1 }}>
-          {/* Pulsing glow */}
-          <div style={{
-            width: '80px', height: '80px', borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(244,114,182,0.4) 0%, transparent 70%)',
-            margin: '0 auto', marginBottom: '-72px',
-            animation: 'heartbeat 2.4s ease-in-out infinite',
-          }} />
           <div style={{
             fontSize: '72px', fontWeight: '700', lineHeight: '1',
             background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`,
@@ -628,16 +646,18 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
             background: 'rgba(244,114,182,0.12)', border: '1px solid rgba(244,114,182,0.25)',
             borderRadius: '100px', padding: '7px 14px',
             fontSize: '12px', color: colors.pink, fontWeight: '500',
+            display: 'flex', alignItems: 'center', gap: '5px',
           }}>
-            ✈️ {fmt(committedTrip.dates_from)} → {fmt(committedTrip.dates_to)}
+            <Plane size={12} /> {fmt(committedTrip.dates_from)} → {fmt(committedTrip.dates_to)}
           </div>
           <div style={{
             background: 'rgba(124,106,239,0.12)', border: '1px solid rgba(124,106,239,0.25)',
             borderRadius: '100px', padding: '7px 14px',
             fontSize: '12px', color: colors.primary, fontWeight: '500',
             maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            display: 'flex', alignItems: 'center', gap: '5px',
           }}>
-            📍 {destLabel}
+            <MapPin size={12} /> {destLabel}
           </div>
         </div>
         {/* Remove link */}
