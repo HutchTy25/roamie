@@ -580,7 +580,9 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
     ? Math.ceil((new Date(committedTrip.dates_from) - new Date()) / (1000 * 60 * 60 * 24))
     : null
   const fmt = d => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'
-  const destLabel = cleanDestName(committedTrip.destination_name) || `${committedTrip.p1_city} → ${committedTrip.p2_city}`
+  const destLabel = committedTrip.destination_name
+    ? cleanDestName(committedTrip.destination_name)
+    : `${committedTrip.p1_city} → ${committedTrip.p2_city}`
   const microLines = [
     'days until you see each other',
     'days until everything else stops mattering',
