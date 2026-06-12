@@ -1285,15 +1285,27 @@ async function searchDuffelFlightsWithDetail(originIata, destIata, departDate, r
       .filter(({ price }) => !isNaN(price) && price > 0)
       .sort((a, b) => a.price - b.price)
     if (!sorted.length) return null
-    const cheapest = sorted[0]
-    const firstSeg = cheapest.offer.slices?.[0]?.segments?.[0]
-    const arrivalAt = cheapest.offer.slices?.[0]?.segments?.at(-1)?.arriving_at || null
-    const airline = firstSeg?.marketing_carrier?.name || null
-    const flightNumber = firstSeg?.marketing_carrier_flight_number || null
-    const departureAt = firstSeg?.departing_at || null
-    const durationRaw = cheapest.offer.slices?.[0]?.duration || null
-    const stops = (cheapest.offer.slices?.[0]?.segments?.length ?? 1) - 1
-    return { price: Math.round(cheapest.price), arrivalAt, airline, flightNumber, departureAt, durationRaw, stops }
+    const top3 = sorted.slice(0, 3).map(({ price, offer }) => {
+      const slice0 = offer.slices?.[0]
+      const firstSeg = slice0?.segments?.[0]
+      const firstPax = firstSeg?.passengers?.[0]
+      return {
+        price: Math.round(price),
+        airline: firstSeg?.marketing_carrier?.name || null,
+        flightNumber: firstSeg?.marketing_carrier_flight_number || null,
+        departureAt: firstSeg?.departing_at || null,
+        arrivalAt: slice0?.segments?.at(-1)?.arriving_at || null,
+        durationRaw: slice0?.duration || null,
+        stops: (slice0?.segments?.length ?? 1) - 1,
+        fareBrandName: slice0?.fare_brand_name || null,
+        cabinClass: firstPax?.cabin_class || null,
+        baggages: firstPax?.baggages || [],
+        refundable: offer.conditions?.refund_before_departure?.allowed ?? null,
+        changeable: offer.conditions?.change_before_departure?.allowed ?? null,
+      }
+    })
+    console.log('[Duffel] first offer extracted:', JSON.stringify(top3[0], null, 2))
+    return top3
   } catch (e) {
     console.error('Duffel detail search error:', e)
     return null
@@ -1391,7 +1403,8 @@ app.post('/api/flight-prices', requireAppSecret, [
         }
       } else if (routing === 'meet') {
         if (syncArrival && p1IATA && p2IATA) {
-          const p1Detail = await searchDuffelFlightsWithDetail(p1IATA, destIATA, departDate, returnDate)
+          const p1Offers = await searchDuffelFlightsWithDetail(p1IATA, destIATA, departDate, returnDate)
+          const p1Detail = p1Offers?.[0] ?? null
           let p2Price = null
           let p2ArrivalAt = null
           let p2Airline = null
@@ -1454,7 +1467,8 @@ app.post('/api/flight-prices', requireAppSecret, [
           }
           console.log(`Sync arrival for ${destName} — P1: ${p1Detail?.price}, P2: ${p2Price}, gap: ${gapMinutes}min, valid: ${syncValid}`)
           priceResults[resultKey] = {
-            p1: p1Detail?.price || null,
+            p1: p1Detail?.price ?? null,
+            p1_offers: p1Offers || [],
             p2: p2Price,
             source: 'duffel',
             synchronized_arrival: syncValid
@@ -1473,10 +1487,12 @@ app.post('/api/flight-prices', requireAppSecret, [
               : null,
           }
         } else {
-          const [p1Detail, p2Detail] = await Promise.all([
+          const [p1Offers, p2Offers] = await Promise.all([
             p1IATA ? searchDuffelFlightsWithDetail(p1IATA, destIATA, departDate, returnDate) : null,
             p2IATA ? searchDuffelFlightsWithDetail(p2IATA, destIATA, departDate, returnDate) : null,
           ])
+          const p1Detail = p1Offers?.[0] ?? null
+          const p2Detail = p2Offers?.[0] ?? null
           console.log(`Meet prices for ${destName} — P1: ${p1Detail?.price}, P2: ${p2Detail?.price}`)
           priceResults[resultKey] = {
             p1: p1Detail?.price ?? null,
@@ -1487,6 +1503,8 @@ app.post('/api/flight-prices', requireAppSecret, [
             p2_duration: p2Detail?.durationRaw ?? null,
             p1_stops: p1Detail?.stops ?? null,
             p2_stops: p2Detail?.stops ?? null,
+            p1_offers: p1Offers || [],
+            p2_offers: p2Offers || [],
             source: 'duffel',
           }
         }
