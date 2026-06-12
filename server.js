@@ -1291,7 +1291,7 @@ async function searchDuffelVisitOffers(originIata, destIata, departDate, returnD
       const slice0 = offer.slices?.[0]
       const firstSeg = slice0?.segments?.[0]
       const flightNum = firstSeg?.marketing_carrier_flight_number || ''
-      const key = `${flightNum}-${Math.round(price)}`
+      const key = `${flightNum}-${firstSeg?.departing_at || ''}`
       if (seen.has(key)) continue
       seen.add(key)
       const firstPax = firstSeg?.passengers?.[0]
