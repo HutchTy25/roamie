@@ -37,9 +37,6 @@ export default function VisitResults() {
     'Almost there...',
   ]
 
-  const p1sym = CURR_SYMBOLS[data?.p1?.currency] || '$'
-  const p2sym = CURR_SYMBOLS[data?.p2?.currency] || '£'
-
   useEffect(() => {
     if (!data) { navigate('/'); return }
     fetchPrices()
@@ -67,9 +64,9 @@ export default function VisitResults() {
           p2City: data.p2.city,
           p1Iata: data.p1.iata || '',
           p2Iata: data.p2.iata || '',
-          destinations: [data.p2.city, data.p1.city],
+          destinations: [data.p2.city],
           dates: `${data.dates.from} to ${data.dates.to}`,
-          routing: 'meet',
+          routing: 'visit',
           sameCity: false,
           p1Currency: data.p1.currency,
           p2Currency: data.p2.currency,
@@ -85,7 +82,7 @@ export default function VisitResults() {
     }
   }
 
-async function saveTripToSupabase() {
+  async function saveTripToSupabase() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) return
@@ -113,7 +110,6 @@ async function saveTripToSupabase() {
     }
   }
 
-  // Loading state
   if (loading) return (
     <div style={{
       minHeight: '100vh',
@@ -133,59 +129,28 @@ async function saveTripToSupabase() {
         @keyframes twinkle { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
         @keyframes orbit { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
       `}</style>
-
-      {/* Stars */}
       {[...Array(15)].map((_, i) => (
         <div key={i} style={{
-          position: 'absolute',
-          width: '1px',
-          height: '1px',
-          background: '#fff',
-          borderRadius: '50%',
-          top: `${Math.random() * 100}%`,
-          left: `${Math.random() * 100}%`,
-          opacity: 0.3,
-          animation: `twinkle ${3 + Math.random() * 2}s ease-in-out infinite`,
+          position: 'absolute', width: '1px', height: '1px', background: '#fff',
+          borderRadius: '50%', top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%`,
+          opacity: 0.3, animation: `twinkle ${3 + Math.random() * 2}s ease-in-out infinite`,
         }} />
       ))}
-
-      {/* Animated plane with orbit */}
       <div style={{ position: 'relative', width: '80px', height: '80px' }}>
         <div style={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: '50%',
-          border: '2px dashed rgba(124,106,239,0.3)',
-          animation: 'orbit 3s linear infinite',
+          position: 'absolute', inset: 0, borderRadius: '50%',
+          border: '2px dashed rgba(124,106,239,0.3)', animation: 'orbit 3s linear infinite',
         }}>
-          <div style={{
-            position: 'absolute',
-            top: '-8px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-          }}>
+          <div style={{ position: 'absolute', top: '-8px', left: '50%', transform: 'translateX(-50%)' }}>
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
               <path d="M21 16V14L13 9V3.5C13 2.67 12.33 2 11.5 2C10.67 2 10 2.67 10 3.5V9L2 14V16L10 13.5V19L8 20.5V22L11.5 21L15 22V20.5L13 19V13.5L21 16Z" fill="#7C6AEF"/>
             </svg>
           </div>
         </div>
-        <div style={{
-          position: 'absolute',
-          inset: '20px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
-          opacity: 0.3,
-        }} />
+        <div style={{ position: 'absolute', inset: '20px', borderRadius: '50%', background: 'linear-gradient(135deg, #F472B6, #7C6AEF)', opacity: 0.3 }} />
       </div>
-
       <div style={{ textAlign: 'center' }}>
-        <div style={{ 
-          fontFamily: "'Geist', sans-serif", 
-          fontSize: '1.4rem', 
-          fontWeight: '600',
-          marginBottom: '12px',
-          color: '#E8E8ED',
-        }}>
+        <div style={{ fontFamily: "'Geist', sans-serif", fontSize: '1.4rem', fontWeight: '600', marginBottom: '12px', color: '#E8E8ED' }}>
           Finding your flights...
         </div>
         <div style={{ fontSize: '14px', color: '#F472B6', fontStyle: 'italic' }}>
@@ -194,50 +159,31 @@ async function saveTripToSupabase() {
       </div>
       <div style={{ display: 'flex', gap: '8px' }}>
         {[0,1,2].map(i => (
-          <div key={i} style={{ 
-            width: '8px', 
-            height: '8px', 
-            borderRadius: '50%', 
-            background: 'linear-gradient(135deg, #F472B6, #7C6AEF)', 
-            animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite` 
+          <div key={i} style={{
+            width: '8px', height: '8px', borderRadius: '50%',
+            background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
+            animation: `pulse 1.2s ease-in-out ${i * 0.2}s infinite`,
           }} />
         ))}
       </div>
     </div>
   )
 
-  // Error state
   if (error || !prices) return (
-    <div style={{ 
-      minHeight: '100vh', 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      gap: '1rem', 
-      padding: '2rem',
-      background: '#1A1B26',
+    <div style={{
+      minHeight: '100vh', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: '1rem',
+      padding: '2rem', background: '#1A1B26',
     }}>
-      <div style={{ 
-        fontFamily: "'Geist', sans-serif", 
-        fontSize: '1.4rem',
-        fontWeight: '600',
-        color: '#E8E8ED',
-      }}>
+      <div style={{ fontFamily: "'Geist', sans-serif", fontSize: '1.4rem', fontWeight: '600', color: '#E8E8ED' }}>
         Something went wrong
       </div>
-      <button 
-        onClick={() => navigate('/quiz')} 
-        style={{ 
-          padding: '14px 32px', 
-          background: 'linear-gradient(135deg, #F472B6, #7C6AEF)', 
-          color: '#fff', 
-          borderRadius: '100px', 
-          fontSize: '14px', 
-          fontWeight: '600', 
-          border: 'none', 
-          cursor: 'pointer',
-          boxShadow: '0 0 24px rgba(124,106,239,0.4)',
+      <button
+        onClick={() => navigate('/quiz')}
+        style={{
+          padding: '14px 32px', background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
+          color: '#fff', borderRadius: '100px', fontSize: '14px', fontWeight: '600',
+          border: 'none', cursor: 'pointer', boxShadow: '0 0 24px rgba(124,106,239,0.4)',
         }}
       >
         Try again
@@ -245,277 +191,204 @@ async function saveTripToSupabase() {
     </div>
   )
 
-  const p1Card = prices[data.p2.iata] || prices[data.p2.city]
-  const p2Card = prices[data.p1.iata] || prices[data.p1.city]
-  const p1ToP2Price = p1Card?.cost_breakdown?.flights_p1_total ?? p1Card?.p1
-  const p2ToP1Price = p2Card?.cost_breakdown?.flights_p2 ?? p2Card?.p2
+  const card = prices?.[data.p2.iata] || prices?.[data.p2.city]
+  const offers = card?.p1_offers || []
+  const skyDate = data?.dates?.from?.replace(/-/g, '').slice(2) || ''
+  const skyscannerBase = `https://www.skyscanner.net/transport/flights/${data?.p1?.iata || ''}/${data?.p2?.iata || ''}/${skyDate}/`
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: '#1A1B26', 
-      padding: '2rem 1.5rem', 
-      maxWidth: '520px', 
-      margin: '0 auto',
-      position: 'relative',
+    <div style={{
+      minHeight: '100vh', background: '#1A1B26',
+      padding: '2rem 1.5rem', maxWidth: '520px', margin: '0 auto', position: 'relative',
     }}>
       <style>{`
         @keyframes fadeSlideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
         @keyframes twinkle { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
       `}</style>
 
-      {/* Stars */}
       {[...Array(10)].map((_, i) => (
         <div key={i} style={{
-          position: 'fixed',
-          width: '1px',
-          height: '1px',
-          background: '#fff',
-          borderRadius: '50%',
-          top: `${Math.random() * 100}%`,
-          left: `${Math.random() * 100}%`,
-          opacity: 0.3,
-          animation: `twinkle ${3 + Math.random() * 2}s ease-in-out infinite`,
+          position: 'fixed', width: '1px', height: '1px', background: '#fff',
+          borderRadius: '50%', top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%`,
+          opacity: 0.3, animation: `twinkle ${3 + Math.random() * 2}s ease-in-out infinite`,
         }} />
       ))}
 
       {/* Top bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <button 
-          onClick={() => navigate('/quiz')} 
-          style={{ 
-            background: 'none', 
-            border: 'none', 
-            color: '#8B8FA3', 
-            fontSize: '13px', 
-            cursor: 'pointer', 
-            padding: 0,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-          }}
+        <button
+          onClick={() => navigate('/quiz')}
+          style={{ background: 'none', border: 'none', color: '#8B8FA3', fontSize: '13px', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '4px' }}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
             <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
           </svg>
           back
         </button>
-        <button 
-          onClick={() => navigate('/dashboard')} 
-          style={{ 
-            background: 'none', 
-            border: 'none', 
-            color: '#8B8FA3', 
-            fontSize: '13px', 
-            cursor: 'pointer', 
-            padding: 0 
-          }}
+        <button
+          onClick={() => navigate('/dashboard')}
+          style={{ background: 'none', border: 'none', color: '#8B8FA3', fontSize: '13px', cursor: 'pointer', padding: 0 }}
         >
           Dashboard
         </button>
       </div>
 
       {/* Header */}
-      <div style={{ marginBottom: '2rem' }}>
-        <div style={{ 
-          fontSize: '11px', 
-          letterSpacing: '0.15em', 
-          textTransform: 'uppercase', 
+      <div style={{ marginBottom: '1.75rem' }}>
+        <div style={{
+          fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase',
           background: 'linear-gradient(135deg, #F472B6, #22D3EE)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          marginBottom: '8px', 
-          fontWeight: '600' 
+          WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+          marginBottom: '8px', fontWeight: '600',
         }}>
           Visit each other
         </div>
-        <div style={{ 
-          fontFamily: "'Geist', sans-serif", 
-          fontSize: '1.8rem', 
-          fontWeight: '600',
-          lineHeight: '1.2', 
-          marginBottom: '8px',
-          color: '#E8E8ED',
-        }}>
-          {data.p1.city} ↔ {data.p2.city}
+        <div style={{ fontFamily: "'Geist', sans-serif", fontSize: '1.8rem', fontWeight: '600', lineHeight: '1.2', marginBottom: '8px', color: '#E8E8ED' }}>
+          {data.p1.city} → {data.p2.city}
         </div>
         <div style={{ fontSize: '13px', color: '#8B8FA3' }}>
           {data.dates.from} → {data.dates.to}
         </div>
       </div>
 
-      {/* P1 flies to P2 */}
-      <div style={{
-        background: 'rgba(30,32,48,0.6)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(244,114,182,0.25)',
-        borderRadius: '20px',
-        padding: '1.5rem',
-        marginBottom: '1rem',
-        animation: 'fadeSlideUp 0.4s ease',
-      }}>
-        <div style={{ 
-          fontSize: '11px', 
-          letterSpacing: '0.12em', 
-          textTransform: 'uppercase', 
-          color: '#F472B6', 
-          marginBottom: '1rem', 
-          fontWeight: '600' 
+      {/* Offer cards */}
+      {offers.length === 0 ? (
+        <div style={{
+          background: 'rgba(30,32,48,0.6)', backdropFilter: 'blur(20px)',
+          border: '1px solid rgba(124,106,239,0.15)', borderRadius: '20px',
+          padding: '2rem', textAlign: 'center', marginBottom: '1.5rem',
+          fontSize: '14px', color: '#8B8FA3', lineHeight: '1.7',
         }}>
-          {data.p1.city} → {data.p2.city}
+          No flights found for these dates.<br />Try adjusting your dates or check Google Flights for this route.
         </div>
-
-        {p1ToP2Price ? (
-          <>
-            <div style={{ marginBottom: '2px' }}>
-              <div style={{
-                fontFamily: "'Geist', sans-serif",
-                fontSize: '2.5rem',
-                fontWeight: '600',
-                background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '1.5rem' }}>
+          {offers.map((offer, i) => {
+            const sym = CURR_SYMBOLS[offer.currency] || '$'
+            const dep = offer.departureAt
+              ? new Date(offer.departureAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : '—'
+            const arr = offer.arrivalAt
+              ? new Date(offer.arrivalAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : '—'
+            const carryOn = offer.baggages?.find(b => b.type === 'carry_on')?.quantity ?? 0
+            const checked = offer.baggages?.find(b => b.type === 'checked')?.quantity ?? 0
+            return (
+              <div key={i} style={{
+                background: 'rgba(30,32,48,0.6)', backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(124,106,239,0.2)', borderRadius: '20px',
+                padding: '1.5rem',
+                animation: `fadeSlideUp 0.4s ease ${i * 0.08}s forwards`,
+                opacity: 0,
               }}>
-                {p1sym}{p1ToP2Price.toLocaleString()}
-              </div>
-            </div>
-            <div style={{ fontSize: '11px', color: '#8B8FA3', marginBottom: '0.75rem', letterSpacing: '0.04em' }}>round trip</div>
-            <div style={{
-              fontSize: '13px',
-              color: '#8B8FA3',
-              marginBottom: '0.75rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M14 8H2M14 8L10 4M14 8L10 12" stroke="#22D3EE" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-              Real price from Duffel
-            </div>
-            {(p1Card?.p1_airline || p1Card?.p1_duration || p1Card?.p1_stops != null) && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '13px', color: '#8B8FA3' }}>
-                {p1Card.p1_airline && <span>{p1Card.p1_airline}</span>}
-                {p1Card.p1_duration && <span>⏱ {formatDuration(p1Card.p1_duration)}</span>}
-                {p1Card.p1_stops != null && (
-                  <span>{p1Card.p1_stops === 0 ? 'Direct' : `${p1Card.p1_stops} stop${p1Card.p1_stops > 1 ? 's' : ''}`}</span>
-                )}
-              </div>
-            )}
-          </>
-        ) : (
-          <div style={{ fontSize: '14px', color: '#8B8FA3', padding: '1rem 0' }}>
-            No direct flights found for these dates. Try flexible dates or check Google Flights for connecting routes.
-          </div>
-        )}
-      </div>
+                {/* Airline + price */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#E8E8ED' }}>
+                      {offer.airline || 'Unknown airline'}
+                    </div>
+                    {offer.flightNumber && (
+                      <div style={{ fontSize: '12px', color: '#8B8FA3', marginTop: '2px' }}>{offer.flightNumber}</div>
+                    )}
+                    {offer.fareBrandName && (
+                      <div style={{ fontSize: '11px', color: '#8B8FA3', marginTop: '2px' }}>{offer.fareBrandName}</div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{
+                      fontFamily: "'Geist', sans-serif", fontSize: '2rem', fontWeight: '600',
+                      background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
+                      WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                      lineHeight: '1.1',
+                    }}>
+                      {sym}{offer.price.toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#8B8FA3' }}>round trip</div>
+                  </div>
+                </div>
 
-      {/* P2 flies to P1 */}
-      <div style={{
-        background: 'rgba(30,32,48,0.6)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(34,211,238,0.25)',
-        borderRadius: '20px',
-        padding: '1.5rem',
-        marginBottom: '1.5rem',
-        animation: 'fadeSlideUp 0.4s ease 0.1s forwards',
-        opacity: 0,
-      }}>
-        <div style={{ 
-          fontSize: '11px', 
-          letterSpacing: '0.12em', 
-          textTransform: 'uppercase', 
-          color: '#22D3EE', 
-          marginBottom: '1rem', 
-          fontWeight: '600' 
-        }}>
-          {data.p2.city} → {data.p1.city}
+                {/* Times + duration */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.6rem', fontSize: '14px', color: '#E8E8ED' }}>
+                  <span style={{ fontWeight: '500' }}>{dep}</span>
+                  <span style={{ color: '#8B8FA3' }}>→</span>
+                  <span style={{ fontWeight: '500' }}>{arr}</span>
+                  {formatDuration(offer.durationRaw) && (
+                    <span style={{ color: '#8B8FA3', fontSize: '13px', marginLeft: 'auto' }}>
+                      ⏱ {formatDuration(offer.durationRaw)}
+                    </span>
+                  )}
+                </div>
+
+                {/* Stops */}
+                <div style={{ fontSize: '13px', color: '#8B8FA3', marginBottom: '0.6rem' }}>
+                  {offer.stops === 0 ? '✈️ Direct' : `${offer.stops} stop${offer.stops > 1 ? 's' : ''}`}
+                </div>
+
+                {/* Baggage */}
+                <div style={{ display: 'flex', gap: '16px', fontSize: '12px', color: '#8B8FA3', marginBottom: '0.75rem' }}>
+                  <span>🎒 Carry-on: {carryOn}</span>
+                  <span>🧳 Checked: {checked}</span>
+                </div>
+
+                {/* Refundable / Changeable badges */}
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                  {offer.refundable !== null && (
+                    <span style={{
+                      padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: '500',
+                      background: offer.refundable ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                      border: `1px solid ${offer.refundable ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                      color: offer.refundable ? '#4ade80' : '#f87171',
+                    }}>
+                      {offer.refundable ? '✓ Refundable' : '✗ Non-refundable'}
+                    </span>
+                  )}
+                  {offer.changeable !== null && (
+                    <span style={{
+                      padding: '3px 10px', borderRadius: '100px', fontSize: '11px', fontWeight: '500',
+                      background: offer.changeable ? 'rgba(34,211,238,0.12)' : 'rgba(239,68,68,0.12)',
+                      border: `1px solid ${offer.changeable ? 'rgba(34,211,238,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                      color: offer.changeable ? '#22d3ee' : '#f87171',
+                    }}>
+                      {offer.changeable ? '✓ Changeable' : '✗ Non-changeable'}
+                    </span>
+                  )}
+                </div>
+
+                {/* Skyscanner */}
+                <button
+                  onClick={() => window.open(skyscannerBase, '_blank')}
+                  style={{
+                    width: '100%', padding: '12px',
+                    background: 'rgba(0,160,154,0.12)',
+                    border: '1px solid rgba(0,160,154,0.35)',
+                    borderRadius: '100px', color: '#2dd4bf',
+                    fontSize: '13px', fontWeight: '500', cursor: 'pointer',
+                  }}
+                >
+                  Search on Skyscanner →
+                </button>
+              </div>
+            )
+          })}
         </div>
-
-        {p2ToP1Price ? (
-          <>
-            <div style={{ marginBottom: '2px' }}>
-              <div style={{
-                fontFamily: "'Geist', sans-serif",
-                fontSize: '2.5rem',
-                fontWeight: '600',
-                background: 'linear-gradient(135deg, #22D3EE, #7C6AEF)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}>
-                {p2sym}{p2ToP1Price.toLocaleString()}
-              </div>
-            </div>
-            <div style={{ fontSize: '11px', color: '#8B8FA3', marginBottom: '0.75rem', letterSpacing: '0.04em' }}>round trip</div>
-            <div style={{
-              fontSize: '13px',
-              color: '#8B8FA3',
-              marginBottom: '0.75rem',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <path d="M14 8H2M14 8L10 4M14 8L10 12" stroke="#22D3EE" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-              Real price from Duffel
-            </div>
-            {(p2Card?.p2_airline || p2Card?.p2_duration || p2Card?.p2_stops != null) && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '13px', color: '#8B8FA3' }}>
-                {p2Card.p2_airline && <span>{p2Card.p2_airline}</span>}
-                {p2Card.p2_duration && <span>⏱ {formatDuration(p2Card.p2_duration)}</span>}
-                {p2Card.p2_stops != null && (
-                  <span>{p2Card.p2_stops === 0 ? 'Direct' : `${p2Card.p2_stops} stop${p2Card.p2_stops > 1 ? 's' : ''}`}</span>
-                )}
-              </div>
-            )}
-          </>
-        ) : (
-          <div style={{ fontSize: '14px', color: '#8B8FA3', padding: '1rem 0' }}>
-            No direct flights found for these dates. Try flexible dates or check Google Flights for connecting routes.
-          </div>
-        )}
-      </div>
-
-      {/* Exchange rate context */}
-      <div style={{
-        background: 'rgba(30,32,48,0.6)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(124,106,239,0.15)',
-        borderRadius: '12px',
-        padding: '1rem 1.25rem',
-        marginBottom: '1.5rem',
-        fontSize: '12px',
-        color: '#8B8FA3',
-        lineHeight: '1.6',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-      }}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-          <circle cx="8" cy="8" r="6" stroke="#7C6AEF" strokeWidth="2"/>
-          <path d="M5 8H11M8 5V11" stroke="#7C6AEF" strokeWidth="2" strokeLinecap="round"/>
-        </svg>
-        {"Prices shown in each partner's currency. Exchange rates updated daily."}
-      </div>
+      )}
 
       {/* Actions */}
       <button
-  onClick={saveTripToSupabase}
-  disabled={tripSaved}
-  style={{
-    width: '100%', padding: '14px',
-    background: tripSaved ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)',
-    border: `1px solid ${tripSaved ? 'rgba(124,106,239,0.2)' : 'rgba(255,255,255,0.1)'}`,
-    borderRadius: '100px',
-    color: tripSaved ? '#8B8FA3' : '#E8E8ED',
-    fontSize: '13px', fontWeight: '500',
-    cursor: tripSaved ? 'default' : 'pointer',
-    marginBottom: '10px',
-  }}
->
-  {tripSaved ? 'Saved to dashboard' : 'Save to dashboard'}
-</button>
+        onClick={saveTripToSupabase}
+        disabled={tripSaved}
+        style={{
+          width: '100%', padding: '14px',
+          background: tripSaved ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.05)',
+          border: `1px solid ${tripSaved ? 'rgba(124,106,239,0.2)' : 'rgba(255,255,255,0.1)'}`,
+          borderRadius: '100px', color: tripSaved ? '#8B8FA3' : '#E8E8ED',
+          fontSize: '13px', fontWeight: '500',
+          cursor: tripSaved ? 'default' : 'pointer', marginBottom: '10px',
+        }}
+      >
+        {tripSaved ? 'Saved to dashboard' : 'Save to dashboard'}
+      </button>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px' }}>
         <div>
           <button
@@ -528,28 +401,28 @@ async function saveTripToSupabase() {
             Opens in browser · complete booking there to confirm your price
           </div>
         </div>
-        <button onClick={() => window.open(generateAffiliateLink('booking', { city: data.p2.city, checkin: data.dates.from, checkout: data.dates.to }), '_blank')} style={{ width: '100%', padding: '14px', background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '100px', color: '#22D3EE', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
+        <button
+          onClick={() => window.open(generateAffiliateLink('booking', { city: data.p2.city, checkin: data.dates.from, checkout: data.dates.to }), '_blank')}
+          style={{ width: '100%', padding: '14px', background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)', borderRadius: '100px', color: '#22D3EE', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+        >
           🏨 Book your stay in {data.p2.city}
         </button>
-        <button onClick={() => window.open(generateAffiliateLink('wise'), '_blank')} style={{ width: '100%', padding: '14px', background: 'rgba(244,114,182,0.1)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: '100px', color: '#F472B6', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}>
+        <button
+          onClick={() => window.open(generateAffiliateLink('wise'), '_blank')}
+          style={{ width: '100%', padding: '14px', background: 'rgba(244,114,182,0.1)', border: '1px solid rgba(244,114,182,0.3)', borderRadius: '100px', color: '#F472B6', fontSize: '13px', fontWeight: '500', cursor: 'pointer' }}
+        >
           💸 Send money fee-free with Wise
         </button>
       </div>
-      
+
       <button
         onClick={() => navigate('/quiz')}
         style={{
-          width: '100%',
-          padding: '16px',
+          width: '100%', padding: '16px',
           background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
-          border: 'none',
-          borderRadius: '100px',
-          color: '#fff',
-          fontSize: '15px',
-          fontWeight: '600',
-          cursor: 'pointer',
-          marginBottom: '10px',
-          boxShadow: '0 0 30px rgba(124,106,239,0.4)',
+          border: 'none', borderRadius: '100px', color: '#fff',
+          fontSize: '15px', fontWeight: '600', cursor: 'pointer',
+          marginBottom: '10px', boxShadow: '0 0 30px rgba(124,106,239,0.4)',
         }}
       >
         Plan a trip together
@@ -558,14 +431,9 @@ async function saveTripToSupabase() {
       <button
         onClick={() => navigate('/dashboard')}
         style={{
-          width: '100%',
-          padding: '16px',
-          background: 'none',
-          border: '1px solid rgba(124,106,239,0.2)',
-          borderRadius: '100px',
-          color: '#8B8FA3',
-          fontSize: '14px',
-          cursor: 'pointer',
+          width: '100%', padding: '16px', background: 'none',
+          border: '1px solid rgba(124,106,239,0.2)', borderRadius: '100px',
+          color: '#8B8FA3', fontSize: '14px', cursor: 'pointer',
         }}
       >
         Back to dashboard

@@ -1250,6 +1250,75 @@ if (!data.data?.offers?.length) return null
   }
 }
 
+async function searchDuffelVisitOffers(originIata, destIata, departDate, returnDate) {
+  try {
+    const body = JSON.stringify({
+      data: {
+        slices: [
+          { origin: originIata, destination: destIata, departure_date: departDate, max_connections: 2 },
+          { origin: destIata, destination: originIata, departure_date: returnDate, max_connections: 2 },
+        ],
+        passengers: [{ type: 'adult' }],
+        cabin_class: 'economy',
+        max_connections: 2,
+      }
+    })
+    const makeReq = () => fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=8000', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.DUFFEL_API_KEY}`,
+        'Duffel-Version': 'v2',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body
+    })
+    let res = await makeReq()
+    if (res.status === 429) {
+      await new Promise(r => setTimeout(r, 2000))
+      res = await makeReq()
+    }
+    const data = await res.json()
+    if (!data.data?.offers?.length) return []
+    const allOffers = data.data.offers
+    console.log('[Duffel visit] total offers:', allOffers.length)
+    console.log('[Duffel visit] unique options:', [...new Set(allOffers.map(o => `${o.owner?.name} $${o.total_amount}`))].join(', '))
+    const seen = new Set()
+    const result = []
+    for (const offer of allOffers.sort((a, b) => parseFloat(a.total_amount) - parseFloat(b.total_amount))) {
+      const price = parseFloat(offer.total_amount)
+      if (isNaN(price) || price <= 0) continue
+      const slice0 = offer.slices?.[0]
+      const firstSeg = slice0?.segments?.[0]
+      const flightNum = firstSeg?.marketing_carrier_flight_number || ''
+      const key = `${flightNum}-${Math.round(price)}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      const firstPax = firstSeg?.passengers?.[0]
+      result.push({
+        price: Math.round(price),
+        currency: offer.total_currency || 'USD',
+        airline: firstSeg?.marketing_carrier?.name || null,
+        flightNumber: flightNum || null,
+        departureAt: firstSeg?.departing_at || null,
+        arrivalAt: slice0?.segments?.at(-1)?.arriving_at || null,
+        durationRaw: slice0?.duration || null,
+        stops: (slice0?.segments?.length ?? 1) - 1,
+        fareBrandName: slice0?.fare_brand_name || null,
+        cabinClass: firstPax?.cabin_class || null,
+        baggages: firstPax?.baggages || [],
+        refundable: offer.conditions?.refund_before_departure?.allowed ?? null,
+        changeable: offer.conditions?.change_before_departure?.allowed ?? null,
+      })
+      if (result.length >= 5) break
+    }
+    return result
+  } catch (e) {
+    console.error('Duffel visit search error:', e)
+    return []
+  }
+}
+
 async function searchDuffelFlightsWithDetail(originIata, destIata, departDate, returnDate) {
   try {
     const body = JSON.stringify({
@@ -1526,6 +1595,14 @@ app.post('/api/flight-prices', requireAppSecret, [
             leg2: bothToDestPrice || 0,
           },
           source: 'duffel'
+        }
+      } else if (routing === 'visit') {
+        const offers = await searchDuffelVisitOffers(p1IATA, destIATA, departDate, returnDate)
+        console.log(`Visit offers for ${destName} — count: ${offers.length}, cheapest: ${offers[0]?.price}`)
+        priceResults[resultKey] = {
+          p1: offers[0]?.price ?? null,
+          p1_offers: offers,
+          source: offers.length ? 'duffel' : 'estimate',
         }
       }
     } catch (e) {
