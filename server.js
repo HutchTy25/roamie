@@ -1280,7 +1280,10 @@ async function searchDuffelFlightsWithDetail(originIata, destIata, departDate, r
     }
     const data = await res.json()
     if (!data.data?.offers?.length) return null
-    const sorted = data.data.offers
+    const offers = data.data.offers
+    console.log('[Duffel] total offers:', offers.length)
+    console.log('[Duffel] unique options:', [...new Set(offers.map(o => `${o.owner?.name} $${o.total_amount}`))].join(', '))
+    const sorted = offers
       .map(o => ({ price: parseFloat(o.total_amount), offer: o }))
       .filter(({ price }) => !isNaN(price) && price > 0)
       .sort((a, b) => a.price - b.price)
