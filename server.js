@@ -1259,7 +1259,6 @@ async function searchDuffelVisitOffers(originIata, destIata, departDate, returnD
           { origin: destIata, destination: originIata, departure_date: returnDate, max_connections: 2 },
         ],
         passengers: [{ type: 'adult' }],
-        cabin_class: 'economy',
         max_connections: 2,
       }
     })
@@ -1283,35 +1282,39 @@ async function searchDuffelVisitOffers(originIata, destIata, departDate, returnD
     const allOffers = data.data.offers
     console.log('[Duffel visit] total offers:', allOffers.length)
     console.log('[Duffel visit] unique options:', [...new Set(allOffers.map(o => `${o.owner?.name} $${o.total_amount}`))].join(', '))
-    const seen = new Set()
-    const result = []
+    const cabinOrder = ['economy', 'premium_economy', 'business', 'first']
+    const byClass = {}
     for (const offer of allOffers.sort((a, b) => parseFloat(a.total_amount) - parseFloat(b.total_amount))) {
       const price = parseFloat(offer.total_amount)
       if (isNaN(price) || price <= 0) continue
-      const slice0 = offer.slices?.[0]
-      const firstSeg = slice0?.segments?.[0]
-      const flightNum = firstSeg?.marketing_carrier_flight_number || ''
-      const key = `${flightNum}-${firstSeg?.departing_at || ''}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      const firstPax = firstSeg?.passengers?.[0]
-      result.push({
-        price: Math.round(price),
-        currency: offer.total_currency || 'USD',
-        airline: firstSeg?.marketing_carrier?.name || null,
-        flightNumber: flightNum || null,
-        departureAt: firstSeg?.departing_at || null,
-        arrivalAt: slice0?.segments?.at(-1)?.arriving_at || null,
-        durationRaw: slice0?.duration || null,
-        stops: (slice0?.segments?.length ?? 1) - 1,
-        fareBrandName: slice0?.fare_brand_name || null,
-        cabinClass: firstPax?.cabin_class || null,
-        baggages: firstPax?.baggages || [],
-        refundable: offer.conditions?.refund_before_departure?.allowed ?? null,
-        changeable: offer.conditions?.change_before_departure?.allowed ?? null,
-      })
-      if (result.length >= 5) break
+      const cabin = offer.slices?.[0]?.segments?.[0]?.passengers?.[0]?.cabin_class
+      if (!cabin || byClass[cabin]) continue
+      byClass[cabin] = offer
     }
+    const result = cabinOrder
+      .filter(c => byClass[c])
+      .map(c => {
+        const offer = byClass[c]
+        const price = parseFloat(offer.total_amount)
+        const slice0 = offer.slices?.[0]
+        const firstSeg = slice0?.segments?.[0]
+        const firstPax = firstSeg?.passengers?.[0]
+        return {
+          price: Math.round(price),
+          currency: offer.total_currency || 'USD',
+          airline: firstSeg?.marketing_carrier?.name || null,
+          flightNumber: firstSeg?.marketing_carrier_flight_number || null,
+          departureAt: firstSeg?.departing_at || null,
+          arrivalAt: slice0?.segments?.at(-1)?.arriving_at || null,
+          durationRaw: slice0?.duration || null,
+          stops: (slice0?.segments?.length ?? 1) - 1,
+          fareBrandName: slice0?.fare_brand_name || null,
+          cabinClass: firstPax?.cabin_class || null,
+          baggages: firstPax?.baggages || [],
+          refundable: offer.conditions?.refund_before_departure?.allowed ?? null,
+          changeable: offer.conditions?.change_before_departure?.allowed ?? null,
+        }
+      })
     return result
   } catch (e) {
     console.error('Duffel visit search error:', e)
