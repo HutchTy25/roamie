@@ -11,6 +11,13 @@ function formatDuration(iso) {
   return [h && `${h}h`, m && `${m}m`].filter(Boolean).join(' ')
 }
 
+const CABIN_TIERS = {
+  economy:         { icon: '✈️', label: 'Economy',         subtitle: 'Getting there' },
+  premium_economy: { icon: '⭐', label: 'Premium Economy', subtitle: 'Treating yourself' },
+  business:        { icon: '💼', label: 'Business',        subtitle: 'Special occasion' },
+  first:           { icon: '👑', label: 'First Class',     subtitle: 'Anniversary worthy' },
+}
+
 const CURR_SYMBOLS = {
   USD: '$', GBP: '£', EUR: '€', CAD: 'C$', AUD: 'A$',
   NZD: 'NZ$', JPY: '¥', CNY: '¥', KRW: '₩', PHP: '₱',
@@ -264,7 +271,8 @@ export default function VisitResults() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '1.5rem' }}>
           {offers.map((offer, i) => {
-            const sym = CURR_SYMBOLS[offer.currency] || '$'
+            const sym = CURR_SYMBOLS[data?.p1?.currency] || '$'
+            const tier = CABIN_TIERS[offer.cabinClass] || { icon: '✈️', label: offer.cabinClass || 'Economy', subtitle: '' }
             const dep = offer.departureAt
               ? new Date(offer.departureAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               : '—'
@@ -281,17 +289,27 @@ export default function VisitResults() {
                 animation: `fadeSlideUp 0.4s ease ${i * 0.08}s forwards`,
                 opacity: 0,
               }}>
+                {/* Tier header */}
+                <div style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  <div style={{ fontSize: '11px', color: '#8B8FA3', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '4px' }}>
+                    {tier.subtitle}
+                  </div>
+                  <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#E8E8ED' }}>
+                    {tier.icon} {tier.label}
+                  </div>
+                </div>
+
                 {/* Airline + price */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                   <div>
-                    <div style={{ fontSize: '15px', fontWeight: '600', color: '#E8E8ED' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#E8E8ED' }}>
                       {offer.airline || 'Unknown airline'}
                     </div>
-                    {offer.flightNumber && (
-                      <div style={{ fontSize: '12px', color: '#8B8FA3', marginTop: '2px' }}>{offer.flightNumber}</div>
-                    )}
                     {offer.fareBrandName && (
                       <div style={{ fontSize: '11px', color: '#8B8FA3', marginTop: '2px' }}>{offer.fareBrandName}</div>
+                    )}
+                    {offer.flightNumber && (
+                      <div style={{ fontSize: '11px', color: '#8B8FA3', marginTop: '2px' }}>{offer.flightNumber}</div>
                     )}
                   </div>
                   <div style={{ textAlign: 'right' }}>

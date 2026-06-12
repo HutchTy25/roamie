@@ -1628,6 +1628,14 @@ app.post('/api/flight-prices', requireAppSecret, [
             p2: { currency: p2Currency, maxSpend: Number(p2Budget) || 0 } }
         )
         finalResults[destName] = { ...prices, ...computed }
+        if (prices.p1_offers?.length) {
+          const p1Rate = exchangeRates[p1Currency] || 1
+          finalResults[destName].p1_offers = prices.p1_offers.map(o => ({
+            ...o,
+            price: Math.round(o.price * p1Rate),
+            currency: p1Currency,
+          }))
+        }
       }
     }
 
