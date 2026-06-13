@@ -46,6 +46,18 @@ const CURRENCIES = [
   { code: 'COP', symbol: 'COL$', label: 'COP' },
   { code: 'ARS', symbol: 'AR$', label: 'ARS' },
   { code: 'CLP', symbol: 'CL$', label: 'CLP' },
+  { code: 'TWD', symbol: 'NT$', label: 'TWD' },
+  { code: 'HKD', symbol: 'HK$', label: 'HKD' },
+  { code: 'CHF', symbol: 'CHF', label: 'CHF' },
+  { code: 'SEK', symbol: 'kr', label: 'SEK' },
+  { code: 'NOK', symbol: 'kr', label: 'NOK' },
+  { code: 'DKK', symbol: 'kr', label: 'DKK' },
+  { code: 'PLN', symbol: 'zł', label: 'PLN' },
+  { code: 'CZK', symbol: 'Kč', label: 'CZK' },
+  { code: 'TRY', symbol: '₺', label: 'TRY' },
+  { code: 'ILS', symbol: '₪', label: 'ILS' },
+  { code: 'HUF', symbol: 'Ft', label: 'HUF' },
+  { code: 'RON', symbol: 'lei', label: 'RON' },
 ]
 
 const VIBES = [

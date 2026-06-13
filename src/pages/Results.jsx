@@ -129,6 +129,9 @@ export default function Results({ profile }) {
     INR: '₹', PKR: '₨', BDT: '৳', NGN: '₦', GHS: 'GH₵',
     KES: 'KSh', ZAR: 'R', EGP: 'E£', AED: 'AED', SAR: '﷼',
     BRL: 'R$', MXN: 'MX$', COP: 'COL$', ARS: 'AR$', CLP: 'CL$',
+    TWD: 'NT$', HKD: 'HK$', CHF: 'CHF', SEK: 'kr', NOK: 'kr',
+    DKK: 'kr', PLN: 'zł', CZK: 'Kč', TRY: '₺', ILS: '₪',
+    HUF: 'Ft', RON: 'lei',
   }
 
   useEffect(() => {
