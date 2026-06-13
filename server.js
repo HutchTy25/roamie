@@ -1280,8 +1280,6 @@ async function searchDuffelVisitOffers(originIata, destIata, departDate, returnD
     const data = await res.json()
     if (!data.data?.offers?.length) return []
     const allOffers = data.data.offers
-    console.log('[Duffel visit] total offers:', allOffers.length)
-    console.log('[Duffel visit] unique options:', [...new Set(allOffers.map(o => `${o.owner?.name} $${o.total_amount}`))].join(', '))
     const cabinOrder = ['economy', 'premium_economy', 'business', 'first']
     const byClass = {}
     for (const offer of allOffers.sort((a, b) => parseFloat(a.total_amount) - parseFloat(b.total_amount))) {
@@ -1601,7 +1599,6 @@ app.post('/api/flight-prices', requireAppSecret, [
         }
       } else if (routing === 'visit') {
         const offers = await searchDuffelVisitOffers(p1IATA, destIATA, departDate, returnDate)
-        console.log(`Visit offers for ${destName} — count: ${offers.length}, cheapest: ${offers[0]?.price}`)
         priceResults[resultKey] = {
           p1: offers[0]?.price ?? null,
           p1_offers: offers,
