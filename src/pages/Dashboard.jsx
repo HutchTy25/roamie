@@ -1234,9 +1234,9 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
             {/* Travel Style card */}
             {travelStyle ? (() => {
               const archetypeLabel = {
-                sanctuary: 'Sanctuary — calm, value-first destinations',
-                odyssey: 'Odyssey — high-energy, experience-driven trips',
-                horizon: 'Horizon — emerging and off-the-beaten-path places',
+                sanctuary: 'Sanctuary — you travel to rest and reconnect',
+                odyssey: 'Odyssey — you travel for adventure and new experiences',
+                horizon: 'Horizon — you love the perfect mix of rest and discovery',
               }
               const insights = [
                 travelStyle.topArchetype && {
