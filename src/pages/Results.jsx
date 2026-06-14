@@ -1369,15 +1369,25 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
               </div>
 
               {(() => {
-                const p1Airline = dest.synchronized_arrival?.p1_airline || dest.cost_breakdown?.p1_airline || dest.p1_airline
-                const p1Flight  = dest.synchronized_arrival?.p1_flight_number || dest.cost_breakdown?.p1_flight_number || dest.p1_flight_number
-                const p2Airline = dest.synchronized_arrival?.p2_airline || dest.cost_breakdown?.p2_airline || dest.p2_airline
-                const p2Flight  = dest.synchronized_arrival?.p2_flight_number || dest.cost_breakdown?.p2_flight_number || dest.p2_flight_number
+                const p1Airline = dest.synchronized_arrival?.p1_airline || dest.p1_airline
+                const p1Flight  = dest.synchronized_arrival?.p1_flight_number || dest.p1_flight_number
+                const p2Airline = dest.synchronized_arrival?.p2_airline || dest.p2_airline
+                const p2Flight  = dest.synchronized_arrival?.p2_flight_number || dest.p2_flight_number
                 if (!p1Airline && !p2Airline) return null
+                const fmtDur = iso => {
+                  if (!iso) return null
+                  const h = iso.match(/(\d+)H/)?.[1]
+                  const m = iso.match(/(\d+)M/)?.[1]
+                  if (!h && !m) return null
+                  return [h && `${h}h`, m && `${m}m`].filter(Boolean).join(' ')
+                }
+                const fmtStops = n => n === 0 ? 'Direct' : n === 1 ? '1 stop' : `${n} stops`
+                const p1Parts = [p1Airline, fmtDur(dest.p1_duration), dest.p1_stops != null ? fmtStops(dest.p1_stops) : null].filter(Boolean)
+                const p2Parts = [p2Airline, fmtDur(dest.p2_duration), dest.p2_stops != null ? fmtStops(dest.p2_stops) : null].filter(Boolean)
                 return (
                   <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: '12px', padding: '12px 14px', marginBottom: '8px', fontSize: '13px', color: 'rgba(255,255,255,0.65)', border: `1px solid ${THEME.border}`, display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    {p1Airline && <div>✈️ P1: {p1Airline}{p1Flight ? ` · ${p1Flight}` : ''}</div>}
-                    {p2Airline && <div>✈️ P2: {p2Airline}{p2Flight ? ` · ${p2Flight}` : ''}</div>}
+                    {p1Airline && <div>✈️ P1: {p1Parts.join(' · ')}{p1Flight ? ` · ${p1Flight}` : ''}</div>}
+                    {p2Airline && <div>✈️ P2: {p2Parts.join(' · ')}{p2Flight ? ` · ${p2Flight}` : ''}</div>}
                   </div>
                 )
               })()}
