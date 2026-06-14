@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Plane, MapPin } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../supabase'
@@ -253,6 +253,35 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
     : partnerLocalHour >= 8 && partnerLocalHour < 18 ? 'rgba(96,165,250,0.4)'
     : partnerLocalHour >= 18 && partnerLocalHour < 20 ? 'rgba(192,132,252,0.4)'
     : 'rgba(99,102,241,0.4)'
+
+  const travelStyle = useMemo(() => {
+    if (trips.length < 2) return null
+
+    const vibeCounts = {}
+    trips.forEach(t => (t.vibes || []).forEach(v => { vibeCounts[v] = (vibeCounts[v] || 0) + 1 }))
+    const topVibe = Object.entries(vibeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+
+    const archetypeCounts = {}
+    trips.forEach(t => {
+      const arch = t.destinations?.[0]?.archetype
+      if (arch) archetypeCounts[arch] = (archetypeCounts[arch] || 0) + 1
+    })
+    const topArchetype = Object.entries(archetypeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+
+    const lengths = trips
+      .filter(t => t.dates_from && t.dates_to)
+      .map(t => Math.round((new Date(t.dates_to) - new Date(t.dates_from)) / 86400000))
+      .filter(n => n > 0)
+    const avgLength = lengths.length > 0 ? Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length) : null
+
+    const regionCounts = {}
+    trips.forEach(t => { if (t.region) regionCounts[t.region] = (regionCounts[t.region] || 0) + 1 })
+    const topRegion = Object.entries(regionCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+
+    const committedCount = trips.filter(t => t.committed).length
+
+    return { topVibe, topArchetype, avgLength, topRegion, committedCount, total: trips.length }
+  }, [trips])
 
   return (
     <div style={{
@@ -1202,6 +1231,57 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
               </div>
             </div>
 
+            {/* Travel Style card */}
+            {travelStyle ? (() => {
+              const archetypeLabel = {
+                sanctuary: 'Sanctuary — calm, value-first destinations',
+                odyssey: 'Odyssey — high-energy, experience-driven trips',
+                horizon: 'Horizon — emerging and off-the-beaten-path places',
+              }
+              const insights = [
+                travelStyle.topArchetype && {
+                  label: 'Archetype',
+                  value: archetypeLabel[travelStyle.topArchetype] || travelStyle.topArchetype,
+                },
+                travelStyle.topVibe && {
+                  label: 'Top vibe',
+                  value: travelStyle.topVibe,
+                },
+                travelStyle.avgLength && {
+                  label: 'Avg trip length',
+                  value: `${travelStyle.avgLength} night${travelStyle.avgLength !== 1 ? 's' : ''}`,
+                },
+                !travelStyle.avgLength && travelStyle.topRegion && {
+                  label: 'Favorite region',
+                  value: travelStyle.topRegion,
+                },
+              ].filter(Boolean).slice(0, 3)
+
+              return (
+                <div className="glass-card" style={{ padding: '20px', marginBottom: '16px' }}>
+                  <div style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: colors.textMuted, fontWeight: '500', marginBottom: '14px' }}>
+                    Your Travel Style
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {insights.map(insight => (
+                      <div key={insight.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
+                        <span style={{ fontSize: '12px', color: colors.textMuted, flexShrink: 0 }}>{insight.label}</span>
+                        <span style={{ fontSize: '13px', color: colors.text, fontWeight: '500', textAlign: 'right' }}>{insight.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: `1px solid ${colors.border}`, fontSize: '11px', color: colors.textMuted }}>
+                    Based on {travelStyle.total} saved trip{travelStyle.total !== 1 ? 's' : ''}
+                    {travelStyle.committedCount > 0 && ` · ${travelStyle.committedCount} committed`}
+                  </div>
+                </div>
+              )
+            })() : !loading && trips.length < 2 && (
+              <div style={{ textAlign: 'center', padding: '20px', fontSize: '12px', color: colors.textMuted, marginBottom: '16px' }}>
+                Save 2 trips to unlock your travel style
+              </div>
+            )}
+
             <button
               onClick={() => setShowFeedback(true)}
               style={{
@@ -1210,7 +1290,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
                 width: '100%', textAlign: 'center', marginBottom: '12px',
               }}
             >
-              💬 Share feedback
+              Share feedback
             </button>
 
             <button
