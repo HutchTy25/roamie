@@ -471,7 +471,7 @@ async function checkProAccess(userId, supabase) {
   }
 
   const searchCount = profile.search_count || 0
-  if (searchCount >= 1) return cache({ allowed: false, reason: 'limit_reached' })
+  if (searchCount >= 3) return cache({ allowed: false, reason: 'limit_reached' })
 
   await supabase.from('profiles').update({ search_count: searchCount + 1 }).eq('id', userId)
   return cache({ allowed: true, reason: 'trial' })

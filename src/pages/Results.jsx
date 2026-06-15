@@ -338,7 +338,7 @@ async function fetchRecommendations() {
   const { data: { session: limitSession } } = await supabase.auth.getSession()
   if (limitSession && !isPro) {
     const tripCount = parseInt(localStorage.getItem('roamie_trip_count') || '0', 10)
-    if (tripCount >= 1) {
+    if (tripCount >= 3) {
       setLoading(false)
       setPaywallHit(true)
       return
