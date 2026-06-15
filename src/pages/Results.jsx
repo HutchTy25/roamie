@@ -463,7 +463,7 @@ Return ONLY this JSON, no markdown, no explanation:
       method: 'POST',
       headers: authHeaders,
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 3500,
         messages: [{ role: 'user', content: destinationPrompt }]
       })
@@ -517,7 +517,7 @@ Return ONLY this JSON, no markdown, no explanation:
       method: 'POST',
       headers: authHeaders2,
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 4000,
         messages: [{ role: 'user', content: breakdownPrompt }],
         flightPrices,
