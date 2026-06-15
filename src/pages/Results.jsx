@@ -852,7 +852,7 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '2rem', background: THEME.bg, textAlign: 'center' }}>
       <Starfield />
       <div style={{ fontSize: '40px', position: 'relative', zIndex: 1 }}>🔒</div>
-      <h2 style={{ fontSize: '22px', fontWeight: '700', color: THEME.text, margin: 0, position: 'relative', zIndex: 1 }}>You've used your free search</h2>
+      <h2 style={{ fontSize: '22px', fontWeight: '700', color: THEME.text, margin: 0, position: 'relative', zIndex: 1 }}>You've used your free searches</h2>
       <p style={{ fontSize: '14px', color: THEME.muted, margin: 0, maxWidth: '280px', lineHeight: '1.5', position: 'relative', zIndex: 1 }}>Upgrade to Roamie Pro to keep planning trips together.</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxWidth: '300px', position: 'relative', zIndex: 1 }}>
         <button
