@@ -350,17 +350,12 @@ async function fetchRecommendations() {
 
   const destinationPrompt = `You are Roamie, a couples travel planner. Assign exactly one destination to each of three archetypes: Sanctuary, Odyssey, and Horizon.
 
-PURCHASING POWER CONTEXT (use this to guide archetype assignment):
-- Partner 1 home city: ${data.p1.city} | Cost of Living Index: ${getCOLIndex(data.p1.iata)}
-- Partner 2 home city: ${data.p2.city} | Cost of Living Index: ${getCOLIndex(data.p2.iata)}
-- A destination with COL significantly below both indices = Sanctuary territory
-- A destination with COL above both indices = Odyssey territory
-- A destination with COL between or near both indices = Horizon territory
+Archetype definitions (based on experience type only — cost is handled separately):
+- Sanctuary: Low intensity. Rest, reconnection, slow pace. A place to decompress together with no agenda. Beach towns, spa retreats, quiet cities.
+- Odyssey: High intensity. Adventure, packed itinerary, novelty. Museums, hikes, nightlife, street food. A trip that gives them stories.
+- Horizon: Deliberate blend. Stated positively — enough to explore, enough to rest. Not a compromise, a conscious choice.
 
-Archetype definitions:
-- Sanctuary: MUST be a purchasing power haven for BOTH partners. The destination COL must be meaningfully lower than both home cities — costs feel lighter than home for both people. Think beach towns, Southeast Asia, Southern Europe, affordable coastal cities. This is financial breathing room + relaxation combined. Never pick an expensive city for Sanctuary.
-- Odyssey: Adventure, culture, activities. COL can be higher — the financial stretch is part of the adventure. It's okay if this destination costs more than home for one or both partners. The experience justifies it. Museums, hikes, street food, nightlife, high engagement.
-- Horizon: The balanced middle. COL should be roughly comparable to or slightly below both partners' home cities. Neither a financial stretch nor a steal — comfortable and fair for both. The destination surprises them with both rest and exploration without breaking the bank.
+Weight all three toward the couple's stated vibes. If their vibes cluster around one archetype, still return one of each but make the off-vibe picks the closest honest match to what they asked for.
 
 PARTNER DETAILS:
 - Partner 1: Lives in ${data.p1.city} | Currency: ${data.p1.currency} (${p1sym}) | Max budget: ${p1sym}${data.p1.maxSpend.toLocaleString()} TOTAL
