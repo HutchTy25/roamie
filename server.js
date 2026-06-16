@@ -727,7 +727,7 @@ const enhancedMessages = messages.map((msg, i) => {
           claudeBody
         ),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Claude timeout')), 35000)
+          setTimeout(() => reject(new Error('Claude timeout')), 55000)
         ),
       ])
     } catch (err) {
