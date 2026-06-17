@@ -94,7 +94,6 @@ export default function Results({ profile }) {
   const [tripBasics, setTripBasics] = useState(null)
   const [tripSaved, setTripSaved] = useState(false)
   const [showInstallBanner, setShowInstallBanner] = useState(false)
-  const [signupExpandGate, setSignupExpandGate] = useState(false)
   const [empathyExpanded, setEmpathyExpanded] = useState(false)
   const [cancelToast, setCancelToast] = useState(false)
   const [partialResult, setPartialResult] = useState(null)
@@ -1174,8 +1173,8 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
           position: 'relative',
         }}>
 
-          {/* Signup overlay — cards 2+3 for logged-out users, or expand gate on any card */}
-          {((!userId && activeCard > 0) || signupExpandGate || proExpandGate) && (
+          {/* Signup overlay — cards 2+3 for logged-out users, or Pro expand gate on any card */}
+          {((!userId && activeCard > 0) || proExpandGate) && (
             <div style={{
               position: 'absolute', inset: 0, zIndex: 10, borderRadius: '20px',
               background: 'rgba(26,27,38,0.92)', backdropFilter: 'blur(16px)',
@@ -1214,14 +1213,6 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
                   >
                     Create free account →
                   </button>
-                  {signupExpandGate && (
-                    <button
-                      onClick={() => setSignupExpandGate(false)}
-                      style={{ background: 'none', border: 'none', color: THEME.muted, fontSize: '13px', cursor: 'pointer', marginTop: '4px' }}
-                    >
-                      Not now
-                    </button>
-                  )}
                 </>
               )}
             </div>
@@ -1301,7 +1292,7 @@ All cost_breakdown values are plain USD numbers. Return ONLY the JSON array. Sta
           {!isStretch && !costsLoading && (
             <button
               onClick={() => {
-                if (!userId) { setSignupExpandGate(true); return }
+                if (!userId) { navigate('/login'); return }
                 if (!isPro) { setProExpandGate(true); return }
                 if (!expanded) posthog.capture('details_expanded', { archetype: dest.archetype, destination: dest.name })
                 setExpanded(e => !e)
