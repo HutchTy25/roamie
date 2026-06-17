@@ -1192,6 +1192,30 @@ app.post('/api/disconnect', requireAuth, async (req, res) => {
   }
 })
 
+// Duffel offer requests can hang well past their server-side supplier_timeout
+// (stalled connection, slow supplier). Bound every call client-side with an
+// AbortController so one stuck request can't block the whole response (504).
+// On abort, fetch throws and each caller's try/catch falls back to null/[].
+async function duffelOfferRequest(body, timeoutMs = 12000) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=8000', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.DUFFEL_API_KEY}`,
+        'Duffel-Version': 'v2',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body,
+      signal: controller.signal,
+    })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 async function searchDuffelFlights(originIata, destIata, departDate, returnDate) {
   try {
     const body = JSON.stringify({
@@ -1206,30 +1230,12 @@ max_connections: 2
       }
     })
 
-    const res = await fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=8000', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.DUFFEL_API_KEY}`,
-        'Duffel-Version': 'v2',
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body
-    })
+    const res = await duffelOfferRequest(body)
 
    if (res.status === 429) {
   console.log('Duffel rate limited, waiting 2s...')
   await new Promise(r => setTimeout(r, 2000))
-  const retry = await fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=8000', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.DUFFEL_API_KEY}`,
-      'Duffel-Version': 'v2',
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    body
-  })
+  const retry = await duffelOfferRequest(body)
   const retryData = await retry.json()
   console.log('Duffel retry status:', retry.status)
   console.log('Duffel retry offers:', retryData.data?.offers?.length)
@@ -1271,16 +1277,7 @@ async function searchDuffelVisitOffers(originIata, destIata, departDate, returnD
         max_connections: 2,
       }
     })
-    const makeReq = () => fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=8000', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.DUFFEL_API_KEY}`,
-        'Duffel-Version': 'v2',
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body
-    })
+    const makeReq = () => duffelOfferRequest(body)
     let res = await makeReq()
     if (res.status === 429) {
       await new Promise(r => setTimeout(r, 2000))
@@ -1342,16 +1339,7 @@ async function searchDuffelFlightsWithDetail(originIata, destIata, departDate, r
         max_connections: 2,
       }
     })
-    const makeReq = () => fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=8000', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.DUFFEL_API_KEY}`,
-        'Duffel-Version': 'v2',
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body
-    })
+    const makeReq = () => duffelOfferRequest(body)
     let res = await makeReq()
     if (res.status === 429) {
       await new Promise(r => setTimeout(r, 2000))
@@ -1519,12 +1507,7 @@ app.post('/api/flight-prices', requireAppSecret, [
                 max_connections: 2,
               }
             })
-            const makeP2Req = () => fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=8000', {
-              method: 'POST',
-              headers: { 'Authorization': `Bearer ${process.env.DUFFEL_API_KEY}`, 'Duffel-Version': 'v2',
-                         'Content-Type': 'application/json', 'Accept': 'application/json' },
-              body: p2Body
-            })
+            const makeP2Req = () => duffelOfferRequest(p2Body)
             try {
               let p2Res = await makeP2Req()
               if (p2Res.status === 429) { await new Promise(r => setTimeout(r, 2000)); p2Res = await makeP2Req() }

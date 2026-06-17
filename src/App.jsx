@@ -1,19 +1,23 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { supabase } from './supabase'
 import Home from './pages/Home'
-import Quiz from './pages/Quiz'
-import Results from './pages/Results'
-import Success from './pages/Success'
-import Login from './pages/Login'
-import Dashboard from './pages/Dashboard'
-import Connect from './pages/Connect'
-import Onboarding from './pages/Onboarding'
-import VisitResults from './pages/VisitResults'
-import Scrapbook from './pages/Scrapbook'
-import Privacy from './pages/Privacy'
-import Terms from './pages/Terms'
+
+// Lazy-load non-landing routes so heavy, route-specific deps (e.g. html2canvas
+// + jspdf in Scrapbook) stay out of the initial bundle. Home is kept eager so
+// the landing page paints immediately without a Suspense fallback flash.
+const Quiz = lazy(() => import('./pages/Quiz'))
+const Results = lazy(() => import('./pages/Results'))
+const Success = lazy(() => import('./pages/Success'))
+const Login = lazy(() => import('./pages/Login'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const Connect = lazy(() => import('./pages/Connect'))
+const Onboarding = lazy(() => import('./pages/Onboarding'))
+const VisitResults = lazy(() => import('./pages/VisitResults'))
+const Scrapbook = lazy(() => import('./pages/Scrapbook'))
+const Privacy = lazy(() => import('./pages/Privacy'))
+const Terms = lazy(() => import('./pages/Terms'))
 
 export default function App() {
   const [session, setSession] = useState(undefined)
@@ -107,7 +111,8 @@ export default function App() {
           </button>
         </div>
       )}
-      <Routes>
+      <Suspense fallback={null}>
+        <Routes>
       <Route path="/" element={<Home session={session} />} />
       <Route path="/quiz" element={<Quiz session={session} />} />
       <Route path="/results" element={<Results profile={profile} />} />
@@ -120,7 +125,8 @@ export default function App() {
       <Route path="/scrapbook" element={<Scrapbook session={session} profile={profile} />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
-    </Routes>
+        </Routes>
+      </Suspense>
     </>
   )
 }
