@@ -665,6 +665,18 @@ app.post('/api/messages', requireAppSecret, [
     const dates = datesMatch?.[1]?.trim() || ''
     console.log('API hit - p1City:', p1City, 'p2City:', p2City, 'dates:', dates)
 
+    // Call 2 (breakdown) uses a different prompt format that doesn't carry the
+    // "Lives in" city lines, so empty cities are expected there. For Call 1
+    // (recommendations) empty cities mean the prompt is malformed — fail fast
+    // instead of generating garbage recommendations and downstream flight calls.
+    const isCall2 = userMessage.includes('breakdown') ||
+                    userMessage.includes('trip_basics') ||
+                    userMessage.includes('COST BREAKDOWN')
+    if (!isCall2 && (!p1City || !p2City)) {
+      console.warn('Recommendation request rejected — empty city:', { p1City, p2City })
+      return res.status(400).json({ error: 'Invalid request', message: 'p1City and p2City are required' })
+    }
+
  // CACHE CHECK HERE
 const cacheKey = getCacheKey(p1City, p2City, dates)
 const cachedData = getCached(cacheKey)
@@ -701,9 +713,6 @@ Use these rates for all cost calculations. Do not estimate exchange rates.`
   console.log('Currency context:', currencyContext)
 }
 
-const isCall2 = userMessage.includes('breakdown') ||
-                userMessage.includes('trip_basics') ||
-                userMessage.includes('COST BREAKDOWN')
 const enhancedMessages = messages.map((msg, i) => {
   if (i === messages.length - 1 && currencyContext && isCall2) {
     return { ...msg, content: currencyContext + '\n\n' + msg.content }
@@ -1408,6 +1417,15 @@ app.post('/api/flight-prices', requireAppSecret, [
             p1Currency, p2Currency, p1Budget, p2Budget, syncArrival } = req.body
     const p1City = sanitizeInput(req.body.p1City, 100)
     const p2City = sanitizeInput(req.body.p2City, 100)
+
+    // Guard: bail out early on empty/undefined cities. Without this, empty
+    // strings flow into getCityIATA() and the upstream flight API, producing
+    // garbage requests that hang (504) instead of failing fast.
+    if (!p1City || !p2City) {
+      console.warn('Flight prices rejected — empty city:', { p1City, p2City })
+      return res.status(400).json({ error: 'Invalid request', message: 'p1City and p2City are required' })
+    }
+
     const dateParts = dates.split(' to ')
     const departDate = dateParts[0]?.trim()
     const returnDate = dateParts[1]?.trim()

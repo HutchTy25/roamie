@@ -566,6 +566,12 @@ Return ONLY this JSON, no markdown, no explanation:
   }
 
   async function fetchVisitPrices() {
+    if (!data?.p1?.city || !data?.p2?.city) {
+      console.error('Missing city data — aborting flight price request', { p1: data?.p1?.city, p2: data?.p2?.city })
+      setError(true)
+      setLoading(false)
+      return
+    }
     try {
       const { data: { session: visitSession } } = await supabase.auth.getSession()
       const visitAuthHeaders = {
@@ -627,6 +633,10 @@ Return ONLY this JSON, no markdown, no explanation:
   }
 
   async function fetchRealFlightPrices(destNames) {
+    if (!data?.p1?.city || !data?.p2?.city) {
+      console.error('Missing city data — skipping flight price fetch', { p1: data?.p1?.city, p2: data?.p2?.city })
+      return {}
+    }
     try {
       const { data: { session: flightSession } } = await supabase.auth.getSession()
       const flightAuthHeaders = {
