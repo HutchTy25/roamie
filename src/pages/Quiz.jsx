@@ -1053,7 +1053,9 @@ const [p2Prefilled, setP2Prefilled] = useState(false)
           onClick={() => {
             posthog.capture('generate_trip_clicked', { mode: data.tripMode, p1_city: data.p1.city, p2_city: data.p2.city, region: data.region, vibes: data.vibes })
             posthog.capture('search_started', { routing: data.routing, vibes: data.vibes, has_partner: !!data.p2.city })
-            navigate('/results', { state: { data } })
+            // Discovery-first: land on the cheap pre-commit screen; the live path
+            // (flight-prices + Call 2) runs only after a card is chosen.
+            navigate('/discover', { state: { data } })
           }}
         >
           Find our trips

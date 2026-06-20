@@ -10,6 +10,7 @@ import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { createClient } from '@supabase/supabase-js'
 import Stripe from 'stripe'
+import { resolveDailyFood, classifyBudgetTier } from './discoveryCost.js'
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
@@ -649,7 +650,17 @@ app.post('/api/messages', requireAppSecret, [
     }))
     const userMessage = messages[messages.length - 1]?.content || ''
 
-    if (userId) {
+    // Call 2 (cost breakdown) vs Call 1 (archetype pick / discovery browsing),
+    // detected from prompt shape: Call 2 carries the breakdown/trip_basics marks.
+    const isCall2 = userMessage.includes('breakdown') ||
+                    userMessage.includes('trip_basics') ||
+                    userMessage.includes('COST BREAKDOWN')
+
+    // Free-search meter is consumed at COMMIT only. Call 1 (discovery browsing)
+    // runs ungated; only Call 2 — part of the committed live path — gates here,
+    // in step with /api/flight-prices. The 60s proAccessCache dedups the two, so
+    // one commit = one increment.
+    if (userId && isCall2) {
       const access = await checkProAccess(userId, supabase)
       if (!access.allowed) {
         return res.status(402).json({ error: 'upgrade_required', message: "You've used your free search" })
@@ -669,9 +680,6 @@ app.post('/api/messages', requireAppSecret, [
     // "Lives in" city lines, so empty cities are expected there. For Call 1
     // (recommendations) empty cities mean the prompt is malformed — fail fast
     // instead of generating garbage recommendations and downstream flight calls.
-    const isCall2 = userMessage.includes('breakdown') ||
-                    userMessage.includes('trip_basics') ||
-                    userMessage.includes('COST BREAKDOWN')
     if (!isCall2 && (!p1City || !p2City)) {
       console.warn('Recommendation request rejected — empty city:', { p1City, p2City })
       return res.status(400).json({ error: 'Invalid request', message: 'p1City and p2City are required' })
@@ -1651,6 +1659,88 @@ app.post('/api/flight-prices', requireAppSecret, [
   }
 })
 
+
+// -----------------------------------------------------------------------------
+// Discovery (pre-commit) — CACHE-ONLY. Returns, per destination IATA, a direct
+// daily-food estimate (via the resolveDailyFood ladder) and a flight price BAND
+// read from discovery_cache if warm. NEVER calls Duffel and NEVER meters the
+// free-search count — browsing is free; the meter is consumed only at commit.
+// -----------------------------------------------------------------------------
+const DISCOVERY_BAND_TTL = 48 * 60 * 60 * 1000 // 48h PLACEHOLDER (see DISCOVERY_DESIGN.md)
+
+async function readDiscoveryBand({ originPairKey, iata, month, budgetTier }) {
+  if (!originPairKey || !month) return null
+  const cacheKey = `${originPairKey}::${iata}::${month}::${budgetTier}`
+  try {
+    const { data } = await supabase
+      .from('discovery_cache')
+      .select('data')
+      .eq('cache_key', cacheKey)
+      .gt('updated_at', new Date(Date.now() - DISCOVERY_BAND_TTL).toISOString())
+      .maybeSingle()
+    return data?.data || null
+  } catch (e) {
+    console.error('[discovery band read]', e.message)
+    return null
+  }
+}
+
+app.post('/api/discovery', requireAppSecret, [
+  body('destinations').isArray({ min: 1, max: 6 }),
+  body('destinations.*.iata').isString().trim().isLength({ min: 3, max: 3 }),
+  body('p1Iata').isString().trim().optional(),
+  body('p2Iata').isString().trim().optional(),
+  body('month').isString().trim().isLength({ min: 7, max: 7 }).optional(),
+  body('p1Budget').isNumeric().optional(),
+  body('p2Budget').isNumeric().optional(),
+  body('p1Currency').isString().trim().isLength({ min: 3, max: 3 }).optional(),
+  body('p2Currency').isString().trim().isLength({ min: 3, max: 3 }).optional(),
+], async (req, res) => {
+  const errors = validationResult(req)
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ error: 'Invalid request', details: errors.array() })
+  }
+
+  try {
+    const { destinations, p1Iata, p2Iata, month } = req.body
+
+    // Combined-budget tier (USD), computed server-side since the two budgets can
+    // be in different currencies and the client has no live rates.
+    let combinedUsd = 0
+    try {
+      const rates = await getExchangeRates('USD') // rates[C] = units of C per 1 USD
+      const toUsd = (amt, cur) => (Number(amt) || 0) / (rates?.[cur] || 1)
+      combinedUsd = toUsd(req.body.p1Budget, req.body.p1Currency || 'USD')
+                  + toUsd(req.body.p2Budget, req.body.p2Currency || 'USD')
+    } catch (e) {
+      console.error('[discovery] budget→USD failed, defaulting tier:', e.message)
+    }
+    const budgetTier = classifyBudgetTier(combinedUsd)
+
+    const originPairKey = [p1Iata, p2Iata]
+      .filter(Boolean).map(s => s.toUpperCase()).sort().join('|')
+
+    const out = {}
+    await Promise.all(destinations.map(async d => {
+      const iata = (d.iata || '').toUpperCase()
+      if (!/^[A-Z]{3}$/.test(iata)) return
+      const [food, flightBand] = await Promise.all([
+        resolveDailyFood(iata, { supabase }),
+        readDiscoveryBand({ originPairKey, iata, month, budgetTier }),
+      ])
+      out[iata] = {
+        dailyFoodUsd: food.dailyFoodUsd,
+        isEstimated: food.isEstimated,
+        flightBand, // { flight_band_low, flight_band_typical, currency } or null
+      }
+    }))
+
+    res.json({ budgetTier, destinations: out })
+  } catch (err) {
+    console.error('[/api/discovery] error:', err)
+    res.status(500).json({ error: err.message })
+  }
+})
 
 app.get('/api/iata-lookup', (req, res) => {
   const city = req.query.city

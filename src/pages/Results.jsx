@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { generateAffiliateLink } from '../utils/affiliateLinks'
+import { buildArchetypePrompt } from '../utils/recommendationPrompt'
 import { useState, useEffect, useRef } from 'react'
 import posthog from 'posthog-js'
 import { supabase } from '../supabase'
@@ -347,133 +348,50 @@ async function fetchRecommendations() {
   const p1sym = CURR_SYMBOLS[data.p1.currency] || data.p1.currency
   const p2sym = CURR_SYMBOLS[data.p2.currency] || data.p2.currency
 
-  const destinationPrompt = `You are Roamie, a couples travel planner. Assign exactly one destination to each of three archetypes: Sanctuary, Odyssey, and Horizon.
-
-Archetype definitions (based on experience type only — cost is handled separately):
-- Sanctuary: Low intensity. Rest, reconnection, slow pace. A place to decompress together with no agenda. Beach towns, spa retreats, quiet cities.
-- Odyssey: High intensity. Adventure, packed itinerary, novelty. Museums, hikes, nightlife, street food. A trip that gives them stories.
-- Horizon: Deliberate blend. Stated positively — enough to explore, enough to rest. Not a compromise, a conscious choice.
-
-Weight all three toward the couple's stated vibes. If their vibes cluster around one archetype, still return one of each but make the off-vibe picks the closest honest match to what they asked for.
-
-PARTNER DETAILS:
-- Partner 1: Lives in ${data.p1.city} | Currency: ${data.p1.currency} (${p1sym}) | Max budget: ${p1sym}${data.p1.maxSpend.toLocaleString()} TOTAL
-- Partner 2: Lives in ${data.p2.city} | Currency: ${data.p2.currency} (${p2sym}) | Max budget: ${p2sym}${data.p2.maxSpend.toLocaleString()} TOTAL
-- Travel dates: ${data.dates.from} to ${data.dates.to}
-- Vibes: ${data.vibes?.join(', ') || 'open to anything'}
-- Vibe context: foodie = culinary-focused destinations with great food scenes; nightlife = vibrant bars and clubs scene; history = heritage sites and ancient landmarks; winter = alpine/ski/snow destinations; wellness = spa, retreat, and slow-travel focused
-- Routing: ${data.routing}
-- Accommodation: ${data.accommodation}
-- Region: ${data.region}
-
-Return ONLY this JSON, no markdown, no explanation:
-{
-  "destinations": {
-    "sanctuary": {
-      "name": "City, Country",
-      "iata": "LIS",
-      "country_emoji": "🇵🇹",
-      "tagline": "One warm sentence why this is their sanctuary",
-      "archetype_vibe": "Pure Shared Time & Relaxation",
-      "emotional_justification": "One sentence on why this archetype fits this couple specifically",
-      "why_both": "One sentence on why this works for both partners given their cities and budgets",
-      "vibes": ["relaxed", "coastal"],
-      "best_months": ["Apr", "May"],
-      "why_it_works": "2-3 sentences on why this fits their cities, budgets and vibes",
-      "vibe_match": ["vibe1", "vibe2"],
-      "best_for": "weekend or week or two weeks",
-      "season_note": "Weather for their exact dates with temperatures",
-      "safety_note": "One honest sentence on safety",
-      "reality_strip": {
-        "crowd": "Low or Medium or High",
-        "weather": "Good or Uncertain or Risky",
-        "fairness": "Balanced or Slightly Skewed or Very Skewed",
-        "budget_stretch": "Comfortable or Slight Stretch or Heavy Stretch"
-      }
-    },
-    "odyssey": {
-      "name": "City, Country",
-      "iata": "BCN",
-      "country_emoji": "🇪🇸",
-      "tagline": "One warm sentence why this is their odyssey",
-      "archetype_vibe": "Adventure & Discovery",
-      "emotional_justification": "One sentence on why this archetype fits this couple specifically",
-      "why_both": "One sentence on why this works for both partners given their cities and budgets",
-      "vibes": ["adventure", "culture"],
-      "best_months": ["Jun", "Sep"],
-      "why_it_works": "2-3 sentences on why this fits their cities, budgets and vibes",
-      "vibe_match": ["vibe1", "vibe2"],
-      "best_for": "weekend or week or two weeks",
-      "season_note": "Weather for their exact dates with temperatures",
-      "safety_note": "One honest sentence on safety",
-      "reality_strip": {
-        "crowd": "Low or Medium or High",
-        "weather": "Good or Uncertain or Risky",
-        "fairness": "Balanced or Slightly Skewed or Very Skewed",
-        "budget_stretch": "Comfortable or Slight Stretch or Heavy Stretch"
-      }
-    },
-    "horizon": {
-      "name": "City, Country",
-      "iata": "DUB",
-      "country_emoji": "🇮🇪",
-      "tagline": "One warm sentence why this is their horizon",
-      "archetype_vibe": "The Best of Both",
-      "emotional_justification": "One sentence on why this archetype fits this couple specifically",
-      "why_both": "One sentence on why this works for both partners given their cities and budgets",
-      "vibes": ["relaxed", "culture"],
-      "best_months": ["May", "Jun"],
-      "why_it_works": "2-3 sentences on why this fits their cities, budgets and vibes",
-      "vibe_match": ["vibe1", "vibe2"],
-      "best_for": "weekend or week or two weeks",
-      "season_note": "Weather for their exact dates with temperatures",
-      "safety_note": "One honest sentence on safety",
-      "reality_strip": {
-        "crowd": "Low or Medium or High",
-        "weather": "Good or Uncertain or Risky",
-        "fairness": "Balanced or Slightly Skewed or Very Skewed",
-        "budget_stretch": "Comfortable or Slight Stretch or Heavy Stretch"
-      }
-    }
-  },
-  "stretch_goal": {
-    "name": "City, Country",
-    "country_emoji": "🇬🇷",
-    "tagline": "Why this is the dream trip",
-    "what_it_takes": "Exactly what both need to save weekly and how many weeks"
-  },
-  "couple_summary": "2 warm sentences about what kind of travelers they are together"
-}`
+  const destinationPrompt = buildArchetypePrompt(data, p1sym, p2sym)
 
   try {
     setMessageIndex(0)
 
-    const { data: { session: s1 } } = await supabase.auth.getSession()
-    const authHeaders = {
-      'Content-Type': 'application/json',
-      ...(s1?.access_token ? { 'Authorization': `Bearer ${s1.access_token}` } : {}),
-    }
-    const res1 = await fetch('https://roamie-61ib.onrender.com/api/messages', {
-      method: 'POST',
-      headers: authHeaders,
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 3500,
-        messages: [{ role: 'user', content: destinationPrompt }]
+    // Discovery hand-off: when a card was chosen on /discover, that destination
+    // arrives as location.state.preselected. Skip Call 1 and feed it straight in
+    // as firstPassResult, then run the existing live path (flight-prices + Call 2
+    // + computeTripCosts) for just that one destination — internals below unchanged.
+    const preselected = location.state?.preselected
+    let firstPassResult
+    if (preselected) {
+      firstPassResult = {
+        destinations: [preselected],
+        couple_summary: location.state?.coupleSummary || '',
+      }
+    } else {
+      const { data: { session: s1 } } = await supabase.auth.getSession()
+      const authHeaders = {
+        'Content-Type': 'application/json',
+        ...(s1?.access_token ? { 'Authorization': `Bearer ${s1.access_token}` } : {}),
+      }
+      const res1 = await fetch('https://roamie-61ib.onrender.com/api/messages', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 3500,
+          messages: [{ role: 'user', content: destinationPrompt }]
+        })
       })
-    })
 
-    const raw1 = await res1.text()
-    const json1 = JSON.parse(raw1)
-    const text1 = Array.isArray(json1.content)
-      ? json1.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
-      : raw1.replace(/```json|```/g, '').trim()
+      const raw1 = await res1.text()
+      const json1 = JSON.parse(raw1)
+      const text1 = Array.isArray(json1.content)
+        ? json1.content.map(b => b.text || '').join('').replace(/```json|```/g, '').trim()
+        : raw1.replace(/```json|```/g, '').trim()
 
-    const firstPassResult = JSON.parse(text1)
-    if (firstPassResult.destinations && !Array.isArray(firstPassResult.destinations)) {
-      firstPassResult.destinations = ['sanctuary', 'odyssey', 'horizon']
-        .map(key => ({ archetype: key, ...firstPassResult.destinations[key] }))
-        .filter(d => d.name)
+      firstPassResult = JSON.parse(text1)
+      if (firstPassResult.destinations && !Array.isArray(firstPassResult.destinations)) {
+        firstPassResult.destinations = ['sanctuary', 'odyssey', 'horizon']
+          .map(key => ({ archetype: key, ...firstPassResult.destinations[key] }))
+          .filter(d => d.name)
+      }
     }
     const destNames = firstPassResult.destinations?.map(d => ({ name: d.name, iata: d.iata })) || []
 

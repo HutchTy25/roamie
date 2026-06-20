@@ -9,6 +9,7 @@ import Home from './pages/Home'
 // the landing page paints immediately without a Suspense fallback flash.
 const Quiz = lazy(() => import('./pages/Quiz'))
 const Results = lazy(() => import('./pages/Results'))
+const DiscoveryResults = lazy(() => import('./pages/DiscoveryResults'))
 const Success = lazy(() => import('./pages/Success'))
 const Login = lazy(() => import('./pages/Login'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -115,6 +116,7 @@ export default function App() {
         <Routes>
       <Route path="/" element={<Home session={session} />} />
       <Route path="/quiz" element={<Quiz session={session} />} />
+      <Route path="/discover" element={<DiscoveryResults />} />
       <Route path="/results" element={<Results profile={profile} />} />
       <Route path="/success" element={<Success />} />
       <Route path="/login" element={<Login />} />
