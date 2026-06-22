@@ -715,20 +715,6 @@ useEffect(() => {
               </button>
             )}
 
-            {/* Add-trip FAB (stub — the new-trip flow is a later phase) */}
-            <button
-              onClick={() => setShowAddTrip(true)}
-              aria-label="Add trip"
-              style={{
-                position: 'fixed', bottom: '96px', right: 'max(20px, calc(50% - 215px + 20px))', zIndex: 90,
-                width: '56px', height: '56px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-                background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`,
-                boxShadow: '0 8px 28px rgba(124,106,239,0.5)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <Plus size={26} color="#fff" />
-            </button>
           </div>
         )}
 
@@ -939,6 +925,25 @@ useEffect(() => {
             )}
           </div>
         </div>
+      )}
+
+      {/* Add-trip FAB — at root (not inside tab content) so its z-index sits above
+          the fixed bottom nav, and raised clear of the nav + home indicator. */}
+      {activeTab === 'home' && (
+        <button
+          onClick={() => setShowAddTrip(true)}
+          aria-label="Add trip"
+          style={{
+            position: 'fixed', bottom: 'calc(104px + env(safe-area-inset-bottom))',
+            right: 'max(20px, calc(50% - 215px + 20px))', zIndex: 110,
+            width: '56px', height: '56px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+            background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`,
+            boxShadow: '0 8px 28px rgba(124,106,239,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <Plus size={26} color="#fff" />
+        </button>
       )}
 
       {/* Create-trip modal — rendered at root (not inside the tab content) so its
