@@ -134,6 +134,8 @@ create table if not exists bookings (
 
   category        booking_category  not null,
   title           text              not null,
+  vendor_name     text,             -- specific property/airline/operator (add-reservation form)
+  nights          integer,          -- stay length for hotels; null for non-stay items
   status          booking_status    not null default 'draft',
 
   -- Booking ground truth (the receipt).
@@ -154,12 +156,14 @@ create table if not exists bookings (
   fx_locked_at    timestamptz,
 
   deadline_date   date,             -- cancellation / payment-due cutoff
+  confirmation_code text,           -- airline/hotel PNR / reservation code
   receipt_url     text,
 
   created_at      timestamptz       not null default now(),
   updated_at      timestamptz       not null default now(),
 
   constraint bookings_title_not_blank      check (char_length(btrim(title)) > 0),
+  constraint bookings_nights_nonneg        check (nights is null or nights >= 0),
   constraint bookings_price_amount_nonneg  check (price_amount >= 0),
   constraint bookings_currency_iso3        check (price_currency ~ '^[A-Z]{3}$'),
   constraint bookings_fx_lock_consistent   check (
@@ -173,6 +177,9 @@ comment on column bookings.owner_id       is 'Profile whose cost this is, indepe
 comment on column bookings.fx_rate_locked is 'Rate price_currency -> trips.destination_currency, locked at payment time.';
 comment on column bookings.fx_locked_at   is 'When fx_rate_locked was captured. Locks together with fx_rate_locked.';
 comment on column bookings.deadline_date  is 'Cancellation / payment-due cutoff for this item.';
+comment on column bookings.confirmation_code is 'Airline/hotel reservation/confirmation code (PNR). Free text; null until booked.';
+comment on column bookings.vendor_name    is 'Specific vendor (hotel/property/airline/operator). Null until set.';
+comment on column bookings.nights         is 'Stay length in nights for lodging; null for non-stay items.';
 
 -- -----------------------------------------------------------------------------
 -- 6. Indexes (by trip, by who-paid / who-owes, by status board)

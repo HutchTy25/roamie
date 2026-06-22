@@ -7,16 +7,13 @@ import Home from './pages/Home'
 // Lazy-load non-landing routes so heavy, route-specific deps (e.g. html2canvas
 // + jspdf in Scrapbook) stay out of the initial bundle. Home is kept eager so
 // the landing page paints immediately without a Suspense fallback flash.
-const Quiz = lazy(() => import('./pages/Quiz'))
-const Results = lazy(() => import('./pages/Results'))
-const DiscoveryResults = lazy(() => import('./pages/DiscoveryResults'))
 const Success = lazy(() => import('./pages/Success'))
 const Login = lazy(() => import('./pages/Login'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Connect = lazy(() => import('./pages/Connect'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
-const VisitResults = lazy(() => import('./pages/VisitResults'))
 const Scrapbook = lazy(() => import('./pages/Scrapbook'))
+const TripDetail = lazy(() => import('./pages/TripDetail'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 const Terms = lazy(() => import('./pages/Terms'))
 
@@ -115,15 +112,12 @@ export default function App() {
       <Suspense fallback={null}>
         <Routes>
       <Route path="/" element={<Home session={session} />} />
-      <Route path="/quiz" element={<Quiz session={session} />} />
-      <Route path="/discover" element={<DiscoveryResults />} />
-      <Route path="/results" element={<Results profile={profile} />} />
       <Route path="/success" element={<Success />} />
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={needsOnboarding ? <Navigate to="/onboarding" replace /> : <Dashboard session={session} />} />
+      <Route path="/trip/:id" element={<TripDetail session={session} />} />
       <Route path="/connect" element={<Connect session={session} />} />
       <Route path="/onboarding" element={<Onboarding session={session} onComplete={() => fetchProfile(session.user.id)} />} />
-      <Route path="/visit-results" element={<VisitResults />} />
       <Route path="/scrapbook" element={<Scrapbook session={session} profile={profile} />} />
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />

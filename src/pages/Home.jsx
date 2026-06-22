@@ -268,7 +268,7 @@ export default function Home({ session }) {
       }}>
         <button
           className="start-btn"
-          onClick={() => navigate('/quiz')}
+          onClick={() => navigate('/dashboard')}
           style={{
             width: '100%',
             padding: '18px',

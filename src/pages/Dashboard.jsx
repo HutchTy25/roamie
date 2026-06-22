@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { Plane, MapPin } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../supabase'
@@ -60,7 +60,7 @@ export default function Dashboard({ session }) {
   const [feedbackBug, setFeedbackBug] = useState('')
   const [feedbackFeature, setFeedbackFeature] = useState('')
   const [feedbackSent, setFeedbackSent] = useState(false)
-  const [committedTripPhoto, setCommittedTripPhoto] = useState(null)
+  const [tripAgg, setTripAgg] = useState({})
 
   // Theme colors - Moonly aesthetic
   const colors = {
@@ -78,7 +78,6 @@ export default function Dashboard({ session }) {
   const navItems = [
     { id: 'home', label: 'Plan', icon: 'M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z' },
     { id: 'scrapbook', label: 'Scrapbook', icon: 'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z' },
-    { id: 'saved', label: 'Saved', icon: 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z' },
     { id: 'checklist', label: 'Checklist', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
     { id: 'profile', label: 'Us', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
   ]
@@ -111,16 +110,6 @@ useEffect(() => {
     }
   }, [])
 
-  useEffect(() => {
-    const ct = trips.find(t => t.committed)
-    if (!ct?.destination_name) return
-    const city = ct.destination_name.split(',')[0].trim()
-    fetch(`https://roamie-61ib.onrender.com/api/photo?city=${encodeURIComponent(city)}`)
-      .then(r => r.json())
-      .then(j => { if (j.url) setCommittedTripPhoto(j.url) })
-      .catch(() => {})
-  }, [trips])
-
   async function fetchData() {
     try {
       const { data: profile } = await supabase
@@ -145,6 +134,33 @@ useEffect(() => {
       const dedupedTrips = [...new Map(allTrips.map(t => [t.id, t])).values()]
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       setTrips(dedupedTrips)
+
+      // Budget spend + reservation/unpaid counts are derived live from the
+      // bookings ledger (never stored on the trip). One batched read for all
+      // visible trips; RLS lets either partner see their trips' bookings.
+      const tripIds = dedupedTrips.map(t => t.id)
+      if (tripIds.length) {
+        const { data: bookings } = await supabase
+          .from('bookings')
+          .select('trip_id, status, price_amount, fx_rate_locked')
+          .in('trip_id', tripIds)
+        const agg = {}
+        for (const b of bookings ?? []) {
+          if (b.status === 'draft') continue
+          const a = agg[b.trip_id] || (agg[b.trip_id] = { reservationCount: 0, unpaidCount: 0, spent: 0 })
+          a.reservationCount++
+          if (b.status === 'booked_unpaid') a.unpaidCount++
+          // Anchor every booking to the trip's destination_currency via the
+          // locked rate (no live FX on the bar). Unlocked rows are assumed
+          // already in destination_currency.
+          a.spent += b.fx_rate_locked != null
+            ? Number(b.price_amount) * Number(b.fx_rate_locked)
+            : Number(b.price_amount)
+        }
+        setTripAgg(agg)
+      } else {
+        setTripAgg({})
+      }
 
       if (profile?.couple_id) {
         const { data: couple } = await supabase
@@ -254,34 +270,14 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
     : partnerLocalHour >= 18 && partnerLocalHour < 20 ? 'rgba(192,132,252,0.4)'
     : 'rgba(99,102,241,0.4)'
 
-  const travelStyle = useMemo(() => {
-    if (trips.length < 2) return null
+  const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'
 
-    const vibeCounts = {}
-    trips.forEach(t => (t.vibes || []).forEach(v => { vibeCounts[v] = (vibeCounts[v] || 0) + 1 }))
-    const topVibe = Object.entries(vibeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
-
-    const archetypeCounts = {}
-    trips.forEach(t => {
-      const arch = t.destinations?.[0]?.archetype
-      if (arch) archetypeCounts[arch] = (archetypeCounts[arch] || 0) + 1
-    })
-    const topArchetype = Object.entries(archetypeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
-
-    const lengths = trips
-      .filter(t => t.dates_from && t.dates_to)
-      .map(t => Math.round((new Date(t.dates_to) - new Date(t.dates_from)) / 86400000))
-      .filter(n => n > 0)
-    const avgLength = lengths.length > 0 ? Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length) : null
-
-    const regionCounts = {}
-    trips.forEach(t => { if (t.region) regionCounts[t.region] = (regionCounts[t.region] || 0) + 1 })
-    const topRegion = Object.entries(regionCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
-
-    const committedCount = trips.filter(t => t.committed).length
-
-    return { topVibe, topArchetype, avgLength, topRegion, committedCount, total: trips.length }
-  }, [trips])
+  // Status pill derived from the bookings aggregate for a trip.
+  const statusPill = (agg) => {
+    if (agg?.unpaidCount > 0) return { label: `${agg.unpaidCount} unpaid`, color: '#FBBF24', bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.3)' }
+    if (agg?.reservationCount > 0) return { label: 'All settled', color: '#34D399', bg: 'rgba(52,211,153,0.12)', border: 'rgba(52,211,153,0.3)' }
+    return { label: 'No bookings yet', color: colors.textMuted, bg: 'rgba(139,143,163,0.1)', border: colors.border }
+  }
 
   return (
     <div style={{
@@ -602,29 +598,22 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
         {activeTab === 'home' && (
           <div style={{ animation: 'fadeSlideUp 0.4s ease' }}>
             
-            {/* Committed Trip Countdown */}
-            {trips.find(t => t.committed) && (() => {
-  const committedTrip = trips.find(t => t.committed)
-  const daysUntilCommitted = committedTrip.dates_from
-    ? Math.ceil((new Date(committedTrip.dates_from) - new Date()) / (1000 * 60 * 60 * 24))
-    : null
-  const fmt = d => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'
-  const destLabel = committedTrip.destination_name
-    ? cleanDestName(committedTrip.destination_name)
-    : `${committedTrip.p1_city} → ${committedTrip.p2_city}`
-  const microLines = [
-    'days until you see each other',
-    'days until everything else stops mattering',
-    'days until the wait is over',
-  ]
-  const microLine = daysUntilCommitted > 0 ? microLines[daysUntilCommitted % 3] : 'your trip is here 🎉'
-  return (
+            {/* Upcoming trip hero — soonest future trip by start date */}
+            {upcomingTrip && (() => {
+              const heroLabel = cleanDestName(upcomingTrip.destination_name) || upcomingTrip.trip_name || 'Your trip'
+              const microLines = [
+                'days until you see each other',
+                'days until everything else stops mattering',
+                'days until the wait is over',
+              ]
+              const microLine = daysUntil > 0 ? microLines[daysUntil % 3] : 'your trip is here 🎉'
+              return (
     <div className="glass-card" style={{ marginBottom: '16px', minHeight: '260px', overflow: 'hidden', position: 'relative', padding: 0 }}>
       {/* Photo background */}
       <div style={{
         position: 'absolute', inset: 0,
-        background: committedTripPhoto
-          ? `url(${committedTripPhoto}) center/cover no-repeat`
+        background: upcomingTrip.destination_photo_url
+          ? `url(${upcomingTrip.destination_photo_url}) center/cover no-repeat`
           : `linear-gradient(135deg, rgba(124,106,239,0.3) 0%, rgba(244,114,182,0.2) 100%)`,
       }} />
       {/* Dark gradient overlay */}
@@ -663,13 +652,13 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
             WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
             position: 'relative',
           }}>
-            {daysUntilCommitted > 0 ? daysUntilCommitted : '🎉'}
+            {daysUntil > 0 ? daysUntil : '🎉'}
           </div>
           <div style={{ fontSize: '12px', color: colors.textMuted, marginTop: '6px', fontStyle: 'italic' }}>
             {microLine}
           </div>
           <div style={{ fontSize: '17px', fontWeight: '600', color: colors.pink, marginTop: '10px' }}>
-            {committedTrip.country_emoji} {destLabel}
+            {upcomingTrip.country_emoji} {upcomingTrip.trip_name || heroLabel}
           </div>
         </div>
         {/* Pills */}
@@ -680,7 +669,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
             fontSize: '12px', color: colors.pink, fontWeight: '500',
             display: 'flex', alignItems: 'center', gap: '5px',
           }}>
-            <Plane size={12} /> {fmt(committedTrip.dates_from)} → {fmt(committedTrip.dates_to)}
+            <Plane size={12} /> {fmtDate(upcomingTrip.dates_from)} → {fmtDate(upcomingTrip.dates_to)}
           </div>
           <div style={{
             background: 'rgba(124,106,239,0.12)', border: '1px solid rgba(124,106,239,0.25)',
@@ -689,29 +678,132 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
             maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             display: 'flex', alignItems: 'center', gap: '5px',
           }}>
-            <MapPin size={12} /> {destLabel}
+            <MapPin size={12} /> {heroLabel}
           </div>
-        </div>
-        {/* Remove link */}
-        <div style={{ textAlign: 'center', marginTop: '12px' }}>
-          <button
-            onClick={async () => {
-              await supabase.from('trips').update({ committed: false, committed_at: null }).eq('id', committedTrip.id)
-              setTrips(prev => prev.map(t => t.id === committedTrip.id ? { ...t, committed: false, committed_at: null } : t))
-            }}
-            style={{
-              background: 'none', border: 'none',
-              color: 'rgba(239,68,68,0.45)', fontSize: '11px',
-              cursor: 'pointer', padding: '4px 0',
-            }}
-          >
-            Remove from planning
-          </button>
         </div>
       </div>
     </div>
-  )
-})()}
+              )
+            })()}
+
+            {/* Trip list — the core of the new model */}
+            <div style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '14px', fontWeight: '500' }}>
+              Your trips
+            </div>
+
+            {loading && (
+              <div style={{ textAlign: 'center', padding: '40px', color: colors.textMuted, fontSize: '14px' }}>
+                Loading...
+              </div>
+            )}
+
+            {!loading && trips.length === 0 && (
+              <div className="glass-card" style={{ padding: '40px', textAlign: 'center', marginBottom: '16px' }}>
+                <div style={{ fontSize: '32px', marginBottom: '12px' }}>✈️</div>
+                <div style={{ color: colors.textMuted, fontSize: '14px' }}>
+                  No trips yet. Your next adventure starts here.
+                </div>
+              </div>
+            )}
+
+            {trips.map((trip, i) => {
+              const agg = tripAgg[trip.id] || {}
+              const spent = Math.round(agg.spent || 0)
+              const budget = trip.budget_total != null ? Number(trip.budget_total) : null
+              const pct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0
+              const sym = CURR_SYMBOLS[trip.destination_currency] || trip.destination_currency || ''
+              const barColor = pct >= 100 ? '#EF4444' : pct >= 80 ? '#FBBF24' : `linear-gradient(90deg, ${colors.pink}, ${colors.primary})`
+              const pill = statusPill(agg)
+              const destLabel = cleanDestName(trip.destination_name) || ''
+              return (
+                <div
+                  key={trip.id}
+                  className="glass-card"
+                  onClick={() => navigate(`/trip/${trip.id}`)}
+                  style={{
+                    position: 'relative', overflow: 'hidden', padding: 0,
+                    marginBottom: '12px', cursor: 'pointer', minHeight: '170px',
+                    animation: `fadeSlideUp 0.4s ease ${i * 0.05}s forwards`, opacity: 0,
+                  }}
+                >
+                  {/* Photo background + overlay */}
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: trip.destination_photo_url
+                      ? `url(${trip.destination_photo_url}) center/cover no-repeat`
+                      : `linear-gradient(135deg, rgba(124,106,239,0.3) 0%, rgba(244,114,182,0.2) 100%)`,
+                  }} />
+                  <div style={{
+                    position: 'absolute', inset: 0,
+                    background: 'linear-gradient(to top, rgba(26,27,38,0.97) 0%, rgba(26,27,38,0.82) 45%, rgba(26,27,38,0.4) 100%)',
+                  }} />
+
+                  {/* Delete */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteTrip(trip.id) }}
+                    style={{
+                      position: 'absolute', top: '10px', right: '12px', zIndex: 2,
+                      background: 'rgba(0,0,0,0.3)', border: 'none', borderRadius: '50%',
+                      width: '26px', height: '26px', color: 'rgba(255,255,255,0.7)',
+                      cursor: 'pointer', fontSize: '16px', lineHeight: 1,
+                    }}
+                  >
+                    ×
+                  </button>
+
+                  {/* Content */}
+                  <div style={{ position: 'relative', zIndex: 1, padding: '16px', display: 'flex', flexDirection: 'column', minHeight: '170px', justifyContent: 'flex-end' }}>
+                    <div style={{ fontSize: '18px', fontWeight: '700', color: colors.text, marginBottom: '2px' }}>
+                      {trip.country_emoji} {trip.trip_name || destLabel || 'Untitled trip'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '12px' }}>
+                      {destLabel}{destLabel && (trip.dates_from || trip.dates_to) ? ' · ' : ''}{fmtDate(trip.dates_from)} → {fmtDate(trip.dates_to)}
+                    </div>
+
+                    {/* Budget progress — anchored to destination_currency */}
+                    {budget > 0 && (
+                      <div style={{ marginBottom: '12px' }}>
+                        <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.12)', overflow: 'hidden' }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: '3px', transition: 'width 0.3s ease' }} />
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', fontSize: '11px' }}>
+                          <span style={{ color: pct >= 100 ? '#EF4444' : colors.textMuted }}>{sym}{spent.toLocaleString()} spent</span>
+                          <span style={{ color: colors.textMuted }}>{sym}{budget.toLocaleString()}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Footer: avatars + reservations + status */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex' }}>
+                          {myAvatar ? (
+                            <img src={myAvatar} style={{ width: '24px', height: '24px', borderRadius: '50%', border: `1.5px solid ${colors.cyan}`, objectFit: 'cover' }} alt="you" />
+                          ) : (
+                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: `linear-gradient(135deg, ${colors.cyan}, ${colors.primary})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '600', color: '#fff' }}>{myName[0]}</div>
+                          )}
+                          {partnerProfile && (
+                            <div style={{ marginLeft: '-7px' }}>
+                              {partnerProfile.avatar_url ? (
+                                <img src={partnerProfile.avatar_url} style={{ width: '24px', height: '24px', borderRadius: '50%', border: `1.5px solid ${colors.pink}`, objectFit: 'cover' }} alt="partner" />
+                              ) : (
+                                <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '600', color: '#fff' }}>{partnerName?.[0] || '?'}</div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <span style={{ fontSize: '11px', color: colors.textMuted }}>
+                          {agg.reservationCount || 0} reservation{(agg.reservationCount || 0) !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '11px', fontWeight: '600', color: pill.color, background: pill.bg, border: `1px solid ${pill.border}`, borderRadius: '100px', padding: '4px 10px' }}>
+                        {pill.label}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
 
             {/* Moon Odyssey Card */}
             <div className="glass-card" style={{ padding: '20px', marginBottom: '16px' }}>
@@ -918,150 +1010,6 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
           </div>
         )}
 
-        {/* SAVED TRIPS TAB */}
-        {activeTab === 'saved' && (
-          <div style={{ animation: 'fadeSlideUp 0.4s ease' }}>
-            <div style={{ 
-              fontSize: '11px', 
-              letterSpacing: '0.12em', 
-              textTransform: 'uppercase', 
-              color: colors.textMuted, 
-              marginBottom: '16px', 
-              fontWeight: '500' 
-            }}>
-              Saved trips
-            </div>
-            
-            {loading && (
-              <div style={{ textAlign: 'center', padding: '40px', color: colors.textMuted, fontSize: '14px' }}>
-                Loading...
-              </div>
-            )}
-            
-            {!loading && trips.length === 0 && (
-              <div className="glass-card" style={{ padding: '40px', textAlign: 'center' }}>
-                <div style={{ fontSize: '32px', marginBottom: '12px' }}>✈️</div>
-                <div style={{ color: colors.textMuted, fontSize: '14px' }}>
-                  No saved trips yet. Plan your first one!
-                </div>
-              </div>
-            )}
-            
-            {trips.map((trip, i) => (
-              <div 
-                key={trip.id} 
-                className="glass-card"
-                style={{ 
-                  padding: '16px', 
-                  marginBottom: '12px', 
-                  animation: `fadeSlideUp 0.4s ease ${i * 0.05}s forwards`, 
-                  opacity: 0 
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '17px', fontWeight: '600', color: colors.text, marginBottom: '4px' }}>
-                      {trip.country_emoji} {cleanDestName(trip.destination_name) || `${trip.p1_city} → ${trip.p2_city}`}
-                    </div>
-                    {trip.tagline && (
-                      <div style={{ fontSize: '12px', color: colors.textMuted, lineHeight: '1.5', marginBottom: '4px' }}>
-                        {trip.tagline}
-                      </div>
-                    )}
-                    <div style={{ fontSize: '11px', color: colors.textMuted }}>
-                      {trip.dates_from} · {trip.vibes?.join(', ')}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => deleteTrip(trip.id)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: colors.textMuted,
-                      cursor: 'pointer',
-                      fontSize: '20px',
-                      padding: '0',
-                      lineHeight: 1,
-                      flexShrink: 0,
-                      marginLeft: '8px',
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-
-                {(trip.p1_cost != null || trip.p2_cost != null) && (
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                    {trip.p1_cost != null && (
-                      <div style={{
-                        flex: 1,
-                        background: 'rgba(244,114,182,0.1)',
-                        border: '1px solid rgba(244,114,182,0.25)',
-                        borderRadius: '10px',
-                        padding: '8px 12px',
-                        fontSize: '12px',
-                      }}>
-                        <span style={{ color: colors.textMuted, marginRight: '4px' }}>P1</span>
-                        <span style={{ color: colors.pink, fontWeight: '600', fontSize: '14px' }}>
-                          {CURR_SYMBOLS[trip.p1_currency] || trip.p1_currency}{trip.p1_cost?.toLocaleString()}
-                        </span>
-                      </div>
-                    )}
-                    {trip.p2_cost != null && (
-                      <div style={{
-                        flex: 1,
-                        background: 'rgba(124,106,239,0.1)',
-                        border: '1px solid rgba(124,106,239,0.25)',
-                        borderRadius: '10px',
-                        padding: '8px 12px',
-                        fontSize: '12px',
-                      }}>
-                        <span style={{ color: colors.textMuted, marginRight: '4px' }}>P2</span>
-                        <span style={{ color: colors.primary, fontWeight: '600', fontSize: '14px' }}>
-                          {CURR_SYMBOLS[trip.p2_currency] || trip.p2_currency}{trip.p2_cost?.toLocaleString()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-  <button
-    onClick={async () => {
-      if (trip.committed) return
-      await supabase.from('trips').update({ committed: true, committed_at: new Date().toISOString() }).eq('id', trip.id)
-      setTrips(trips.map(t => t.id === trip.id ? { ...t, committed: true, committed_at: new Date().toISOString() } : t))
-    }}
-    style={{
-      width: '100%', padding: '10px',
-      background: trip.committed ? 'rgba(52,211,153,0.1)' : `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`,
-      border: trip.committed ? '1px solid rgba(52,211,153,0.3)' : 'none',
-      borderRadius: '100px',
-      color: trip.committed ? '#34D399' : '#fff',
-      fontSize: '12px', fontWeight: '600',
-      cursor: trip.committed ? 'default' : 'pointer',
-    }}
-  >
-    {trip.committed ? '✅ Trip committed' : '🚀 Commit to this trip'}
-  </button>
-  <button
-    onClick={() => navigate('/quiz', { state: { prefill: trip } })}
-    style={{
-      width: '100%', padding: '10px',
-      background: 'none',
-      border: `1px solid ${colors.border}`,
-      borderRadius: '100px',
-      color: colors.textMuted,
-      fontSize: '12px', cursor: 'pointer'
-    }}
-  >
-    Plan again with same cities →
-  </button>
-</div> 
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* CHECKLIST TAB */}
         {activeTab === 'checklist' && (
@@ -1231,56 +1179,6 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
               </div>
             </div>
 
-            {/* Travel Style card */}
-            {travelStyle ? (() => {
-              const archetypeLabel = {
-                sanctuary: 'Sanctuary — you travel to rest and reconnect',
-                odyssey: 'Odyssey — you travel for adventure and new experiences',
-                horizon: 'Horizon — you love the perfect mix of rest and discovery',
-              }
-              const insights = [
-                travelStyle.topArchetype && {
-                  label: 'Archetype',
-                  value: archetypeLabel[travelStyle.topArchetype] || travelStyle.topArchetype,
-                },
-                travelStyle.topVibe && {
-                  label: 'Top vibe',
-                  value: travelStyle.topVibe,
-                },
-                travelStyle.avgLength && {
-                  label: 'Avg trip length',
-                  value: `${travelStyle.avgLength} night${travelStyle.avgLength !== 1 ? 's' : ''}`,
-                },
-                !travelStyle.avgLength && travelStyle.topRegion && {
-                  label: 'Favorite region',
-                  value: travelStyle.topRegion,
-                },
-              ].filter(Boolean).slice(0, 3)
-
-              return (
-                <div className="glass-card" style={{ padding: '20px', marginBottom: '16px' }}>
-                  <div style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: colors.textMuted, fontWeight: '500', marginBottom: '14px' }}>
-                    Your Travel Style
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    {insights.map(insight => (
-                      <div key={insight.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '12px' }}>
-                        <span style={{ fontSize: '12px', color: colors.textMuted, flexShrink: 0 }}>{insight.label}</span>
-                        <span style={{ fontSize: '13px', color: colors.text, fontWeight: '500', textAlign: 'right' }}>{insight.value}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ marginTop: '14px', paddingTop: '12px', borderTop: `1px solid ${colors.border}`, fontSize: '11px', color: colors.textMuted }}>
-                    Based on {travelStyle.total} saved trip{travelStyle.total !== 1 ? 's' : ''}
-                    {travelStyle.committedCount > 0 && ` · ${travelStyle.committedCount} committed`}
-                  </div>
-                </div>
-              )
-            })() : !loading && trips.length < 2 && (
-              <div style={{ textAlign: 'center', padding: '20px', fontSize: '12px', color: colors.textMuted, marginBottom: '16px' }}>
-                Save 2 trips to unlock your travel style
-              </div>
-            )}
 
             <button
               onClick={() => setShowFeedback(true)}
@@ -1399,7 +1297,7 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
                 key={item.id}
                 onClick={() => {
   if (item.id === 'home') {
-    navigate('/quiz')
+    navigate('/dashboard')
   } else if (item.id === 'scrapbook') {
     navigate('/scrapbook')
   } else {
