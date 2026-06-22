@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Plane, BedDouble, Car, Ticket, Plus, ArrowLeft } from 'lucide-react'
+import { Plane, BedDouble, Car, Ticket, Sparkles, Plus, ArrowLeft } from 'lucide-react'
 import { supabase } from '../supabase'
+import AddReservationModal from '../components/AddReservationModal'
 
 const colors = {
   bg: '#1A1B26',
@@ -29,6 +30,7 @@ const CATEGORY = {
   flight:    { Icon: Plane,     label: 'Flight' },
   hotel:     { Icon: BedDouble, label: 'Hotel' },
   transport: { Icon: Car,       label: 'Transport' },
+  activity:  { Icon: Sparkles,  label: 'Activity' },
   other:     { Icon: Ticket,    label: 'Other' },
 }
 
@@ -51,7 +53,25 @@ export default function TripDetail({ session }) {
   const [nameById, setNameById] = useState({})
   const [homeCurrency, setHomeCurrency] = useState(null)
   const [fxRates, setFxRates] = useState(null)   // { [currency]: units per 1 home }
+  const [partners, setPartners] = useState([])   // [{ id, display_name }] for "Paid by"
   const [showAdd, setShowAdd] = useState(false)
+
+  // Bookings (+ owner/payer names). Standalone so it can refresh after an add.
+  async function loadBookings() {
+    const { data: bks } = await supabase.from('bookings')
+      .select('*')
+      .eq('trip_id', id)
+      .order('deadline_date', { ascending: true, nullsFirst: false })
+    const rows = bks ?? []
+    setBookings(rows)
+    const ids = [...new Set(rows.flatMap(b => [b.owner_id, b.payer_id]).filter(Boolean))]
+    if (ids.length) {
+      const { data: profs } = await supabase.from('profiles').select('id, display_name').in('id', ids)
+      setNameById(Object.fromEntries((profs ?? []).map(p => [p.id, p.display_name])))
+    } else {
+      setNameById({})
+    }
+  }
 
   useEffect(() => {
     if (!session) { navigate('/login'); return }
@@ -61,31 +81,32 @@ export default function TripDetail({ session }) {
       // Trip + viewer profile in parallel.
       const [{ data: tripData }, { data: me }] = await Promise.all([
         supabase.from('trips')
-          .select('trip_name, destination_name, destination_photo_url, dates_from, dates_to, budget_total, budget_currency, destination_currency, destination_iata, country_emoji')
+          .select('user_id, couple_id, trip_name, destination_name, destination_photo_url, dates_from, dates_to, budget_total, budget_currency, destination_currency, destination_iata, country_emoji')
           .eq('id', id).single(),
-        supabase.from('profiles').select('home_currency').eq('id', session.user.id).single(),
+        supabase.from('profiles').select('home_currency, display_name').eq('id', session.user.id).single(),
       ])
       if (cancelled) return
       setTrip(tripData ?? null)
       const home = me?.home_currency || null
       setHomeCurrency(home)
 
-      // Bookings, chronological by deadline (nulls last).
-      const { data: bks } = await supabase.from('bookings')
-        .select('*')
-        .eq('trip_id', id)
-        .order('deadline_date', { ascending: true, nullsFirst: false })
-      if (cancelled) return
-      const rows = bks ?? []
-      setBookings(rows)
+      // Couple members for the "Paid by" selector (fall back to just the viewer).
+      const meEntry = { id: session.user.id, display_name: me?.display_name || 'You' }
+      if (tripData?.couple_id) {
+        const { data: couple } = await supabase.from('couples')
+          .select('partner1_id, partner2_id').eq('id', tripData.couple_id).single()
+        const pids = [couple?.partner1_id, couple?.partner2_id].filter(Boolean)
+        if (pids.length) {
+          const { data: profs } = await supabase.from('profiles').select('id, display_name').in('id', pids)
+          const list = (profs ?? []).map(p => ({
+            id: p.id,
+            display_name: p.display_name || (p.id === session.user.id ? 'You' : 'Partner'),
+          }))
+          if (!cancelled) setPartners(list.length ? list : [meEntry])
+        } else if (!cancelled) setPartners([meEntry])
+      } else if (!cancelled) setPartners([meEntry])
 
-      // Resolve owner/payer display names in one batched read.
-      const ids = [...new Set(rows.flatMap(b => [b.owner_id, b.payer_id]).filter(Boolean))]
-      if (ids.length) {
-        const { data: profs } = await supabase.from('profiles').select('id, display_name').in('id', ids)
-        if (cancelled) return
-        setNameById(Object.fromEntries((profs ?? []).map(p => [p.id, p.display_name])))
-      }
+      await loadBookings()
 
       // Single FX call via our proxy (Frankfurter blocks direct browser CORS).
       if (home) {
@@ -269,21 +290,15 @@ export default function TripDetail({ session }) {
         <Plus size={26} color="#fff" />
       </button>
 
-      {/* Add-reservation modal (stub — full form is a later phase) */}
+      {/* Add-reservation modal */}
       {showAdd && (
-        <div
-          onClick={() => setShowAdd(false)}
-          style={{ position: 'fixed', inset: 0, zIndex: 30, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 16px 32px' }}
-        >
-          <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '430px', background: colors.cardSolid, border: `1px solid ${colors.border}`, borderRadius: '24px', padding: '28px 24px', textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', marginBottom: '12px' }}>🧾</div>
-            <div style={{ fontSize: '17px', fontWeight: '600', color: colors.text, marginBottom: '8px' }}>Add a reservation</div>
-            <div style={{ fontSize: '13px', color: colors.textMuted, marginBottom: '20px' }}>The add-reservation form is coming soon.</div>
-            <button onClick={() => setShowAdd(false)} style={{ width: '100%', padding: '14px', background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`, border: 'none', borderRadius: '100px', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
-              Got it
-            </button>
-          </div>
-        </div>
+        <AddReservationModal
+          tripId={id}
+          partners={partners}
+          defaultCurrency={trip.destination_currency || 'USD'}
+          onClose={() => setShowAdd(false)}
+          onAdded={loadBookings}
+        />
       )}
     </div>
   )

@@ -35,7 +35,7 @@ begin;
 do $$
 begin
   if not exists (select 1 from pg_type where typname = 'booking_category') then
-    create type booking_category as enum ('flight', 'hotel', 'transport', 'other');
+    create type booking_category as enum ('flight', 'hotel', 'transport', 'activity', 'other');
   end if;
 end
 $$;

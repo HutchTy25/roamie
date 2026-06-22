@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../supabase'
+import CreateTripModal from '../components/CreateTripModal'
 
 const cleanDestName = (name) => name?.replace(/^[A-Z]{2,3} /, '') ?? name
 
@@ -732,19 +733,12 @@ useEffect(() => {
             </button>
 
             {showAddTrip && (
-              <div
-                onClick={() => setShowAddTrip(false)}
-                style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 16px 32px' }}
-              >
-                <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '430px', background: colors.cardSolid, border: `1px solid ${colors.border}`, borderRadius: '24px', padding: '28px 24px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '32px', marginBottom: '12px' }}>🧳</div>
-                  <div style={{ fontSize: '17px', fontWeight: '600', color: colors.text, marginBottom: '8px' }}>Create a trip</div>
-                  <div style={{ fontSize: '13px', color: colors.textMuted, marginBottom: '20px' }}>The new-trip flow is coming soon.</div>
-                  <button onClick={() => setShowAddTrip(false)} style={{ width: '100%', padding: '14px', background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`, border: 'none', borderRadius: '100px', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
-                    Got it
-                  </button>
-                </div>
-              </div>
+              <CreateTripModal
+                session={session}
+                profile={myProfile}
+                onClose={() => setShowAddTrip(false)}
+                onCreated={async (tripId) => { setShowAddTrip(false); await fetchData(); navigate(`/trip/${tripId}`) }}
+              />
             )}
           </div>
         )}
