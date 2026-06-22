@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Plane, MapPin } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../supabase'
 
@@ -55,7 +55,7 @@ export default function Dashboard({ session }) {
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [myProfile, setMyProfile] = useState(null)
   const [ambientGlow, setAmbientGlow] = useState(getAmbientGlow())
-  const [partnerWeather, setPartnerWeather] = useState(null)
+  const [showAddTrip, setShowAddTrip] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedbackBug, setFeedbackBug] = useState('')
   const [feedbackFeature, setFeedbackFeature] = useState('')
@@ -170,7 +170,6 @@ useEffect(() => {
           const { data: partner } = await supabase
             .from('profiles').select('*').eq('id', partnerId).single()
           setPartnerProfile(partner)
-          fetchPartnerWeather(partner)
         }
       }
     } catch (e) {
@@ -178,17 +177,6 @@ useEffect(() => {
     } finally {
       setLoading(false)
       setCoupleLoading(false)
-    }
-  }
-
-  async function fetchPartnerWeather(profile) {
-    if (!profile?.home_city) return
-    try {
-      const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(profile.home_city)}&appid=${import.meta.env.VITE_OPENWEATHER_KEY}&units=metric`)
-      const data = await res.json()
-      if (data.cod === 200) setPartnerWeather(data)
-    } catch (e) {
-      console.error('Weather fetch error:', e)
     }
   }
 
@@ -242,17 +230,9 @@ useEffect(() => {
     BRL: 'R$', MXN: 'MX$', COP: 'COL$', ARS: 'AR$', CLP: 'CL$',
   }
 
-  const upcomingTrip = trips.find(t => t.dates_from && new Date(t.dates_from) > new Date())
-  const daysUntil = upcomingTrip
-    ? Math.ceil((new Date(upcomingTrip.dates_from) - new Date()) / (1000 * 60 * 60 * 24))
-    : null
   const myName = myProfile?.display_name || session?.user?.user_metadata?.full_name?.split(' ')[0] || 'You'
   const myAvatar = customAvatar || session?.user?.user_metadata?.avatar_url
   const partnerName = partnerProfile?.display_name || partnerProfile?.full_name?.split(' ')[0] || null
-  const relationshipDays = myProfile?.relationship_start_date
-  ? Math.floor((new Date() - new Date(myProfile.relationship_start_date)) / (1000 * 60 * 60 * 24))
-  : null
-const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8878) * 100), 100) : null
 
   // SVG Icon component
   const Icon = ({ path, size = 22, color = 'currentColor' }) => (
@@ -261,14 +241,9 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
     </svg>
   )
 
-  const partnerLocalHour = partnerWeather
-    ? new Date((partnerWeather.dt + partnerWeather.timezone) * 1000).getUTCHours()
-    : null
-  const timeGlow = partnerLocalHour == null ? 'rgba(99,102,241,0.4)'
-    : partnerLocalHour >= 5 && partnerLocalHour < 8 ? 'rgba(251,146,60,0.4)'
-    : partnerLocalHour >= 8 && partnerLocalHour < 18 ? 'rgba(96,165,250,0.4)'
-    : partnerLocalHour >= 18 && partnerLocalHour < 20 ? 'rgba(192,132,252,0.4)'
-    : 'rgba(99,102,241,0.4)'
+  // Connection-bridge accent (previously derived from partner weather's local
+  // time; now a constant since the weather card is gone).
+  const timeGlow = 'rgba(99,102,241,0.4)'
 
   const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'
 
@@ -294,7 +269,6 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
       <div style={{ position: "fixed", inset: 0, background: ambientGlow.gradient, pointerEvents: "none", zIndex: 1, filter: "blur(1px)" }} />
       {ambientGlow.secondaryGlow && <div style={{ position: "fixed", inset: 0, background: ambientGlow.secondaryGlow, pointerEvents: "none", zIndex: 1 }} />}
       {ambientGlow.pulse && <div style={{ position: "fixed", inset: 0, background: ambientGlow.gradient, pointerEvents: "none", zIndex: 1, opacity: 0.3, animation: "pulse 4s ease-in-out infinite" }} />}
-      {partnerWeather && <div style={{ position: "fixed", inset: 0, background: `radial-gradient(ellipse 70% 40% at 50% 0%, ${timeGlow.replace('0.4', '0.10')} 0%, transparent 60%)`, pointerEvents: "none", zIndex: 1 }} />}
 
       {proToast && (
         <div style={{
@@ -594,97 +568,10 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
       {/* Tab content */}
       <div style={{ flex: 1, padding: '0 20px', position: 'relative', zIndex: 10 }}>
 
-        {/* HOME TAB - Moon Odyssey + Love in Miles */}
+        {/* PLAN TAB - trip cards */}
         {activeTab === 'home' && (
           <div style={{ animation: 'fadeSlideUp 0.4s ease' }}>
             
-            {/* Upcoming trip hero — soonest future trip by start date */}
-            {upcomingTrip && (() => {
-              const heroLabel = cleanDestName(upcomingTrip.destination_name) || upcomingTrip.trip_name || 'Your trip'
-              const microLines = [
-                'days until you see each other',
-                'days until everything else stops mattering',
-                'days until the wait is over',
-              ]
-              const microLine = daysUntil > 0 ? microLines[daysUntil % 3] : 'your trip is here 🎉'
-              return (
-    <div className="glass-card" style={{ marginBottom: '16px', minHeight: '260px', overflow: 'hidden', position: 'relative', padding: 0 }}>
-      {/* Photo background */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        background: upcomingTrip.destination_photo_url
-          ? `url(${upcomingTrip.destination_photo_url}) center/cover no-repeat`
-          : `linear-gradient(135deg, rgba(124,106,239,0.3) 0%, rgba(244,114,182,0.2) 100%)`,
-      }} />
-      {/* Dark gradient overlay */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        background: 'linear-gradient(to top, rgba(26,27,38,0.97) 0%, rgba(26,27,38,0.78) 50%, rgba(26,27,38,0.45) 100%)',
-      }} />
-      {/* Large faint beating heart SVG */}
-      <div style={{
-        position: 'absolute', top: '50%', left: '50%',
-        transform: 'translate(-50%, -50%)',
-        animation: 'heartbeat 1.5s ease-in-out infinite',
-        pointerEvents: 'none',
-        zIndex: 0,
-        opacity: 0.18,
-      }}>
-        <svg width="200" height="200" viewBox="0 0 24 24" fill="none">
-          <defs>
-            <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#F472B6" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="#7C6AEF" stopOpacity="0.10" />
-            </linearGradient>
-          </defs>
-          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill="url(#heartGrad)" stroke="rgba(244,114,182,0.20)" strokeWidth="0.4" />
-        </svg>
-      </div>
-      {/* Content */}
-      <div style={{ position: 'relative', zIndex: 1, padding: '20px', display: 'flex', flexDirection: 'column', minHeight: '260px' }}>
-        <div style={{ fontSize: '11px', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '8px', textAlign: 'center' }}>
-          Counting down
-        </div>
-        <div style={{ textAlign: 'center', flex: 1 }}>
-          <div style={{
-            fontSize: '72px', fontWeight: '700', lineHeight: '1',
-            background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`,
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            position: 'relative',
-          }}>
-            {daysUntil > 0 ? daysUntil : '🎉'}
-          </div>
-          <div style={{ fontSize: '12px', color: colors.textMuted, marginTop: '6px', fontStyle: 'italic' }}>
-            {microLine}
-          </div>
-          <div style={{ fontSize: '17px', fontWeight: '600', color: colors.pink, marginTop: '10px' }}>
-            {upcomingTrip.country_emoji} {upcomingTrip.trip_name || heroLabel}
-          </div>
-        </div>
-        {/* Pills */}
-        <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <div style={{
-            background: 'rgba(244,114,182,0.12)', border: '1px solid rgba(244,114,182,0.25)',
-            borderRadius: '100px', padding: '7px 14px',
-            fontSize: '12px', color: colors.pink, fontWeight: '500',
-            display: 'flex', alignItems: 'center', gap: '5px',
-          }}>
-            <Plane size={12} /> {fmtDate(upcomingTrip.dates_from)} → {fmtDate(upcomingTrip.dates_to)}
-          </div>
-          <div style={{
-            background: 'rgba(124,106,239,0.12)', border: '1px solid rgba(124,106,239,0.25)',
-            borderRadius: '100px', padding: '7px 14px',
-            fontSize: '12px', color: colors.primary, fontWeight: '500',
-            maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            display: 'flex', alignItems: 'center', gap: '5px',
-          }}>
-            <MapPin size={12} /> {heroLabel}
-          </div>
-        </div>
-      </div>
-    </div>
-              )
-            })()}
 
             {/* Trip list — the core of the new model */}
             <div style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase', color: colors.textMuted, marginBottom: '14px', fontWeight: '500' }}>
@@ -805,185 +692,6 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
               )
             })}
 
-            {/* Moon Odyssey Card */}
-            <div className="glass-card" style={{ padding: '20px', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '600', color: colors.text, margin: 0 }}>The Moon Odyssey</h3>
-                  <p style={{ fontSize: '13px', color: colors.textMuted, margin: '4px 0 0 0' }}>Our Time Together</p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '24px', fontWeight: '700', color: colors.pink }}>{moonPercent ? `${moonPercent}%` : '—'}</div>  
-                  <div style={{ fontSize: '11px', color: colors.textMuted }}>to the Moon</div>
-                </div>
-              </div>
-
-              {/* Earth to Moon visualization */}
-              <div style={{ 
-                background: colors.cardSolid, 
-                borderRadius: '16px', 
-                padding: '24px 16px',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                {/* Stars */}
-                {[...Array(8)].map((_, i) => (
-                  <div key={i} style={{
-                    position: 'absolute',
-                    width: '2px',
-                    height: '2px',
-                    background: 'white',
-                    borderRadius: '50%',
-                    left: `${10 + i * 12}%`,
-                    top: `${20 + (i % 3) * 25}%`,
-                    opacity: 0.4,
-                    animation: `twinkle ${2 + i * 0.3}s ease-in-out infinite`
-                  }} />
-                ))}
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  {/* Earth */}
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{
-                      width: '56px',
-                      height: '56px',
-                      borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #22D3EE 0%, #34D399 50%, #22D3EE 100%)',
-                      boxShadow: '0 0 24px rgba(34, 211, 238, 0.4)',
-                      position: 'relative'
-                    }}>
-                      <div style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '30%',
-                        width: '12px',
-                        height: '8px',
-                        background: 'rgba(255,255,255,0.3)',
-                        borderRadius: '50%',
-                        transform: 'translateY(-50%)'
-                      }} />
-                    </div>
-                    <div style={{ fontSize: '12px', color: colors.textMuted, marginTop: '8px' }}>Earth</div>
-                  </div>
-
-                  {/* Flight path with rocket */}
-<div style={{ flex: 1, position: 'relative', height: '40px', margin: '0 16px' }}>
-  <div style={{
-    position: 'absolute',
-    left: `${moonPercent || 0}%`,
-    top: '50%',
-    transform: 'translate(-50%, -50%) rotate(45deg)',
-    fontSize: '24px',
-    filter: 'drop-shadow(0 0 8px rgba(244,114,182,0.6))',
-  }}>
-    🚀
-  </div>
-</div>
-
-                  {/* Moon */}
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{
-                      width: '48px',
-                      height: '48px',
-                      borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #E5E5E5 0%, #9CA3AF 100%)',
-                      boxShadow: '0 0 20px rgba(156, 163, 175, 0.3)',
-                      position: 'relative'
-                    }}>
-                      {/* Craters */}
-                      {[
-                        { top: '20%', left: '25%', size: '8px' },
-                        { top: '50%', left: '60%', size: '6px' },
-                        { top: '70%', left: '35%', size: '5px' },
-                      ].map((crater, i) => (
-                        <div key={i} style={{
-                          position: 'absolute',
-                          top: crater.top,
-                          left: crater.left,
-                          width: crater.size,
-                          height: crater.size,
-                          borderRadius: '50%',
-                          background: 'rgba(0,0,0,0.1)'
-                        }} />
-                      ))}
-                    </div>
-                    <div style={{ fontSize: '12px', color: colors.textMuted, marginTop: '8px' }}>Moon</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Stats row */}
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                gap: '24px',
-                marginTop: '20px',
-                paddingTop: '16px',
-                borderTop: `1px solid ${colors.border}`
-              }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', fontWeight: '700', color: colors.text }}>{relationshipDays || '—'}</div>
-                  <div style={{ fontSize: '11px', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Days</div>
-                </div>
-                <div style={{ fontSize: '20px', color: colors.textMuted }}>=</div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '24px', fontWeight: '700', color: colors.pink }}>{moonPercent ? `${moonPercent}%` : '—'}</div>
-                  <div style={{ fontSize: '11px', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em' }}>To Moon</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Partner Weather Card */}
-            {(() => {
-              const weatherCondition = () => {
-                if (!partnerWeather) return null
-                const id = partnerWeather.weather[0].id
-                const icon = partnerWeather.weather[0].icon
-                if (icon.includes('n')) return { label: 'Clear Night', emoji: '🌙', gradient: 'rgba(99,102,241,0.1)', iconBg: 'linear-gradient(135deg, #818CF8, #6366F1)', glow: 'rgba(99,102,241,0.4)' }
-                if (id >= 200 && id < 300) return { label: 'Stormy', emoji: '⛈️', gradient: 'rgba(99,102,241,0.12)', iconBg: 'linear-gradient(135deg, #6366F1, #4F46E5)', glow: 'rgba(99,102,241,0.4)' }
-                if (id >= 300 && id < 600) return { label: 'Rainy', emoji: '🌧️', gradient: 'rgba(96,165,250,0.12)', iconBg: 'linear-gradient(135deg, #60A5FA, #3B82F6)', glow: 'rgba(96,165,250,0.4)' }
-                if (id >= 600 && id < 700) return { label: 'Snowy', emoji: '❄️', gradient: 'rgba(186,230,253,0.12)', iconBg: 'linear-gradient(135deg, #E0F2FE, #BAE6FD)', glow: 'rgba(186,230,253,0.4)' }
-                if (id >= 700 && id < 800) return { label: 'Foggy', emoji: '🌫️', gradient: 'rgba(148,163,184,0.1)', iconBg: 'linear-gradient(135deg, #94A3B8, #64748B)', glow: 'rgba(148,163,184,0.3)' }
-                if (id === 800) return { label: 'Sunny', emoji: '☀️', gradient: 'rgba(251,191,36,0.15)', iconBg: 'linear-gradient(135deg, #FCD34D, #F59E0B)', glow: 'rgba(251,191,36,0.4)' }
-                return { label: 'Cloudy', emoji: '☁️', gradient: 'rgba(148,163,184,0.1)', iconBg: 'linear-gradient(135deg, #94A3B8, #64748B)', glow: 'rgba(148,163,184,0.3)' }
-              }
-              const wc = weatherCondition()
-              const partnerLocalTime = partnerWeather
-                ? new Date(Date.now() + partnerWeather.timezone * 1000).toUTCString().match(/(\d+:\d+)/)?.[1]
-                : null
-              return partnerProfile ? (
-                <div className="glass-card" style={{ padding: '20px', marginBottom: '16px', position: 'relative', overflow: 'hidden', boxShadow: `0 0 80px ${timeGlow}, 0 0 32px ${timeGlow}` }}>
-                  <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse at 65% 0%, ${timeGlow.replace('0.4', '0.3')} 0%, transparent 65%), radial-gradient(ellipse at 20% 100%, ${timeGlow.replace('0.4', '0.12')} 0%, transparent 50%)`, pointerEvents: 'none' }} />
-                  {wc && <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(ellipse at 70% 20%, ${wc.gradient} 0%, transparent 50%)`, pointerEvents: 'none' }} />}
-                  <div style={{ position: 'relative', zIndex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                      <div>
-                        <p style={{ fontSize: '13px', color: colors.pink, fontWeight: '500', marginBottom: '4px' }}>{partnerName}'s weather</p>
-                        <h3 style={{ fontSize: '22px', fontWeight: '600', color: colors.text, margin: 0 }}>{partnerProfile.home_city}</h3>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <p style={{ fontSize: '11px', color: colors.textMuted, marginBottom: '4px' }}>Local time</p>
-                        <p style={{ fontSize: '16px', fontWeight: '500', color: colors.text }}>{partnerLocalTime || '--:--'}</p>
-                      </div>
-                    </div>
-                    {wc ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: wc.iconBg, boxShadow: `0 0 20px ${wc.glow}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0 }}>
-                          {wc.emoji}
-                        </div>
-                        <div>
-                          <p style={{ fontSize: '16px', fontWeight: '500', color: colors.text, marginBottom: '2px' }}>{wc.label}</p>
-                          <p style={{ fontSize: '13px', color: colors.textMuted }}>{Math.round(partnerWeather.main.temp)}°C · feels like {Math.round(partnerWeather.main.feels_like)}°C</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <p style={{ fontSize: '13px', color: colors.textMuted }}>Loading weather...</p>
-                    )}
-                  </div>
-                </div>
-              ) : null
-            })()}
 
             {!coupleLoading && !partnerProfile && (
               <button 
@@ -1006,6 +714,37 @@ const moonPercent = relationshipDays ? Math.min(Math.round((relationshipDays / 8
                 <span style={{ fontSize: '20px' }}>🔗</span>
                 Connect your partner
               </button>
+            )}
+
+            {/* Add-trip FAB (stub — the new-trip flow is a later phase) */}
+            <button
+              onClick={() => setShowAddTrip(true)}
+              aria-label="Add trip"
+              style={{
+                position: 'fixed', bottom: '96px', right: 'max(20px, calc(50% - 215px + 20px))', zIndex: 90,
+                width: '56px', height: '56px', borderRadius: '50%', border: 'none', cursor: 'pointer',
+                background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`,
+                boxShadow: '0 8px 28px rgba(124,106,239,0.5)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <Plus size={26} color="#fff" />
+            </button>
+
+            {showAddTrip && (
+              <div
+                onClick={() => setShowAddTrip(false)}
+                style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 16px 32px' }}
+              >
+                <div onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '430px', background: colors.cardSolid, border: `1px solid ${colors.border}`, borderRadius: '24px', padding: '28px 24px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '12px' }}>🧳</div>
+                  <div style={{ fontSize: '17px', fontWeight: '600', color: colors.text, marginBottom: '8px' }}>Create a trip</div>
+                  <div style={{ fontSize: '13px', color: colors.textMuted, marginBottom: '20px' }}>The new-trip flow is coming soon.</div>
+                  <button onClick={() => setShowAddTrip(false)} style={{ width: '100%', padding: '14px', background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`, border: 'none', borderRadius: '100px', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+                    Got it
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         )}
