@@ -78,8 +78,6 @@ export default function Dashboard({ session }) {
 
   const navItems = [
     { id: 'home', label: 'Plan', icon: 'M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z' },
-    { id: 'scrapbook', label: 'Scrapbook', icon: 'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z' },
-    { id: 'checklist', label: 'Checklist', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4' },
     { id: 'profile', label: 'Us', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
   ]
 
@@ -731,65 +729,9 @@ useEffect(() => {
             >
               <Plus size={26} color="#fff" />
             </button>
-
-            {showAddTrip && (
-              <CreateTripModal
-                session={session}
-                profile={myProfile}
-                onClose={() => setShowAddTrip(false)}
-                onCreated={async (tripId) => { setShowAddTrip(false); await fetchData(); navigate(`/trip/${tripId}`) }}
-              />
-            )}
           </div>
         )}
 
-
-        {/* CHECKLIST TAB */}
-        {activeTab === 'checklist' && (
-          <div style={{ animation: 'fadeSlideUp 0.4s ease', textAlign: 'center', paddingTop: '40px' }}>
-            <div style={{ 
-              width: '64px', 
-              height: '64px', 
-              borderRadius: '16px',
-              background: colors.cardSolid,
-              border: `1px solid ${colors.border}`,
-              margin: '0 auto 20px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
-              <Icon path="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" size={28} color={colors.pink} />
-            </div>
-            <div style={{ fontSize: '22px', fontWeight: '600', color: colors.text, marginBottom: '8px' }}>Booking Checklist</div>
-            <div style={{ fontSize: '14px', color: colors.textMuted, marginBottom: '32px', lineHeight: '1.6', maxWidth: '280px', margin: '0 auto 32px' }}>
-              Track Commit → Flights → Stay for both partners. Coming soon.
-            </div>
-            
-            <div className="glass-card" style={{ padding: '20px', opacity: 0.6, maxWidth: '300px', margin: '0 auto' }}>
-              {['Commit to trip', 'Book flights', 'Book stay'].map((step, i) => (
-                <div 
-                  key={step} 
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '14px', 
-                    padding: '14px 0', 
-                    borderBottom: i < 2 ? `1px solid ${colors.border}` : 'none' 
-                  }}
-                >
-                  <div style={{ 
-                    width: '22px', 
-                    height: '22px', 
-                    borderRadius: '50%', 
-                    border: `1.5px solid ${colors.border}`, 
-                    flexShrink: 0 
-                  }} />
-                  <div style={{ fontSize: '14px', color: colors.textMuted }}>{step}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* PROFILE TAB */}
         {activeTab === 'profile' && (
@@ -999,6 +941,17 @@ useEffect(() => {
         </div>
       )}
 
+      {/* Create-trip modal — rendered at root (not inside the tab content) so its
+          z-index sits above the fixed bottom nav instead of being trapped under it. */}
+      {showAddTrip && (
+        <CreateTripModal
+          session={session}
+          profile={myProfile}
+          onClose={() => setShowAddTrip(false)}
+          onCreated={async (tripId) => { setShowAddTrip(false); await fetchData(); navigate(`/trip/${tripId}`) }}
+        />
+      )}
+
       {/* Bottom nav - Moonly style */}
       <div style={{ 
         position: 'fixed', 
@@ -1028,15 +981,7 @@ useEffect(() => {
             return (
               <button
                 key={item.id}
-                onClick={() => {
-  if (item.id === 'home') {
-    navigate('/dashboard')
-  } else if (item.id === 'scrapbook') {
-    navigate('/scrapbook')
-  } else {
-    setActiveTab(item.id)
-  }
-}}
+                onClick={() => setActiveTab(item.id)}
                 style={{ 
                   background: 'none', 
                   border: isActive ? `1.5px solid ${colors.pink}` : '1.5px solid transparent',

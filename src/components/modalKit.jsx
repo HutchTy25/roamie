@@ -29,10 +29,13 @@ export function ModalShell({ title, children, onClose }) {
       <div
         onClick={e => e.stopPropagation()}
         style={{
-          width: '100%', maxWidth: '430px', maxHeight: '92vh', overflowY: 'auto',
+          width: '100%', maxWidth: '430px', maxHeight: '88vh', overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
           background: COLORS.cardSolid, border: `1px solid ${COLORS.border}`,
           borderRadius: '24px 24px 0 0',
-          padding: '24px 20px calc(24px + env(safe-area-inset-bottom))',
+          // Generous bottom padding so the last fields + CTA clear the fixed
+          // bottom nav / home indicator and stay scrollable into view.
+          padding: '24px 20px calc(96px + env(safe-area-inset-bottom))',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
