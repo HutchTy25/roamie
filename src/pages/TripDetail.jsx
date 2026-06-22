@@ -87,10 +87,10 @@ export default function TripDetail({ session }) {
         setNameById(Object.fromEntries((profs ?? []).map(p => [p.id, p.display_name])))
       }
 
-      // Single Frankfurter call for the subtle home-currency line.
+      // Single FX call via our proxy (Frankfurter blocks direct browser CORS).
       if (home) {
         try {
-          const r = await fetch(`https://api.frankfurter.app/latest?from=${home}`)
+          const r = await fetch(`https://roamie-61ib.onrender.com/api/fx-rates?from=${home}`)
           const j = await r.json()
           if (!cancelled && j?.rates) setFxRates({ [home]: 1, ...j.rates })
         } catch { /* bold-only fallback */ }

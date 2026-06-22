@@ -245,9 +245,10 @@ app.use('/api/waitlist',            makeLimit(5))
 app.use('/api/photo',               makeLimit(120))
 
 
-// Cache exchange rates for 6 hours to avoid hitting rate limits
-let ratesCache = null
-let ratesCacheTime = 0
+// Cache exchange rates for 6 hours to avoid hitting rate limits.
+// Keyed by base currency: each base has its own rate set, so requests with
+// different `from` values (partners' differing home currencies) don't collide.
+const ratesCache = new Map() // base -> { rates, time }
 
 const FALLBACK_RATES = {
   USD: 1,
@@ -266,9 +267,10 @@ async function getExchangeRates(baseCurrency) {
   const now = Date.now()
   const sixHours = 6 * 60 * 60 * 1000
 
-  if (ratesCache && (now - ratesCacheTime) < sixHours) {
+  const cached = ratesCache.get(baseCurrency)
+  if (cached && (now - cached.time) < sixHours) {
     console.log('Exchange rates from cache')
-    return ratesCache
+    return cached.rates
   }
 
   try {
@@ -277,15 +279,15 @@ async function getExchangeRates(baseCurrency) {
     )
     const data = await res.json()
     if (data.rates) {
-      ratesCache = { [baseCurrency]: 1, ...data.rates }
-      ratesCacheTime = now
+      const rates = { [baseCurrency]: 1, ...data.rates }
+      ratesCache.set(baseCurrency, { rates, time: now })
       console.log('Exchange rates refreshed from Frankfurter')
-      return ratesCache
+      return rates
     }
-    return ratesCache || FALLBACK_RATES
+    return cached?.rates || FALLBACK_RATES
   } catch (e) {
     console.error('Exchange rate error:', e)
-    return ratesCache || FALLBACK_RATES
+    return cached?.rates || FALLBACK_RATES
   }
 }
 
@@ -602,6 +604,18 @@ app.post('/api/disconnect', requireAuth, async (req, res) => {
 
 app.get('/api/trip-count', (req, res) => {
   res.json({ count: globalTripCount })
+})
+
+// FX proxy: browsers can't call Frankfurter directly (CORS). Thin passthrough to
+// getExchangeRates(base), which carries the existing 6h in-memory cache. No auth,
+// no metering. Returns { base, rates } where rates[CUR] = units of CUR per 1 base.
+app.get('/api/fx-rates', async (req, res) => {
+  const from = String(req.query.from || 'USD').toUpperCase()
+  if (!/^[A-Z]{3}$/.test(from)) {
+    return res.status(400).json({ error: 'Invalid base currency' })
+  }
+  const rates = await getExchangeRates(from)
+  res.json({ base: from, rates })
 })
 
 app.get('/api/photo', async (req, res) => {
