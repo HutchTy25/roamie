@@ -1,21 +1,28 @@
 import { useEffect, useState } from 'react'
-import { Plus, Settings } from 'lucide-react'
+import { Plus, Clock, ChevronLeft, Camera, User } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../supabase'
 import CreateTripModal from '../components/CreateTripModal'
 
 const cleanDestName = (name) => name?.replace(/^[A-Z]{2,3} /, '') ?? name
 
-// v0 design tokens
+// New "Moonly → midnight" palette: true black, warm gold accent, cool blue.
 const colors = {
   bg: '#000000',
   card: '#121214',
-  gold: '#C9A05C',
-  blue: '#6FA8C9',
-  text: '#F5F5F5',
-  textMuted: '#8A8A8F',
+  cardElevated: '#1B1B1F',
   border: 'rgba(255,255,255,0.08)',
+  borderHover: 'rgba(255,255,255,0.16)',
+  gold: '#C9A05C',
+  goldSoft: 'rgba(201,160,92,0.14)',
+  blue: '#6FA8C9',
+  text: '#F2F1ED',
+  textMuted: '#5E6066',
+  textSoft: '#8A8A8F',
+  paid: '#6FBF8E',
+  paidSoft: 'rgba(111,191,142,0.12)',
 }
+const serif = "'Playfair Display', Georgia, serif"
 
 const CURR_SYMBOLS = {
   USD: '$', GBP: '£', EUR: '€', CAD: 'C$', AUD: 'A$',
@@ -27,12 +34,46 @@ const CURR_SYMBOLS = {
 }
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'
-
-const greeting = () => {
+const daysUntil = (d) => d ? Math.ceil((new Date(d) - new Date()) / 86400000) : null
+const formatCountdown = (days) => {
+  if (days == null || days < 0) return null
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Tomorrow'
+  if (days <= 30) return `in ${days} days`
+  return `in ${Math.round(days / 7)} weeks`
+}
+const greetingFor = () => {
   const h = new Date().getHours()
   if (h < 12) return 'Good morning'
   if (h < 18) return 'Good afternoon'
   return 'Good evening'
+}
+
+// Status pill tone derived from a trip's bookings aggregate.
+const statusPill = (agg) => {
+  if (agg?.unpaidCount > 0) return { label: `${agg.unpaidCount} unpaid`, tone: 'gold' }
+  if (agg?.reservationCount > 0) return { label: 'All settled', tone: 'paid' }
+  return { label: 'No bookings', tone: 'draft' }
+}
+
+function Pill({ label, tone, style }) {
+  const tones = {
+    gold: { color: colors.gold, bg: colors.goldSoft },
+    paid: { color: colors.paid, bg: colors.paidSoft },
+    draft: { color: colors.textSoft, bg: 'rgba(255,255,255,0.06)' },
+  }
+  const t = tones[tone] || tones.draft
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: '6px',
+      fontSize: '11px', fontWeight: '500', letterSpacing: '-0.01em',
+      color: t.color, background: t.bg, borderRadius: '100px', padding: '4px 10px',
+      ...style,
+    }}>
+      {tone !== 'draft' && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: t.color }} />}
+      {label}
+    </span>
+  )
 }
 
 export default function Dashboard({ session }) {
@@ -43,19 +84,30 @@ export default function Dashboard({ session }) {
   const [loading, setLoading] = useState(true)
   const [partnerProfile, setPartnerProfile] = useState(null)
   const [coupleLoading, setCoupleLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('home')
+  const [customAvatar, setCustomAvatar] = useState(null)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [myProfile, setMyProfile] = useState(null)
   const [showAddTrip, setShowAddTrip] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [feedbackBug, setFeedbackBug] = useState('')
+  const [feedbackFeature, setFeedbackFeature] = useState('')
+  const [feedbackSent, setFeedbackSent] = useState(false)
   const [tripAgg, setTripAgg] = useState({})
 
   useEffect(() => {
     if (!session) { navigate('/login'); return }
     fetchData()
+
     const handleFocus = () => fetchData()
     window.addEventListener('focus', handleFocus)
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') fetchData()
     })
-    return () => { window.removeEventListener('focus', handleFocus) }
+
+    return () => {
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [session])
 
   useEffect(() => {
@@ -70,7 +122,11 @@ export default function Dashboard({ session }) {
     try {
       const { data: profile } = await supabase
         .from('profiles').select('*').eq('id', session.user.id).single()
-      if (profile) setMyProfile(profile)
+
+      if (profile) {
+        setMyProfile(profile)
+        if (profile.avatar_url) setCustomAvatar(profile.avatar_url)
+      }
 
       const tripQueries = [
         supabase.from('trips').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }).limit(10),
@@ -87,7 +143,9 @@ export default function Dashboard({ session }) {
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       setTrips(dedupedTrips)
 
-      // Budget spend + reservation/unpaid counts derived live from bookings.
+      // Budget spend + reservation/unpaid counts are derived live from the
+      // bookings ledger (never stored on the trip). One batched read for all
+      // visible trips; RLS lets either partner see their trips' bookings.
       const tripIds = dedupedTrips.map(t => t.id)
       if (tripIds.length) {
         const { data: bookings } = await supabase
@@ -100,6 +158,9 @@ export default function Dashboard({ session }) {
           const a = agg[b.trip_id] || (agg[b.trip_id] = { reservationCount: 0, unpaidCount: 0, spent: 0 })
           a.reservationCount++
           if (b.status === 'booked_unpaid') a.unpaidCount++
+          // Anchor every booking to the trip's destination_currency via the
+          // locked rate (no live FX on the bar). Unlocked rows are assumed
+          // already in destination_currency.
           a.spent += b.fx_rate_locked != null
             ? Number(b.price_amount) * Number(b.fx_rate_locked)
             : Number(b.price_amount)
@@ -132,177 +193,443 @@ export default function Dashboard({ session }) {
     setTrips(trips.filter(t => t.id !== id))
   }
 
-  const myName = myProfile?.display_name || session?.user?.user_metadata?.full_name?.split(' ')[0] || 'there'
-  const myAvatar = myProfile?.avatar_url || session?.user?.user_metadata?.avatar_url
-  const partnerName = partnerProfile?.display_name || partnerProfile?.full_name?.split(' ')[0] || null
-
-  const statusPill = (agg) => {
-    if (agg?.unpaidCount > 0) return { label: `${agg.unpaidCount} unpaid`, color: '#FBBF24', bg: 'rgba(251,191,36,0.12)', border: 'rgba(251,191,36,0.3)' }
-    if (agg?.reservationCount > 0) return { label: 'All settled', color: '#34D399', bg: 'rgba(52,211,153,0.12)', border: 'rgba(52,211,153,0.3)' }
-    return { label: 'No bookings yet', color: colors.textMuted, bg: 'rgba(255,255,255,0.05)', border: colors.border }
+  async function uploadAvatar(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingAvatar(true)
+    try {
+      const fileExt = file.name.split('.').pop()
+      const filePath = `${session.user.id}/avatar.${fileExt}`
+      const { error: uploadError } = await supabase.storage
+        .from('avatars').upload(filePath, file, { upsert: true })
+      if (uploadError) throw uploadError
+      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath)
+      await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', session.user.id)
+      setCustomAvatar(data.publicUrl)
+    } catch (e) {
+      console.error('Upload error:', e)
+    } finally {
+      setUploadingAvatar(false)
+    }
   }
 
+  async function submitFeedback() {
+    if (!feedbackBug.trim() && !feedbackFeature.trim()) return
+    await supabase.from('feedback').insert({
+      user_id: session.user.id,
+      bug_report: feedbackBug.trim() || null,
+      feature_request: feedbackFeature.trim() || null,
+    })
+    setFeedbackSent(true)
+    setTimeout(() => {
+      setShowFeedback(false)
+      setFeedbackBug('')
+      setFeedbackFeature('')
+      setFeedbackSent(false)
+    }, 1500)
+  }
+
+  const myName = myProfile?.display_name || session?.user?.user_metadata?.full_name?.split(' ')[0] || 'You'
+  const myAvatar = customAvatar || session?.user?.user_metadata?.avatar_url
+  const partnerName = partnerProfile?.display_name || partnerProfile?.full_name?.split(' ')[0] || null
+  const togetherLabel = partnerName ? `Together · ${myName} & ${partnerName}` : `${greetingFor()}, ${myName}`
+
+  // Small avatar chip (image when available, initials otherwise).
+  const AvatarChip = ({ src, name, accent = colors.gold, size = 28, style }) => (
+    src ? (
+      <img src={src} alt={name || ''} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', border: `1.5px solid ${colors.bg}`, ...style }} />
+    ) : (
+      <div style={{
+        width: size, height: size, borderRadius: '50%', border: `1.5px solid ${colors.bg}`,
+        background: accent, color: colors.bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: size * 0.4, fontWeight: '600', ...style,
+      }}>
+        {(name || '?')[0]}
+      </div>
+    )
+  )
+
   return (
-    <div style={{ minHeight: '100vh', background: colors.bg, maxWidth: '430px', margin: '0 auto', position: 'relative', paddingBottom: '40px' }}>
-      <style>{`
-        @keyframes fadeSlideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-        .trip-card { background: ${colors.card}; border: 1px solid ${colors.border}; border-radius: 20px; transition: border-color 0.2s ease; }
-        .trip-card:hover { border-color: rgba(201,160,92,0.4); }
-      `}</style>
+    <div style={{
+      minHeight: '100vh',
+      background: colors.bg,
+      display: 'flex',
+      flexDirection: 'column',
+      maxWidth: '430px',
+      margin: '0 auto',
+      paddingBottom: 'calc(40px + env(safe-area-inset-bottom))',
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      {/* Ambient brand glow */}
+      <div aria-hidden className="roamie-glow" style={{
+        position: 'absolute', top: '-96px', left: '50%', transform: 'translateX(-50%)',
+        height: '256px', width: '120%', borderRadius: '50%',
+        background: 'rgba(201,160,92,0.10)', filter: 'blur(64px)', pointerEvents: 'none', zIndex: 0,
+      }} />
 
       {proToast && (
         <div style={{
           position: 'fixed', top: '1.25rem', left: '50%', transform: 'translateX(-50%)',
-          zIndex: 9999, background: `linear-gradient(135deg, ${colors.gold}, #E0A53B)`,
-          borderRadius: '100px', padding: '12px 20px', color: '#1A1A1A',
-          fontSize: '14px', fontWeight: '600', boxShadow: '0 4px 24px rgba(201,160,92,0.35)',
+          zIndex: 9999, background: colors.gold,
+          borderRadius: '100px', padding: '12px 20px', color: colors.bg,
+          fontSize: '14px', fontWeight: '600', boxShadow: '0 8px 28px rgba(0,0,0,0.5)',
           display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap',
         }}>
-          <span>✦</span> Welcome to Roamie Pro!
-          <button onClick={() => setProToast(false)} style={{ marginLeft: '4px', background: 'none', border: 'none', color: 'rgba(0,0,0,0.6)', cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: 0 }}>×</button>
+          Welcome to Roamie Pro — enjoy unlimited searches!
+          <button onClick={() => setProToast(false)} style={{
+            marginLeft: '4px', background: 'none', border: 'none',
+            color: 'rgba(0,0,0,0.6)', cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: 0,
+          }}>×</button>
         </div>
       )}
 
-      {/* Header */}
-      <div style={{ padding: '28px 20px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '700', color: colors.text, margin: 0, letterSpacing: '-0.4px' }}>
-          {greeting()}, {myName}
-        </h1>
-        <button
-          onClick={() => navigate('/profile')}
-          aria-label="Profile and settings"
-          style={{ flexShrink: 0, width: '40px', height: '40px', borderRadius: '50%', background: colors.card, border: `1px solid ${colors.border}`, color: colors.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: 0 }}
-        >
-          {myAvatar
-            ? <img src={myAvatar} alt="you" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            : <Settings size={18} color={colors.textMuted} />}
-        </button>
-      </div>
+      <input id="avatar-upload" type="file" accept="image/*" style={{ display: 'none' }} onChange={uploadAvatar} />
 
-      {/* Trips */}
-      <div style={{ padding: '0 20px' }}>
-        <div style={{ fontSize: '13px', letterSpacing: '0.08em', textTransform: 'uppercase', color: colors.textMuted, margin: '20px 0 14px', fontWeight: '600' }}>
-          Your trips
-        </div>
-
-        {loading && (
-          <div style={{ textAlign: 'center', padding: '40px', color: colors.textMuted, fontSize: '14px' }}>Loading…</div>
-        )}
-
-        {!loading && trips.length === 0 && (
-          <div className="trip-card" style={{ padding: '40px', textAlign: 'center', marginBottom: '16px' }}>
-            <div style={{ fontSize: '32px', marginBottom: '12px' }}>✈️</div>
-            <div style={{ color: colors.textMuted, fontSize: '14px' }}>No trips yet. Your next adventure starts here.</div>
-          </div>
-        )}
-
-        {trips.map((trip, i) => {
-          const agg = tripAgg[trip.id] || {}
-          const spent = Math.round(agg.spent || 0)
-          const budget = trip.budget_total != null ? Number(trip.budget_total) : null
-          const pct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0
-          const sym = CURR_SYMBOLS[trip.destination_currency] || trip.destination_currency || ''
-          const barColor = pct >= 100 ? '#EF4444' : pct >= 80 ? '#E0A53B' : `linear-gradient(90deg, ${colors.blue}, ${colors.gold})`
-          const pill = statusPill(agg)
-          const destLabel = cleanDestName(trip.destination_name) || ''
-          return (
-            <div
-              key={trip.id}
-              className="trip-card"
-              onClick={() => navigate(`/trip/${trip.id}`)}
-              style={{ position: 'relative', overflow: 'hidden', padding: 0, marginBottom: '12px', cursor: 'pointer', minHeight: '170px', animation: `fadeSlideUp 0.4s ease ${i * 0.05}s forwards`, opacity: 0 }}
-            >
-              <div style={{
-                position: 'absolute', inset: 0,
-                background: trip.destination_photo_url
-                  ? `url(${trip.destination_photo_url}) center/cover no-repeat`
-                  : `linear-gradient(135deg, rgba(111,168,201,0.25) 0%, rgba(201,160,92,0.2) 100%)`,
-              }} />
-              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.97) 0%, rgba(0,0,0,0.82) 45%, rgba(0,0,0,0.35) 100%)' }} />
-
+      {/* ===================== HOME / TRIPS ===================== */}
+      {activeTab === 'home' && (
+        <>
+          <header style={{
+            position: 'relative', zIndex: 10,
+            display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
+            padding: '64px 20px 12px',
+          }}>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: '13px', fontWeight: '500', color: colors.textSoft, margin: 0 }}>
+                {togetherLabel}
+              </p>
+              <h1 style={{ fontFamily: serif, fontSize: '32px', fontWeight: '600', lineHeight: 1, letterSpacing: '-0.01em', color: colors.text, margin: '6px 0 0' }}>
+                Your trips
+              </h1>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
               <button
-                onClick={(e) => { e.stopPropagation(); deleteTrip(trip.id) }}
-                aria-label="Delete trip"
-                style={{ position: 'absolute', top: '10px', right: '12px', zIndex: 2, background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: '50%', width: '26px', height: '26px', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}
-              >×</button>
+                onClick={() => setShowAddTrip(true)}
+                aria-label="New trip"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', background: colors.text, color: colors.bg, border: 'none', cursor: 'pointer' }}
+              >
+                <Plus size={20} />
+              </button>
+              <button
+                onClick={() => setActiveTab('profile')}
+                aria-label="Open profile"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', background: colors.card, border: `1px solid ${colors.border}`, cursor: 'pointer', padding: 0, overflow: 'hidden' }}
+              >
+                {myAvatar
+                  ? <img src={myAvatar} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <User size={18} color={colors.text} />}
+              </button>
+            </div>
+          </header>
 
-              <div style={{ position: 'relative', zIndex: 1, padding: '16px', display: 'flex', flexDirection: 'column', minHeight: '170px', justifyContent: 'flex-end' }}>
-                <div style={{ fontSize: '18px', fontWeight: '700', color: colors.text, marginBottom: '2px' }}>
-                  {trip.country_emoji} {trip.trip_name || destLabel || 'Untitled trip'}
-                </div>
-                <div style={{ fontSize: '12px', color: colors.textMuted, marginBottom: '12px' }}>
-                  {destLabel}{destLabel && (trip.dates_from || trip.dates_to) ? ' · ' : ''}{fmtDate(trip.dates_from)} → {fmtDate(trip.dates_to)}
-                </div>
+          <div style={{ position: 'relative', zIndex: 10, flex: 1, padding: '8px 16px 0' }}>
+            {loading && (
+              <div style={{ textAlign: 'center', padding: '40px', color: colors.textMuted, fontSize: '14px' }}>
+                Loading…
+              </div>
+            )}
 
-                {budget > 0 && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.12)', overflow: 'hidden' }}>
-                      <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: '3px', transition: 'width 0.3s ease' }} />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '5px', fontSize: '11px' }}>
-                      <span style={{ color: pct >= 100 ? '#EF4444' : colors.textMuted }}>{sym}{spent.toLocaleString()} spent</span>
-                      <span style={{ color: colors.textMuted }}>{sym}{budget.toLocaleString()}</span>
-                    </div>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <div style={{ display: 'flex' }}>
-                      {myAvatar ? (
-                        <img src={myAvatar} style={{ width: '24px', height: '24px', borderRadius: '50%', border: `1.5px solid ${colors.blue}`, objectFit: 'cover' }} alt="you" />
-                      ) : (
-                        <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: colors.blue, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '600', color: '#000' }}>{myName[0]?.toUpperCase()}</div>
-                      )}
-                      {partnerProfile && (
-                        <div style={{ marginLeft: '-7px' }}>
-                          {partnerProfile.avatar_url ? (
-                            <img src={partnerProfile.avatar_url} style={{ width: '24px', height: '24px', borderRadius: '50%', border: `1.5px solid ${colors.gold}`, objectFit: 'cover' }} alt="partner" />
-                          ) : (
-                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: colors.gold, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '600', color: '#000' }}>{partnerName?.[0]?.toUpperCase() || '?'}</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    <span style={{ fontSize: '11px', color: colors.textMuted }}>
-                      {agg.reservationCount || 0} reservation{(agg.reservationCount || 0) !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  <span style={{ fontSize: '11px', fontWeight: '600', color: pill.color, background: pill.bg, border: `1px solid ${pill.border}`, borderRadius: '100px', padding: '4px 10px' }}>
-                    {pill.label}
-                  </span>
+            {!loading && trips.length === 0 && (
+              <div style={{ borderRadius: '24px', border: `1px solid ${colors.border}`, background: colors.card, padding: '44px 24px', textAlign: 'center' }}>
+                <div style={{ color: colors.text, fontSize: '15px', fontWeight: '500', marginBottom: '6px' }}>No trips yet</div>
+                <div style={{ color: colors.textMuted, fontSize: '13px' }}>
+                  Your next adventure starts here.
                 </div>
               </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {trips.map((trip, i) => {
+                const agg = tripAgg[trip.id] || {}
+                const spent = Math.round(agg.spent || 0)
+                const budget = trip.budget_total != null ? Number(trip.budget_total) : null
+                const pct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0
+                const sym = CURR_SYMBOLS[trip.destination_currency] || trip.destination_currency || ''
+                const pill = statusPill(agg)
+                const destLabel = cleanDestName(trip.destination_name) || ''
+                const days = daysUntil(trip.dates_from)
+                const countdown = formatCountdown(days)
+                const imminent = days != null && days >= 0 && days <= 21
+                return (
+                  <button
+                    key={trip.id}
+                    onClick={() => navigate(`/trip/${trip.id}`)}
+                    className="roamie-rise"
+                    style={{
+                      position: 'relative', overflow: 'hidden', textAlign: 'left',
+                      borderRadius: '24px', border: `1px solid ${colors.border}`, background: colors.card,
+                      padding: 0, cursor: 'pointer', width: '100%',
+                      boxShadow: '0 18px 40px -18px rgba(0,0,0,0.9)',
+                      animationDelay: `${i * 90}ms`,
+                    }}
+                  >
+                    {/* Photo */}
+                    <div style={{ position: 'relative', height: '176px', width: '100%', overflow: 'hidden' }}>
+                      <div style={{
+                        position: 'absolute', inset: 0,
+                        background: trip.destination_photo_url
+                          ? `url(${trip.destination_photo_url}) center/cover no-repeat`
+                          : `linear-gradient(135deg, ${colors.cardElevated}, ${colors.card})`,
+                      }} />
+                      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 55%, rgba(0,0,0,0.15) 100%)' }} />
+
+                      {/* Status pill (top-left) */}
+                      <div style={{ position: 'absolute', top: '16px', left: '16px' }}>
+                        <Pill label={pill.label} tone={pill.tone} style={{ backdropFilter: 'blur(8px)' }} />
+                      </div>
+
+                      {/* Countdown (top-right) */}
+                      {countdown && (
+                        <span
+                          className={imminent ? 'roamie-pulse-gold' : undefined}
+                          style={{
+                            position: 'absolute', top: '16px', right: '16px',
+                            display: 'inline-flex', alignItems: 'center', gap: '6px',
+                            borderRadius: '100px', padding: '5px 10px', fontSize: '11px', fontWeight: '500',
+                            backdropFilter: 'blur(8px)',
+                            color: imminent ? colors.gold : 'rgba(255,255,255,0.9)',
+                            background: imminent ? colors.goldSoft : 'rgba(0,0,0,0.4)',
+                          }}
+                        >
+                          <Clock size={12} color={imminent ? colors.gold : 'rgba(255,255,255,0.7)'} />
+                          {countdown}
+                        </span>
+                      )}
+
+                      {/* Delete */}
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => { e.stopPropagation(); deleteTrip(trip.id) }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); deleteTrip(trip.id) } }}
+                        aria-label="Delete trip"
+                        style={{
+                          position: 'absolute', bottom: '12px', right: '14px',
+                          background: 'rgba(0,0,0,0.4)', borderRadius: '50%',
+                          width: '26px', height: '26px', color: 'rgba(255,255,255,0.7)',
+                          cursor: 'pointer', fontSize: '15px', lineHeight: '26px', textAlign: 'center',
+                          backdropFilter: 'blur(8px)',
+                        }}
+                      >
+                        ×
+                      </span>
+                    </div>
+
+                    {/* Body */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '20px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <h3 style={{ fontFamily: serif, fontSize: '22px', fontWeight: '600', lineHeight: 1.15, color: colors.text, margin: 0 }}>
+                          {trip.trip_name || destLabel || 'Untitled trip'}
+                        </h3>
+                        <p style={{ fontSize: '13px', color: colors.textSoft, margin: 0 }}>{destLabel}</p>
+                        {(trip.dates_from || trip.dates_to) && (
+                          <p style={{ fontSize: '13px', fontWeight: '500', color: 'rgba(242,241,237,0.8)', margin: '2px 0 0' }}>
+                            {fmtDate(trip.dates_from)} → {fmtDate(trip.dates_to)}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Budget bar */}
+                      {budget > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.textMuted }}>
+                              {partnerProfile ? 'Shared budget' : 'Budget'}
+                            </span>
+                            <span style={{ fontSize: '12px', fontWeight: '500', color: colors.text }}>
+                              {sym}{spent.toLocaleString()} <span style={{ color: colors.textMuted }}>/ {sym}{budget.toLocaleString()}</span>
+                            </span>
+                          </div>
+                          <div style={{ height: '8px', width: '100%', borderRadius: '100px', background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
+                            <div className="roamie-fill" style={{ width: `${pct}%`, height: '100%', borderRadius: '100px', background: pct >= 100 ? '#E5675F' : colors.gold }} />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Footer */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '2px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <AvatarChip src={myAvatar} name={myName} accent={colors.gold} />
+                          {partnerProfile && (
+                            <AvatarChip src={partnerProfile.avatar_url} name={partnerName} accent={colors.blue} style={{ marginLeft: '-9px' }} />
+                          )}
+                        </div>
+                        <span style={{ fontSize: '12px', fontWeight: '500', color: colors.textMuted }}>
+                          {agg.reservationCount || 0} reservation{(agg.reservationCount || 0) !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
             </div>
-          )
-        })}
 
-        {!coupleLoading && !partnerProfile && (
-          <button
-            onClick={() => navigate('/connect')}
-            style={{ width: '100%', marginTop: '4px', padding: '16px', background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '16px', color: colors.text, fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}
+            {!coupleLoading && !partnerProfile && (
+              <button
+                onClick={() => navigate('/connect')}
+                style={{
+                  width: '100%', marginTop: '16px', padding: '16px',
+                  background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '16px',
+                  color: colors.text, fontSize: '14px', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                }}
+              >
+                Connect your partner
+              </button>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ===================== PROFILE ===================== */}
+      {activeTab === 'profile' && (
+        <>
+          <header style={{
+            position: 'relative', zIndex: 10,
+            display: 'flex', alignItems: 'center', gap: '12px',
+            padding: '64px 20px 12px',
+          }}>
+            <button
+              onClick={() => setActiveTab('home')}
+              aria-label="Back to trips"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', background: colors.card, border: `1px solid ${colors.border}`, color: colors.text, cursor: 'pointer' }}
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <h1 style={{ fontFamily: serif, fontSize: '28px', fontWeight: '600', color: colors.text, margin: 0 }}>Profile</h1>
+          </header>
+
+          <div style={{ position: 'relative', zIndex: 10, padding: '8px 20px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px', padding: '20px', borderRadius: '20px', border: `1px solid ${colors.border}`, background: colors.card }}>
+              <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => document.getElementById('avatar-upload').click()}>
+                {myAvatar ? (
+                  <img src={myAvatar} style={{ width: '56px', height: '56px', borderRadius: '50%', objectFit: 'cover' }} alt="you" />
+                ) : (
+                  <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: colors.gold, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: '600', color: colors.bg }}>
+                    {myName[0]}
+                  </div>
+                )}
+                <div style={{ position: 'absolute', bottom: 0, right: 0, width: '20px', height: '20px', borderRadius: '50%', background: colors.gold, display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${colors.bg}` }}>
+                  <Camera size={10} color={colors.bg} />
+                </div>
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: '17px', fontWeight: '600', color: colors.text }}>
+                  {session?.user?.user_metadata?.full_name || myName}
+                </div>
+                <div style={{ fontSize: '13px', color: colors.textSoft, overflow: 'hidden', textOverflow: 'ellipsis' }}>{session?.user?.email}</div>
+                {uploadingAvatar && <div style={{ fontSize: '11px', color: colors.gold, marginTop: '4px' }}>Uploading…</div>}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+              <div
+                onClick={() => navigate('/connect')}
+                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderRadius: '16px', border: `1px solid ${colors.border}`, background: colors.card, cursor: 'pointer' }}
+              >
+                <div style={{ fontSize: '14px', color: colors.text }}>Partner Sync</div>
+                <div style={{ fontSize: '13px', color: colors.textSoft }}>
+                  {partnerProfile ? `Connected to ${partnerName}` : 'Not connected'} →
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderRadius: '16px', border: `1px solid ${colors.border}`, background: colors.card }}>
+                <div style={{ fontSize: '14px', color: colors.text }}>Subscription</div>
+                {myProfile?.is_pro ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: colors.bg, background: colors.gold, padding: '3px 10px', borderRadius: '100px' }}>Pro</span>
+                    <button
+                      onClick={async () => {
+                        const { data: { session: portalSession } } = await supabase.auth.getSession()
+                        const res = await fetch('https://roamie-61ib.onrender.com/api/create-portal-session', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${portalSession?.access_token}`,
+                          },
+                          body: JSON.stringify({}),
+                        })
+                        const { url } = await res.json()
+                        if (url) window.location.href = url
+                      }}
+                      style={{ fontSize: '13px', color: colors.gold, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    >
+                      Manage →
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '13px', color: colors.textSoft }}>Free tier</div>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowFeedback(true)}
+              style={{ background: 'none', border: 'none', color: colors.textSoft, fontSize: '13px', cursor: 'pointer', padding: '8px 0', width: '100%', textAlign: 'center', marginBottom: '12px' }}
+            >
+              Share feedback
+            </button>
+
+            <button
+              onClick={() => supabase.auth.signOut().then(() => { localStorage.removeItem('roamie_paid'); navigate('/') })}
+              style={{ width: '100%', padding: '16px', background: 'none', border: `1px solid ${colors.border}`, borderRadius: '16px', color: colors.textSoft, fontSize: '14px', cursor: 'pointer' }}
+            >
+              Sign out
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Feedback modal */}
+      {showFeedback && (
+        <div
+          style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', padding: '0 16px 32px' }}
+          onClick={() => setShowFeedback(false)}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            className="roamie-sheet-up"
+            style={{ width: '100%', maxWidth: '430px', background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '24px', padding: '24px' }}
           >
-            <span style={{ fontSize: '20px' }}>🔗</span> Connect your partner
-          </button>
-        )}
-      </div>
+            <div style={{ fontFamily: serif, fontSize: '20px', fontWeight: '600', color: colors.text, marginBottom: '20px' }}>Share feedback</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ fontSize: '12px', color: colors.textMuted, display: 'block', marginBottom: '6px' }}>Something isn&apos;t working</label>
+                <textarea
+                  value={feedbackBug}
+                  onChange={e => setFeedbackBug(e.target.value)}
+                  placeholder="Describe the issue…"
+                  rows={3}
+                  style={{ width: '100%', padding: '12px', borderRadius: '12px', background: colors.cardElevated, border: `1px solid ${colors.border}`, color: colors.text, fontSize: '14px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', color: colors.textMuted, display: 'block', marginBottom: '6px' }}>I wish Roamie could…</label>
+                <textarea
+                  value={feedbackFeature}
+                  onChange={e => setFeedbackFeature(e.target.value)}
+                  placeholder="Share your idea…"
+                  rows={3}
+                  style={{ width: '100%', padding: '12px', borderRadius: '12px', background: colors.cardElevated, border: `1px solid ${colors.border}`, color: colors.text, fontSize: '14px', outline: 'none', resize: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                />
+              </div>
+            </div>
+            {feedbackSent ? (
+              <div style={{ textAlign: 'center', color: colors.paid, fontSize: '14px', padding: '12px 0' }}>Thanks for the feedback!</div>
+            ) : (
+              <button
+                onClick={submitFeedback}
+                disabled={!feedbackBug.trim() && !feedbackFeature.trim()}
+                style={{ width: '100%', padding: '14px', background: (feedbackBug.trim() || feedbackFeature.trim()) ? colors.text : 'rgba(242,241,237,0.25)', border: 'none', borderRadius: '16px', color: colors.bg, fontSize: '14px', fontWeight: '600', cursor: feedbackBug.trim() || feedbackFeature.trim() ? 'pointer' : 'default' }}
+              >
+                Submit
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
-      {/* Add-trip FAB */}
-      <button
-        onClick={() => setShowAddTrip(true)}
-        aria-label="Add trip"
-        style={{
-          position: 'fixed', bottom: 'calc(28px + env(safe-area-inset-bottom))',
-          right: 'max(20px, calc(50% - 215px + 20px))', zIndex: 110,
-          width: '56px', height: '56px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-          background: `linear-gradient(135deg, ${colors.gold}, #E0A53B)`,
-          boxShadow: '0 8px 28px rgba(201,160,92,0.45)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        <Plus size={26} color="#000" />
-      </button>
-
+      {/* Create-trip modal */}
       {showAddTrip && (
         <CreateTripModal
           session={session}

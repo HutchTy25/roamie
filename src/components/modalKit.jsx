@@ -54,11 +54,10 @@ export function PrimaryButton({ children, onClick, disabled }) {
       onClick={onClick}
       disabled={disabled}
       style={{
-        width: '100%', padding: '15px', marginTop: '6px', border: 'none', borderRadius: '100px',
-        background: disabled ? 'rgba(245,196,81,0.3)' : 'linear-gradient(135deg, #F5C451, #E0A53B)',
-        color: '#1A1B26', fontSize: '15px', fontWeight: '700',
+        width: '100%', padding: '15px', marginTop: '6px', border: 'none', borderRadius: '16px',
+        background: disabled ? 'rgba(242,241,237,0.25)' : '#F2F1ED',
+        color: '#000000', fontSize: '15px', fontWeight: '600',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        boxShadow: disabled ? 'none' : '0 4px 20px rgba(245,196,81,0.35)',
       }}
     >
       {children}

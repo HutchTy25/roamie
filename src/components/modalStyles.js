@@ -2,15 +2,15 @@
 // components so each file has a single export kind (react-refresh friendly).
 
 export const COLORS = {
-  bg: '#1A1B26',
-  cardSolid: '#1E2030',
-  primary: '#7C6AEF',
-  pink: '#F472B6',
-  cyan: '#22D3EE',
-  gold: '#F5C451',
-  text: '#E8E8ED',
-  textMuted: '#8B8FA3',
-  border: 'rgba(124, 106, 239, 0.2)',
+  bg: '#000000',
+  cardSolid: '#121214',
+  primary: '#C9A05C',
+  pink: '#C9A05C',
+  cyan: '#6FA8C9',
+  gold: '#C9A05C',
+  text: '#F2F1ED',
+  textMuted: '#5E6066',
+  border: 'rgba(255, 255, 255, 0.08)',
 }
 
 // Currency options shared by both modals.
