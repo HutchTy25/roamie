@@ -1,21 +1,25 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Plane, BedDouble, Car, Ticket, Sparkles, Plus, ArrowLeft, Pencil } from 'lucide-react'
+import { Plane, BedDouble, Car, Ticket, Sparkles, Plus, ChevronLeft, Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '../supabase'
 import AddReservationModal from '../components/AddReservationModal'
 import CreateTripModal from '../components/CreateTripModal'
 
 const colors = {
-  bg: '#1A1B26',
-  card: 'rgba(30, 32, 48, 0.72)',
-  cardSolid: '#1E2030',
-  primary: '#7C6AEF',
-  pink: '#F472B6',
-  cyan: '#22D3EE',
-  text: '#E8E8ED',
-  textMuted: '#8B8FA3',
-  border: 'rgba(124, 106, 239, 0.2)',
+  bg: '#000000',
+  card: '#121214',
+  cardElevated: '#1B1B1F',
+  border: 'rgba(255,255,255,0.08)',
+  gold: '#C9A05C',
+  goldSoft: 'rgba(201,160,92,0.14)',
+  blue: '#6FA8C9',
+  text: '#F2F1ED',
+  textMuted: '#5E6066',
+  textSoft: '#8A8A8F',
+  paid: '#6FBF8E',
+  paidSoft: 'rgba(111,191,142,0.12)',
 }
+const serif = "'Playfair Display', Georgia, serif"
 
 const CURR_SYMBOLS = {
   USD: '$', GBP: '£', EUR: '€', CAD: 'C$', AUD: 'A$', NZD: 'NZ$', JPY: '¥',
@@ -26,7 +30,6 @@ const CURR_SYMBOLS = {
 }
 const sym = (c) => CURR_SYMBOLS[c] || (c ? `${c} ` : '')
 
-// category -> { icon, label }
 const CATEGORY = {
   flight:    { Icon: Plane,     label: 'Flight' },
   hotel:     { Icon: BedDouble, label: 'Hotel' },
@@ -35,12 +38,12 @@ const CATEGORY = {
   other:     { Icon: Ticket,    label: 'Other' },
 }
 
-// status -> pill style
+// status -> pill tone in the new palette
 const STATUS = {
-  booked_paid:   { label: 'Booked · Paid',     color: '#34D399', bg: 'rgba(52,211,153,0.14)',  border: 'rgba(52,211,153,0.35)' },
-  booked_unpaid: { label: 'Reserved · Unpaid', color: '#FBBF24', bg: 'rgba(251,191,36,0.14)',  border: 'rgba(251,191,36,0.35)' },
-  settled:       { label: 'Settled',           color: '#22D3EE', bg: 'rgba(34,211,238,0.14)',  border: 'rgba(34,211,238,0.35)' },
-  draft:         { label: 'Draft',             color: '#8B8FA3', bg: 'rgba(139,143,163,0.12)', border: 'rgba(139,143,163,0.3)' },
+  booked_paid:   { label: 'Booked · Paid',     color: colors.paid, bg: colors.paidSoft },
+  booked_unpaid: { label: 'Reserved · Unpaid', color: colors.gold, bg: colors.goldSoft },
+  settled:       { label: 'Settled',           color: colors.blue, bg: 'rgba(111,168,201,0.14)' },
+  draft:         { label: 'Draft',             color: colors.textSoft, bg: 'rgba(255,255,255,0.06)' },
 }
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null
@@ -58,6 +61,7 @@ export default function TripDetail({ session }) {
   const [showAdd, setShowAdd] = useState(false)
   const [showEditTrip, setShowEditTrip] = useState(false)
   const [bookingsReady, setBookingsReady] = useState(false)
+  const [editing, setEditing] = useState(false)
 
   // Bookings (+ owner/payer names). Standalone so it can refresh after an add.
   async function loadBookings() {
@@ -83,6 +87,13 @@ export default function TripDetail({ session }) {
       .select('user_id, couple_id, trip_name, destination_name, destination_photo_url, dates_from, dates_to, budget_total, budget_currency, destination_currency, destination_iata, country_emoji')
       .eq('id', id).single()
     setTrip(data ?? null)
+  }
+
+  // Remove a booking (timeline "Edit" mode). Confirmed before delete.
+  async function removeBooking(b) {
+    if (!window.confirm(`Remove "${b.vendor_name || b.title || 'this reservation'}" from this trip?`)) return
+    await supabase.from('bookings').delete().eq('id', b.id)
+    setBookings(prev => prev.filter(x => x.id !== b.id))
   }
 
   useEffect(() => {
@@ -163,59 +174,84 @@ export default function TripDetail({ session }) {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: colors.bg, position: 'relative', maxWidth: '430px', margin: '0 auto', overflow: 'hidden' }}>
-      {/* Atmospheric background: destination photo, blurred + darkened, fixed */}
-      <div style={{
-        position: 'fixed', inset: 0, maxWidth: '430px', margin: '0 auto', zIndex: 0,
-        background: trip.destination_photo_url
-          ? `url(${trip.destination_photo_url}) center/cover no-repeat`
-          : `linear-gradient(135deg, ${colors.primary}, ${colors.pink})`,
-        filter: 'blur(18px) brightness(0.4)', transform: 'scale(1.15)',
-      }} />
-      <div style={{ position: 'fixed', inset: 0, maxWidth: '430px', margin: '0 auto', zIndex: 0, background: 'linear-gradient(to bottom, rgba(26,27,38,0.6) 0%, rgba(26,27,38,0.85) 55%, rgba(26,27,38,0.97) 100%)' }} />
+    <div style={{ minHeight: '100vh', background: colors.bg, position: 'relative', maxWidth: '430px', margin: '0 auto', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      {/* Atmospheric hero */}
+      <div style={{ position: 'relative', height: '224px', width: '100%', flexShrink: 0, overflow: 'hidden' }}>
+        <div style={{
+          position: 'absolute', inset: 0, transform: 'scale(1.1)',
+          background: trip.destination_photo_url
+            ? `url(${trip.destination_photo_url}) center/cover no-repeat`
+            : `linear-gradient(135deg, ${colors.cardElevated}, ${colors.card})`,
+          filter: 'blur(2px)',
+        }} />
+        <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.4) 45%, ${colors.bg} 100%)` }} />
 
-      <div style={{ position: 'relative', zIndex: 1, padding: '20px 18px 120px' }}>
-        <BackBtn onClick={() => navigate('/dashboard')} />
-
-        {/* Trip header overlay */}
-        <div style={{ margin: '20px 0 28px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 style={{ fontSize: '28px', fontWeight: '700', color: colors.text, margin: 0, letterSpacing: '-0.5px' }}>
-              {trip.country_emoji} {trip.trip_name || trip.destination_name || 'Untitled trip'}
-            </h1>
-            <p style={{ fontSize: '14px', color: colors.textMuted, margin: '6px 0 0' }}>
-              {trip.destination_name}
-              {(trip.dates_from || trip.dates_to) && (
-                <> · {fmtDate(trip.dates_from) || '—'} → {fmtDate(trip.dates_to) || '—'}</>
-              )}
-            </p>
-          </div>
+        {/* Top controls */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '56px 16px 0' }}>
+          <button
+            onClick={() => navigate('/dashboard')}
+            aria-label="Back to trips"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', border: `1px solid ${colors.border}`, background: 'rgba(0,0,0,0.4)', color: colors.text, cursor: 'pointer', backdropFilter: 'blur(8px)' }}
+          >
+            <ChevronLeft size={20} />
+          </button>
           <button
             onClick={() => setShowEditTrip(true)}
             aria-label="Edit trip"
-            style={{ flexShrink: 0, background: 'rgba(0,0,0,0.25)', border: `1px solid ${colors.border}`, borderRadius: '50%', width: '38px', height: '38px', color: colors.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '100px', border: `1px solid ${colors.border}`, background: 'rgba(0,0,0,0.4)', color: colors.text, fontSize: '13px', fontWeight: '500', padding: '8px 14px', cursor: 'pointer', backdropFilter: 'blur(8px)' }}
           >
-            <Pencil size={16} />
+            <Pencil size={15} /> Edit
           </button>
         </div>
 
-        {/* Loading skeleton — avoids the empty-state flash before bookings load */}
+        {/* Title overlay */}
+        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '0 20px 16px' }}>
+          <h1 style={{ fontFamily: serif, fontSize: '28px', fontWeight: '600', lineHeight: 1.15, color: colors.text, margin: 0 }}>
+            {trip.trip_name || trip.destination_name || 'Untitled trip'}
+          </h1>
+          <p style={{ fontSize: '13px', fontWeight: '500', color: 'rgba(242,241,237,0.8)', margin: '4px 0 0' }}>
+            {trip.destination_name}
+            {(trip.dates_from || trip.dates_to) && <> · {fmtDate(trip.dates_from) || '—'} → {fmtDate(trip.dates_to) || '—'}</>}
+          </p>
+        </div>
+      </div>
+
+      {/* Itinerary */}
+      <div style={{ position: 'relative', zIndex: 1, flex: 1, padding: '20px 16px calc(40px + env(safe-area-inset-bottom))' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '13px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.textMuted, margin: 0 }}>Itinerary</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <span style={{ fontSize: '12px', fontWeight: '500', color: colors.textMuted }}>
+              {bookings.length} stop{bookings.length !== 1 ? 's' : ''}
+            </span>
+            {bookings.length > 0 && (
+              <button
+                onClick={() => setEditing(e => !e)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '600', color: editing ? '#E5675F' : colors.gold }}
+              >
+                {editing ? 'Done' : 'Edit'}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Loading skeleton */}
         {!bookingsReady && (
           <div>
             {[...Array(3)].map((_, i) => (
-              <div key={i} style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: colors.cardSolid, flexShrink: 0 }} />
-                <div style={{ flex: 1, height: '78px', borderRadius: '16px', background: colors.cardSolid, border: `1px solid ${colors.border}`, opacity: 0.6 }} />
+              <div key={i} style={{ display: 'flex', gap: '14px', marginBottom: '16px' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: colors.card, flexShrink: 0 }} />
+                <div style={{ flex: 1, height: '78px', borderRadius: '16px', background: colors.card, border: `1px solid ${colors.border}` }} />
               </div>
             ))}
           </div>
         )}
 
-        {/* Empty state — only once the fetch has completed */}
+        {/* Empty state */}
         {bookingsReady && bookings.length === 0 && (
-          <div style={{ background: colors.card, backdropFilter: 'blur(20px)', border: `1px solid ${colors.border}`, borderRadius: '20px', padding: '40px 24px', textAlign: 'center' }}>
-            <div style={{ fontSize: '32px', marginBottom: '12px' }}>🧾</div>
-            <div style={{ color: colors.textMuted, fontSize: '14px' }}>No reservations yet — add your first.</div>
+          <div style={{ margin: '24px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', textAlign: 'center' }}>
+            <p style={{ fontSize: '15px', fontWeight: '500', color: colors.text, margin: 0 }}>No reservations yet</p>
+            <p style={{ fontSize: '13px', color: colors.textMuted, margin: 0 }}>Add hotels, flights and activities to build out this trip.</p>
           </div>
         )}
 
@@ -224,6 +260,7 @@ export default function TripDetail({ session }) {
           const cat = CATEGORY[b.category] || CATEGORY.other
           const st = STATUS[b.status] || STATUS.draft
           const last = i === bookings.length - 1
+          const num = i + 1
 
           const dDays = b.deadline_date ? Math.ceil((new Date(b.deadline_date) - new Date()) / 86400000) : null
           const goldDot = b.status === 'booked_unpaid'
@@ -234,96 +271,83 @@ export default function TripDetail({ session }) {
           else if (b.deadline_date) subtitleBits.push(`by ${fmtDate(b.deadline_date)}`)
 
           const payer = b.payer_id ? nameById[b.payer_id] : null
-          const owner = b.owner_id ? nameById[b.owner_id] : null
-
           const home = homeAmount(b)
 
           return (
-            <div key={b.id} style={{ display: 'flex', gap: '12px' }}>
-              {/* Numbered node + connector */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-                <div style={{
-                  width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
-                  background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '13px', fontWeight: '700', color: '#fff',
-                }}>{i + 1}</div>
-                {!last && <div style={{ flex: 1, width: '2px', background: colors.border, margin: '4px 0', minHeight: '20px' }} />}
+            <div key={b.id} className="roamie-rise" style={{ position: 'relative', display: 'flex', gap: '14px', animationDelay: `${i * 70}ms` }}>
+              {/* Numbered rail */}
+              <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '28px', flexShrink: 0 }}>
+                <span style={{ zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '28px', height: '28px', borderRadius: '50%', border: `1px solid ${colors.border}`, background: colors.card, fontSize: '12px', fontWeight: '600', color: colors.text }}>{num}</span>
+                {!last && <span style={{ position: 'absolute', top: '28px', height: 'calc(100% + 1rem)', width: '1px', background: colors.border }} />}
               </div>
 
-              {/* Booking card */}
-              <div
-                onClick={() => navigate(`/trip/${id}/reservation/${b.id}`)}
+              {/* Card */}
+              <button
+                onClick={() => editing ? removeBooking(b) : navigate(`/trip/${id}/reservation/${b.id}`)}
                 style={{
-                  flex: 1, marginBottom: '14px', cursor: 'pointer',
-                  background: colors.cardSolid, border: `1px solid ${colors.border}`, borderRadius: '16px',
-                  padding: '14px', display: 'flex', gap: '12px',
+                  flex: 1, marginBottom: '16px', cursor: 'pointer', textAlign: 'left',
+                  display: 'flex', gap: '12px', alignItems: 'center',
+                  background: colors.card, border: `1px solid ${editing ? 'rgba(229,103,95,0.25)' : colors.border}`, borderRadius: '16px', padding: '12px',
                 }}>
                 {/* Category glyph */}
-                <div style={{
-                  width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
-                  background: 'rgba(124,106,239,0.12)', border: `1px solid ${colors.border}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <cat.Icon size={20} color={colors.cyan} />
+                <div style={{ position: 'relative', width: '52px', height: '52px', borderRadius: '12px', flexShrink: 0, background: colors.goldSoft, border: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {editing
+                    ? <Trash2 size={20} color="#E5675F" />
+                    : <cat.Icon size={22} color={colors.gold} />}
                 </div>
 
-                {/* Middle: title / subtitle / payer-owner */}
+                {/* Middle */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                     <span style={{ fontSize: '15px', fontWeight: '600', color: colors.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {b.vendor_name || b.title || cat.label}
                     </span>
-                    {/* micro-dots */}
-                    {goldDot && <span title="Unpaid" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#FBBF24', flexShrink: 0 }} />}
-                    {blueDot && <span title="Deadline within 7 days" style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#22D3EE', flexShrink: 0 }} />}
+                    {goldDot && <span title="Unpaid" style={{ width: '6px', height: '6px', borderRadius: '50%', background: colors.gold, flexShrink: 0 }} />}
+                    {blueDot && <span title="Deadline within 7 days" style={{ width: '6px', height: '6px', borderRadius: '50%', background: colors.blue, flexShrink: 0 }} />}
                   </div>
-                  <div style={{ fontSize: '12px', color: colors.textMuted, marginTop: '2px' }}>
+                  <div style={{ fontSize: '12.5px', color: colors.textSoft, marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {subtitleBits.join(' · ')}
                   </div>
-                  {(payer || owner) && (
-                    <div style={{ fontSize: '11px', color: colors.textMuted, marginTop: '4px' }}>
-                      {payer ? `${payer} paid` : 'Unpaid'}{owner ? ` · ${owner}'s cost` : ''}
-                    </div>
-                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '11px', fontWeight: '500', color: st.color, background: st.bg, borderRadius: '100px', padding: '3px 9px' }}>
+                      {b.status !== 'draft' && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: st.color }} />}
+                      {st.label}
+                    </span>
+                    {payer && <span style={{ fontSize: '11px', color: colors.textMuted }}>{payer} paid</span>}
+                  </div>
                 </div>
 
-                {/* Right: amounts + pill */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', flexShrink: 0 }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '15px', fontWeight: '700', color: colors.text, whiteSpace: 'nowrap' }}>
-                      {destSym}{Math.round(destAmount(b)).toLocaleString()}
-                    </div>
-                    {home != null && (
-                      <div style={{ fontSize: '11px', color: colors.textMuted, whiteSpace: 'nowrap' }}>
-                        ≈ {sym(homeCurrency)}{Math.round(home).toLocaleString()}
-                      </div>
-                    )}
-                  </div>
-                  <span style={{ fontSize: '10px', fontWeight: '600', color: st.color, background: st.bg, border: `1px solid ${st.border}`, borderRadius: '100px', padding: '3px 9px', whiteSpace: 'nowrap', marginTop: '8px' }}>
-                    {st.label}
+                {/* Right: amounts */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', flexShrink: 0 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: '100px', background: 'rgba(255,255,255,0.06)', padding: '4px 10px', fontSize: '13px', fontWeight: '600', color: colors.text, whiteSpace: 'nowrap' }}>
+                    {destSym}{Math.round(destAmount(b)).toLocaleString()}
                   </span>
+                  {home != null && (
+                    <span style={{ fontSize: '11px', color: colors.textMuted, whiteSpace: 'nowrap', paddingRight: '4px' }}>
+                      ≈ {sym(homeCurrency)}{Math.round(home).toLocaleString()}
+                    </span>
+                  )}
                 </div>
-              </div>
+              </button>
             </div>
           )
         })}
-      </div>
 
-      {/* Floating add button (stub) */}
-      <button
-        onClick={() => setShowAdd(true)}
-        aria-label="Add reservation"
-        style={{
-          position: 'fixed', bottom: '28px', right: 'max(20px, calc(50% - 215px + 20px))', zIndex: 20,
-          width: '56px', height: '56px', borderRadius: '50%', border: 'none', cursor: 'pointer',
-          background: `linear-gradient(135deg, ${colors.pink}, ${colors.primary})`,
-          boxShadow: '0 8px 28px rgba(124,106,239,0.5)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-      >
-        <Plus size={26} color="#fff" />
-      </button>
+        {/* Inline add-reservation button */}
+        {bookingsReady && !editing && (
+          <button
+            onClick={() => setShowAdd(true)}
+            style={{
+              marginLeft: '42px', width: 'calc(100% - 42px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+              borderRadius: '16px', border: `1px dashed ${colors.border}`, background: 'rgba(18,18,20,0.4)',
+              padding: '14px', fontSize: '14px', fontWeight: '500', color: colors.textMuted, cursor: 'pointer',
+            }}
+          >
+            <Plus size={16} /> Add reservation
+          </button>
+        )}
+      </div>
 
       {/* Add-reservation modal */}
       {showAdd && (
@@ -351,7 +375,7 @@ export default function TripDetail({ session }) {
 
 function Shell({ children }) {
   return (
-    <div style={{ minHeight: '100vh', background: colors.bg, maxWidth: '430px', margin: '0 auto', padding: '20px 18px' }}>
+    <div style={{ minHeight: '100vh', background: colors.bg, maxWidth: '430px', margin: '0 auto', padding: '56px 18px 20px' }}>
       {children}
     </div>
   )
@@ -361,9 +385,9 @@ function BackBtn({ onClick }) {
   return (
     <button
       onClick={onClick}
-      style={{ background: 'rgba(0,0,0,0.25)', border: `1px solid ${colors.border}`, borderRadius: '100px', padding: '8px 14px', color: colors.text, fontSize: '13px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+      style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '50%', width: '40px', height: '40px', color: colors.text, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
     >
-      <ArrowLeft size={15} /> Back
+      <ChevronLeft size={20} />
     </button>
   )
 }

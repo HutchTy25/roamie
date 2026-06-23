@@ -1,19 +1,24 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Plane, BedDouble, Car, Ticket, Sparkles, ArrowLeft, Pencil } from 'lucide-react'
+import { Plane, BedDouble, Car, Ticket, Sparkles, ChevronLeft, Pencil } from 'lucide-react'
 import { supabase } from '../supabase'
 import AddReservationModal from '../components/AddReservationModal'
 
 const colors = {
-  bg: '#1A1B26',
-  cardSolid: '#1E2030',
-  primary: '#7C6AEF',
-  pink: '#F472B6',
-  cyan: '#22D3EE',
-  text: '#E8E8ED',
-  textMuted: '#8B8FA3',
-  border: 'rgba(124, 106, 239, 0.2)',
+  bg: '#000000',
+  card: '#121214',
+  cardElevated: '#1B1B1F',
+  border: 'rgba(255,255,255,0.08)',
+  gold: '#C9A05C',
+  goldSoft: 'rgba(201,160,92,0.14)',
+  blue: '#6FA8C9',
+  text: '#F2F1ED',
+  textMuted: '#5E6066',
+  textSoft: '#8A8A8F',
+  paid: '#6FBF8E',
+  paidSoft: 'rgba(111,191,142,0.12)',
 }
+const serif = "'Playfair Display', Georgia, serif"
 
 const CURR_SYMBOLS = {
   USD: '$', GBP: '£', EUR: '€', CAD: 'C$', AUD: 'A$', NZD: 'NZ$', JPY: '¥',
@@ -30,14 +35,23 @@ const CATEGORY = {
 }
 
 const STATUS = {
-  booked_paid:   { label: 'Booked · Paid',     color: '#34D399', bg: 'rgba(52,211,153,0.14)',  border: 'rgba(52,211,153,0.35)' },
-  booked_unpaid: { label: 'Reserved · Unpaid', color: '#FBBF24', bg: 'rgba(251,191,36,0.14)',  border: 'rgba(251,191,36,0.35)' },
-  settled:       { label: 'Settled',           color: '#22D3EE', bg: 'rgba(34,211,238,0.14)',  border: 'rgba(34,211,238,0.35)' },
-  draft:         { label: 'Draft',             color: '#8B8FA3', bg: 'rgba(139,143,163,0.12)', border: 'rgba(139,143,163,0.3)' },
+  booked_paid:   { label: 'Booked · Paid',     color: colors.paid, bg: colors.paidSoft },
+  booked_unpaid: { label: 'Reserved · Unpaid', color: colors.gold, bg: colors.goldSoft },
+  settled:       { label: 'Settled',           color: colors.blue, bg: 'rgba(111,168,201,0.14)' },
+  draft:         { label: 'Draft',             color: colors.textSoft, bg: 'rgba(255,255,255,0.06)' },
 }
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x }
+
+function StatusPill({ st }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '500', color: st.color, background: st.bg, borderRadius: '100px', padding: '4px 11px' }}>
+      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: st.color }} />
+      {st.label}
+    </span>
+  )
+}
 
 export default function ReservationDetail({ session }) {
   const { tripId, bookingId } = useParams()
@@ -106,111 +120,147 @@ export default function ReservationDetail({ session }) {
   const back = () => navigate(`/trip/${tripId}`)
 
   return (
-    <div style={{ minHeight: '100vh', background: colors.bg, maxWidth: '430px', margin: '0 auto', padding: '20px 18px 40px' }}>
-      <button onClick={back} style={{ background: 'rgba(0,0,0,0.25)', border: `1px solid ${colors.border}`, borderRadius: '100px', padding: '8px 14px', color: colors.text, fontSize: '13px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-        <ArrowLeft size={15} /> Back
-      </button>
+    <div style={{ minHeight: '100vh', background: colors.bg, maxWidth: '430px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+      {/* Header */}
+      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '56px 16px 8px' }}>
+        <button onClick={back} aria-label="Back to itinerary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', border: `1px solid ${colors.border}`, background: colors.card, color: colors.text, cursor: 'pointer' }}>
+          <ChevronLeft size={20} />
+        </button>
+        <span style={{ fontSize: '13px', fontWeight: '500', color: colors.textSoft, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>
+          {trip?.trip_name || ''}
+        </span>
+        <button onClick={() => booking && setShowEdit(true)} aria-label="Edit reservation" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', border: `1px solid ${colors.border}`, background: colors.card, color: colors.text, cursor: 'pointer' }}>
+          <Pencil size={17} />
+        </button>
+      </header>
 
-      {booking === undefined && <Skeleton />}
+      <div style={{ flex: 1, padding: '8px 16px calc(40px + env(safe-area-inset-bottom))' }}>
+        {booking === undefined && <Skeleton />}
 
-      {booking === null && (
-        <div style={{ color: colors.textMuted, fontSize: '14px', textAlign: 'center', paddingTop: '60px' }}>Reservation not found.</div>
-      )}
+        {booking === null && (
+          <div style={{ color: colors.textMuted, fontSize: '14px', textAlign: 'center', paddingTop: '60px' }}>Reservation not found.</div>
+        )}
 
-      {booking && (() => {
-        const cat = CATEGORY[booking.category] || CATEGORY.other
-        const st = STATUS[booking.status] || STATUS.draft
-        const destCur = trip?.destination_currency || booking.price_currency
-        const destAmt = booking.fx_rate_locked != null ? Number(booking.price_amount) * Number(booking.fx_rate_locked) : Number(booking.price_amount)
-        let homeAmt = null
-        if (homeCurrency && fxRates) {
-          if (booking.price_currency === homeCurrency) homeAmt = Number(booking.price_amount)
-          else if (fxRates[booking.price_currency]) homeAmt = Number(booking.price_amount) / fxRates[booking.price_currency]
-        }
+        {booking && (() => {
+          const cat = CATEGORY[booking.category] || CATEGORY.other
+          const st = STATUS[booking.status] || STATUS.draft
+          const destCur = trip?.destination_currency || booking.price_currency
+          const destAmt = booking.fx_rate_locked != null ? Number(booking.price_amount) * Number(booking.fx_rate_locked) : Number(booking.price_amount)
+          let homeAmt = null
+          if (homeCurrency && fxRates) {
+            if (booking.price_currency === homeCurrency) homeAmt = Number(booking.price_amount)
+            else if (fxRates[booking.price_currency]) homeAmt = Number(booking.price_amount) / fxRates[booking.price_currency]
+          }
 
-        const isHotel = booking.category === 'hotel'
-        const checkOut = isHotel && booking.deadline_date && booking.nights ? addDays(booking.deadline_date, booking.nights) : null
+          const isHotel = booking.category === 'hotel'
+          const checkOut = isHotel && booking.deadline_date && booking.nights ? addDays(booking.deadline_date, booking.nights) : null
 
-        const rows = []
-        rows.push(['Status', <span key="s" style={{ fontSize: '12px', fontWeight: '600', color: st.color, background: st.bg, border: `1px solid ${st.border}`, borderRadius: '100px', padding: '3px 10px' }}>{st.label}</span>])
-        rows.push(['Type', cat.label])
-        rows.push(['Paid by', payerName || '—'])
-        if (isHotel && booking.nights) rows.push(['Nights', `${booking.nights} night${booking.nights !== 1 ? 's' : ''}`])
-        if (isHotel && booking.deadline_date) {
-          rows.push(['Check-in', fmtDate(booking.deadline_date)])
-          if (checkOut) rows.push(['Check-out', fmtDate(checkOut)])
-        } else if (booking.deadline_date) {
-          rows.push(['Deadline', fmtDate(booking.deadline_date)])
-        }
-        if (booking.confirmation_code) rows.push(['Confirmation code', booking.confirmation_code])
-        rows.push(['Amount', (
-          <span key="a" style={{ textAlign: 'right' }}>
-            <span style={{ fontWeight: '700', color: colors.text }}>{sym(destCur)}{Math.round(destAmt).toLocaleString()}</span>
-            {homeAmt != null && <span style={{ display: 'block', fontSize: '12px', color: colors.textMuted }}>≈ {sym(homeCurrency)}{Math.round(homeAmt).toLocaleString()}</span>}
-          </span>
-        )])
-        rows.push(['Free cancellation', booking.deadline_date ? `Until ${fmtDate(booking.deadline_date)}` : '—'])
+          // Build the middle rows (everything except Status/Amount/cancellation,
+          // which are rendered explicitly to control ordering + styling).
+          const midRows = []
+          midRows.push(['Type', (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', borderRadius: '100px', background: 'rgba(255,255,255,0.06)', padding: '4px 10px', fontSize: '13px', fontWeight: '500', color: colors.text }}>
+              <cat.Icon size={14} color={colors.textSoft} /> {cat.label}
+            </span>
+          )])
+          midRows.push(['Paid by', payerName || '—'])
+          if (isHotel && booking.nights) midRows.push(['Nights', `${booking.nights} night${booking.nights !== 1 ? 's' : ''}`])
+          if (isHotel && booking.deadline_date) {
+            midRows.push(['Check-in', fmtDate(booking.deadline_date)])
+            if (checkOut) midRows.push(['Check-out', fmtDate(checkOut)])
+          } else if (booking.deadline_date) {
+            midRows.push(['Deadline', fmtDate(booking.deadline_date)])
+          }
 
-        return (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', margin: '22px 0 24px' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '14px', flexShrink: 0, background: 'rgba(124,106,239,0.12)', border: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <cat.Icon size={24} color={colors.cyan} />
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h1 style={{ fontSize: '22px', fontWeight: '700', color: colors.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {booking.vendor_name || booking.title || cat.label}
-                </h1>
-                {trip?.trip_name && <p style={{ fontSize: '13px', color: colors.textMuted, margin: '4px 0 0' }}>{trip.trip_name}</p>}
-              </div>
-            </div>
-
-            <div style={{ background: colors.cardSolid, border: `1px solid ${colors.border}`, borderRadius: '18px', padding: '4px 18px' }}>
-              {rows.map(([label, value], i) => (
-                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', padding: '14px 0', borderBottom: i < rows.length - 1 ? `1px solid ${colors.border}` : 'none' }}>
-                  <span style={{ fontSize: '13px', color: colors.textMuted, flexShrink: 0 }}>{label}</span>
-                  <span style={{ fontSize: '14px', color: colors.text, textAlign: 'right' }}>{value}</span>
+          return (
+            <>
+              {/* Title block */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                <div style={{ width: '64px', height: '64px', borderRadius: '16px', flexShrink: 0, background: colors.goldSoft, border: `1px solid ${colors.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <cat.Icon size={28} color={colors.gold} />
                 </div>
-              ))}
-            </div>
+                <div style={{ minWidth: 0 }}>
+                  <h1 style={{ fontFamily: serif, fontSize: '24px', fontWeight: '600', lineHeight: 1.15, color: colors.text, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {booking.vendor_name || booking.title || cat.label}
+                  </h1>
+                  <p style={{ fontSize: '13px', color: colors.textSoft, margin: '4px 0 0' }}>{cat.label}</p>
+                </div>
+              </div>
 
-            <button
-              onClick={() => setShowEdit(true)}
-              style={{ width: '100%', marginTop: '20px', padding: '14px', background: 'none', border: `1px solid ${colors.border}`, borderRadius: '100px', color: colors.text, fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            >
-              <Pencil size={15} /> Edit reservation
-            </button>
+              {/* Settings-style card */}
+              <div style={{ overflow: 'hidden', borderRadius: '16px', border: `1px solid ${colors.border}`, background: colors.card }}>
+                <DetailRow label="Status"><StatusPill st={st} /></DetailRow>
+                {midRows.map(([label, value]) => (
+                  <DetailRow key={label} label={label}>{value}</DetailRow>
+                ))}
+                <DetailRow label="Confirmation no.">
+                  {booking.confirmation_code ? (
+                    <span style={{ borderRadius: '6px', background: 'rgba(255,255,255,0.06)', padding: '4px 8px', fontFamily: 'monospace', fontSize: '13px', letterSpacing: '0.05em', color: colors.text }}>{booking.confirmation_code}</span>
+                  ) : (
+                    <span style={{ fontSize: '14px', fontWeight: '400', color: colors.textMuted }}>Pending</span>
+                  )}
+                </DetailRow>
+                <DetailRow label="Amount">
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <span style={{ fontSize: '17px', fontWeight: '600', color: colors.text }}>{sym(destCur)}{Math.round(destAmt).toLocaleString()}</span>
+                    {homeAmt != null && <span style={{ fontSize: '13px', fontWeight: '400', color: colors.textMuted }}>≈ {sym(homeCurrency)}{Math.round(homeAmt).toLocaleString()}</span>}
+                  </div>
+                </DetailRow>
+                <DetailRow label="Free cancellation" last>
+                  <span style={{ color: booking.deadline_date ? colors.paid : colors.textMuted }}>
+                    {booking.deadline_date ? `Until ${fmtDate(booking.deadline_date)}` : '—'}
+                  </span>
+                </DetailRow>
+              </div>
 
-            {showEdit && (
-              <AddReservationModal
-                tripId={tripId}
-                partners={partners}
-                defaultCurrency={destCur}
-                booking={booking}
-                onClose={() => setShowEdit(false)}
-                onAdded={loadBooking}
-              />
-            )}
-          </>
-        )
-      })()}
+              {/* Primary action */}
+              <button
+                onClick={() => setShowEdit(true)}
+                style={{ width: '100%', marginTop: '24px', padding: '16px', background: colors.text, border: 'none', borderRadius: '16px', color: colors.bg, fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Edit reservation
+              </button>
+
+              {showEdit && (
+                <AddReservationModal
+                  tripId={tripId}
+                  partners={partners}
+                  defaultCurrency={destCur}
+                  booking={booking}
+                  onClose={() => setShowEdit(false)}
+                  onAdded={loadBooking}
+                />
+              )}
+            </>
+          )
+        })()}
+      </div>
+    </div>
+  )
+}
+
+function DetailRow({ label, children, last }) {
+  return (
+    <div style={{ display: 'flex', minHeight: '52px', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '12px 16px', borderBottom: last ? 'none' : `1px solid ${colors.border}` }}>
+      <span style={{ fontSize: '14px', color: colors.textSoft, flexShrink: 0 }}>{label}</span>
+      <div style={{ textAlign: 'right', fontSize: '15px', fontWeight: '500', color: colors.text }}>{children}</div>
     </div>
   )
 }
 
 function Skeleton() {
   return (
-    <div style={{ marginTop: '22px' }}>
-      <div style={{ display: 'flex', gap: '14px', marginBottom: '24px' }}>
-        <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: colors.cardSolid }} />
+    <div style={{ marginTop: '12px' }}>
+      <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
+        <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: colors.card }} />
         <div style={{ flex: 1 }}>
-          <div style={{ height: '20px', width: '60%', borderRadius: '6px', background: colors.cardSolid, marginBottom: '8px' }} />
-          <div style={{ height: '12px', width: '35%', borderRadius: '6px', background: colors.cardSolid }} />
+          <div style={{ height: '22px', width: '60%', borderRadius: '6px', background: colors.card, marginBottom: '8px' }} />
+          <div style={{ height: '12px', width: '35%', borderRadius: '6px', background: colors.card }} />
         </div>
       </div>
-      <div style={{ background: colors.cardSolid, border: `1px solid ${colors.border}`, borderRadius: '18px', padding: '18px' }}>
+      <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '16px', padding: '4px 16px' }}>
         {[...Array(6)].map((_, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: i < 5 ? `1px solid ${colors.border}` : 'none' }}>
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderBottom: i < 5 ? `1px solid ${colors.border}` : 'none' }}>
             <div style={{ height: '12px', width: '30%', borderRadius: '6px', background: 'rgba(255,255,255,0.06)' }} />
             <div style={{ height: '12px', width: '25%', borderRadius: '6px', background: 'rgba(255,255,255,0.06)' }} />
           </div>

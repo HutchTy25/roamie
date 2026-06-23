@@ -8,19 +8,22 @@
 }
 
 :root {
-  --bg: #0a0a0a;
-  --bg-card: #141414;
-  --bg-elevated: #1c1c1c;
-  --accent: #c9956c;
-  --accent-soft: rgba(201, 149, 108, 0.15);
-  --accent-border: rgba(201, 149, 108, 0.3);
-  --text-primary: #f0ebe4;
-  --text-secondary: #8a8278;
-  --text-muted: #4a4642;
-  --border: rgba(255,255,255,0.06);
-  --border-hover: rgba(255,255,255,0.12);
+  --bg: #000000;
+  --bg-card: #121214;
+  --bg-elevated: #1b1b1f;
+  --accent: #c9a05c;
+  --accent-soft: rgba(201, 160, 92, 0.14);
+  --accent-border: rgba(201, 160, 92, 0.3);
+  --blue: #6fa8c9;
+  --paid: #6fbf8e;
+  --text-primary: #f2f1ed;
+  --text-secondary: #8a8a8f;
+  --text-muted: #5e6066;
+  --border: rgba(255,255,255,0.08);
+  --border-hover: rgba(255,255,255,0.16);
   --radius: 16px;
   --radius-sm: 10px;
+  --font-serif: 'Playfair Display', Georgia, serif;
   --font-handwriting: 'Caveat', cursive;
 }
 
@@ -125,5 +128,41 @@ button {
   to {
     opacity: 1;
     transform: translateX(0);
+  }
+}
+
+/* Roamie ported-design utilities */
+@keyframes roamieRise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.roamie-rise { animation: roamieRise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes roamieFill {
+  from { width: 0%; }
+}
+.roamie-fill { animation: roamieFill 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes roamieGlow {
+  0%, 100% { opacity: 0.45; transform: translateY(0) scale(1); }
+  50% { opacity: 0.75; transform: translateY(2%) scale(1.05); }
+}
+.roamie-glow { animation: roamieGlow 9s ease-in-out infinite; }
+
+@keyframes roamiePulseGold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201, 160, 92, 0.45); }
+  50% { box-shadow: 0 0 0 4px rgba(201, 160, 92, 0); }
+}
+.roamie-pulse-gold { animation: roamiePulseGold 2.4s ease-in-out infinite; }
+
+@keyframes roamieSheetUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.roamie-sheet-up { animation: roamieSheetUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .roamie-rise, .roamie-fill, .roamie-glow, .roamie-pulse-gold, .roamie-sheet-up {
+    animation: none !important;
   }
 }
