@@ -14,6 +14,7 @@ const Connect = lazy(() => import('./pages/Connect'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
 const Scrapbook = lazy(() => import('./pages/Scrapbook'))
 const TripDetail = lazy(() => import('./pages/TripDetail'))
+const ReservationDetail = lazy(() => import('./pages/ReservationDetail'))
 const Privacy = lazy(() => import('./pages/Privacy'))
 const Terms = lazy(() => import('./pages/Terms'))
 
@@ -116,6 +117,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={needsOnboarding ? <Navigate to="/onboarding" replace /> : <Dashboard session={session} />} />
       <Route path="/trip/:id" element={<TripDetail session={session} />} />
+      <Route path="/trip/:tripId/reservation/:bookingId" element={<ReservationDetail session={session} />} />
       <Route path="/connect" element={<Connect session={session} />} />
       <Route path="/onboarding" element={<Onboarding session={session} onComplete={() => fetchProfile(session.user.id)} />} />
       <Route path="/scrapbook" element={<Scrapbook session={session} profile={profile} />} />

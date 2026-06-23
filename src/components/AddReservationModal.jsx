@@ -18,16 +18,18 @@ const STATUSES = [
   { value: 'settled', label: 'Settled' },
 ]
 
-export default function AddReservationModal({ tripId, partners, defaultCurrency, onClose, onAdded }) {
-  const [vendor, setVendor] = useState('')
-  const [category, setCategory] = useState('flight')
-  const [status, setStatus] = useState('booked_unpaid')
-  const [amount, setAmount] = useState('')
-  const [currency, setCurrency] = useState(defaultCurrency || 'USD')
-  const [payer, setPayer] = useState(partners[0]?.id || '')
-  const [nights, setNights] = useState('')
-  const [code, setCode] = useState('')
-  const [deadline, setDeadline] = useState('')
+// `booking` present => edit mode (prefill + UPDATE); absent => add mode (INSERT).
+export default function AddReservationModal({ tripId, partners, defaultCurrency, booking, onClose, onAdded }) {
+  const editing = !!booking
+  const [vendor, setVendor] = useState(booking?.vendor_name || booking?.title || '')
+  const [category, setCategory] = useState(booking?.category || 'flight')
+  const [status, setStatus] = useState(booking?.status || 'booked_unpaid')
+  const [amount, setAmount] = useState(booking?.price_amount != null ? String(booking.price_amount) : '')
+  const [currency, setCurrency] = useState(booking?.price_currency || defaultCurrency || 'USD')
+  const [payer, setPayer] = useState(booking?.payer_id || partners[0]?.id || '')
+  const [nights, setNights] = useState(booking?.nights != null ? String(booking.nights) : '')
+  const [code, setCode] = useState(booking?.confirmation_code || '')
+  const [deadline, setDeadline] = useState(booking?.deadline_date || '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -38,8 +40,7 @@ export default function AddReservationModal({ tripId, partners, defaultCurrency,
     setSaving(true); setError('')
     try {
       // title is NOT NULL in the schema; mirror the vendor input into both.
-      const { error: err } = await supabase.from('bookings').insert({
-        trip_id: tripId,
+      const payload = {
         title: vendor.trim(),
         vendor_name: vendor.trim(),
         category,
@@ -50,19 +51,22 @@ export default function AddReservationModal({ tripId, partners, defaultCurrency,
         nights: category === 'hotel' && nights !== '' ? Number(nights) : null,
         confirmation_code: code.trim() || null,
         deadline_date: deadline || null,
-      })
+      }
+      const { error: err } = editing
+        ? await supabase.from('bookings').update(payload).eq('id', booking.id)
+        : await supabase.from('bookings').insert({ trip_id: tripId, ...payload })
       if (err) throw err
       await onAdded()
       onClose()
     } catch (e) {
-      console.error('Add reservation error:', e)
-      setError('Could not add reservation. Please try again.')
+      console.error('Save reservation error:', e)
+      setError(`Could not ${editing ? 'save' : 'add'} reservation. Please try again.`)
       setSaving(false)
     }
   }
 
   return (
-    <ModalShell title="Add reservation" onClose={onClose}>
+    <ModalShell title={editing ? 'Edit reservation' : 'Add reservation'} onClose={onClose}>
       <Field label="Title / vendor" required>
         <input style={inputStyle} value={vendor} onChange={e => setVendor(e.target.value)} placeholder="Ryanair FR1234 · Hotel Lux" autoFocus />
       </Field>
@@ -115,7 +119,7 @@ export default function AddReservationModal({ tripId, partners, defaultCurrency,
       </Field>
       {error && <div style={{ color: '#FF6B6B', fontSize: '13px', marginBottom: '10px' }}>{error}</div>}
       <PrimaryButton onClick={submit} disabled={!valid || saving}>
-        {saving ? 'Adding…' : 'Add reservation'}
+        {saving ? (editing ? 'Saving…' : 'Adding…') : (editing ? 'Save changes' : 'Add reservation')}
       </PrimaryButton>
     </ModalShell>
   )

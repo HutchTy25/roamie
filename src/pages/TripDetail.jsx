@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Plane, BedDouble, Car, Ticket, Sparkles, Plus, ArrowLeft } from 'lucide-react'
+import { Plane, BedDouble, Car, Ticket, Sparkles, Plus, ArrowLeft, Pencil } from 'lucide-react'
 import { supabase } from '../supabase'
 import AddReservationModal from '../components/AddReservationModal'
+import CreateTripModal from '../components/CreateTripModal'
 
 const colors = {
   bg: '#1A1B26',
@@ -55,6 +56,8 @@ export default function TripDetail({ session }) {
   const [fxRates, setFxRates] = useState(null)   // { [currency]: units per 1 home }
   const [partners, setPartners] = useState([])   // [{ id, display_name }] for "Paid by"
   const [showAdd, setShowAdd] = useState(false)
+  const [showEditTrip, setShowEditTrip] = useState(false)
+  const [bookingsReady, setBookingsReady] = useState(false)
 
   // Bookings (+ owner/payer names). Standalone so it can refresh after an add.
   async function loadBookings() {
@@ -71,6 +74,15 @@ export default function TripDetail({ session }) {
     } else {
       setNameById({})
     }
+    setBookingsReady(true)
+  }
+
+  // Refetch just the trip header (after an edit).
+  async function reloadTrip() {
+    const { data } = await supabase.from('trips')
+      .select('user_id, couple_id, trip_name, destination_name, destination_photo_url, dates_from, dates_to, budget_total, budget_currency, destination_currency, destination_iata, country_emoji')
+      .eq('id', id).single()
+    setTrip(data ?? null)
   }
 
   useEffect(() => {
@@ -166,20 +178,41 @@ export default function TripDetail({ session }) {
         <BackBtn onClick={() => navigate('/dashboard')} />
 
         {/* Trip header overlay */}
-        <div style={{ margin: '20px 0 28px' }}>
-          <h1 style={{ fontSize: '28px', fontWeight: '700', color: colors.text, margin: 0, letterSpacing: '-0.5px' }}>
-            {trip.country_emoji} {trip.trip_name || trip.destination_name || 'Untitled trip'}
-          </h1>
-          <p style={{ fontSize: '14px', color: colors.textMuted, margin: '6px 0 0' }}>
-            {trip.destination_name}
-            {(trip.dates_from || trip.dates_to) && (
-              <> · {fmtDate(trip.dates_from) || '—'} → {fmtDate(trip.dates_to) || '—'}</>
-            )}
-          </p>
+        <div style={{ margin: '20px 0 28px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h1 style={{ fontSize: '28px', fontWeight: '700', color: colors.text, margin: 0, letterSpacing: '-0.5px' }}>
+              {trip.country_emoji} {trip.trip_name || trip.destination_name || 'Untitled trip'}
+            </h1>
+            <p style={{ fontSize: '14px', color: colors.textMuted, margin: '6px 0 0' }}>
+              {trip.destination_name}
+              {(trip.dates_from || trip.dates_to) && (
+                <> · {fmtDate(trip.dates_from) || '—'} → {fmtDate(trip.dates_to) || '—'}</>
+              )}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowEditTrip(true)}
+            aria-label="Edit trip"
+            style={{ flexShrink: 0, background: 'rgba(0,0,0,0.25)', border: `1px solid ${colors.border}`, borderRadius: '50%', width: '38px', height: '38px', color: colors.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px' }}
+          >
+            <Pencil size={16} />
+          </button>
         </div>
 
-        {/* Empty state */}
-        {bookings.length === 0 && (
+        {/* Loading skeleton — avoids the empty-state flash before bookings load */}
+        {!bookingsReady && (
+          <div>
+            {[...Array(3)].map((_, i) => (
+              <div key={i} style={{ display: 'flex', gap: '12px', marginBottom: '14px' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: colors.cardSolid, flexShrink: 0 }} />
+                <div style={{ flex: 1, height: '78px', borderRadius: '16px', background: colors.cardSolid, border: `1px solid ${colors.border}`, opacity: 0.6 }} />
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Empty state — only once the fetch has completed */}
+        {bookingsReady && bookings.length === 0 && (
           <div style={{ background: colors.card, backdropFilter: 'blur(20px)', border: `1px solid ${colors.border}`, borderRadius: '20px', padding: '40px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: '32px', marginBottom: '12px' }}>🧾</div>
             <div style={{ color: colors.textMuted, fontSize: '14px' }}>No reservations yet — add your first.</div>
@@ -219,11 +252,13 @@ export default function TripDetail({ session }) {
               </div>
 
               {/* Booking card */}
-              <div style={{
-                flex: 1, marginBottom: '14px',
-                background: colors.cardSolid, border: `1px solid ${colors.border}`, borderRadius: '16px',
-                padding: '14px', display: 'flex', gap: '12px',
-              }}>
+              <div
+                onClick={() => navigate(`/trip/${id}/reservation/${b.id}`)}
+                style={{
+                  flex: 1, marginBottom: '14px', cursor: 'pointer',
+                  background: colors.cardSolid, border: `1px solid ${colors.border}`, borderRadius: '16px',
+                  padding: '14px', display: 'flex', gap: '12px',
+                }}>
                 {/* Category glyph */}
                 <div style={{
                   width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0,
@@ -298,6 +333,16 @@ export default function TripDetail({ session }) {
           defaultCurrency={trip.destination_currency || 'USD'}
           onClose={() => setShowAdd(false)}
           onAdded={loadBookings}
+        />
+      )}
+
+      {/* Edit-trip modal */}
+      {showEditTrip && (
+        <CreateTripModal
+          session={session}
+          trip={{ ...trip, id }}
+          onClose={() => setShowEditTrip(false)}
+          onSaved={reloadTrip}
         />
       )}
     </div>
