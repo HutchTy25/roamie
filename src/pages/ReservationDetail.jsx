@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, useNavigationType } from 'react-router-dom'
+import { useParams, useNavigate, useNavigationType, useLocation } from 'react-router-dom'
 import { Plane, BedDouble, Car, Ticket, Sparkles, ChevronLeft, Pencil } from 'lucide-react'
 import { supabase } from '../supabase'
 import AddReservationModal from '../components/AddReservationModal'
@@ -62,6 +62,7 @@ export default function ReservationDetail({ session }) {
   const { tripId, bookingId } = useParams()
   const navigate = useNavigate()
   const navType = useNavigationType()
+  const location = useLocation()
 
   const [booking, setBooking] = useState(undefined)  // undefined = loading, null = not found
   const [trip, setTrip] = useState(null)
@@ -129,7 +130,8 @@ export default function ReservationDetail({ session }) {
     return () => { cancelled = true }
   }, [tripId, bookingId, session])
 
-  const back = () => navigate(-1)
+  // Back: use history when present, else fall back in-app on a deep link/fresh load.
+  const back = () => (location.key === 'default' ? navigate('/dashboard') : navigate(-1))
 
   if (!ready) return <ReservationSkeleton navType={navType} />
 

@@ -59,6 +59,10 @@ export default function TripDetail({ session }) {
   const navType = useNavigationType()
   const location = useLocation()
 
+  // Back: step through history when we have it, else fall back in-app (deep link
+  // / fresh load has no prior entry, so navigate(-1) could leave the app).
+  const goBack = () => (location.key === 'default' ? navigate('/dashboard') : navigate(-1))
+
   // Seed the trip from navigation state (passed by the dashboard) so the hero
   // paints instantly; a fresh fetch still runs to confirm/update it.
   const [trip, setTrip] = useState(location.state?.trip ?? undefined)   // undefined = loading, null = not found
@@ -186,7 +190,7 @@ export default function TripDetail({ session }) {
   if (trip === null) {
     return (
       <Shell>
-        <BackBtn onClick={() => navigate(-1)} />
+        <BackBtn onClick={goBack} />
         <div style={{ color: colors.textMuted, fontSize: '14px', textAlign: 'center', paddingTop: '60px' }}>Trip not found.</div>
       </Shell>
     )
@@ -208,7 +212,7 @@ export default function TripDetail({ session }) {
         {/* Top controls */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '56px 16px 0' }}>
           <button
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             aria-label="Back to trips"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', border: `1px solid ${colors.border}`, background: 'rgba(0,0,0,0.4)', color: colors.text, cursor: 'pointer', backdropFilter: 'blur(8px)' }}
           >
