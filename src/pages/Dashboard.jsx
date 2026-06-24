@@ -94,6 +94,7 @@ export default function Dashboard({ session }) {
   const [feedbackFeature, setFeedbackFeature] = useState('')
   const [feedbackSent, setFeedbackSent] = useState(false)
   const [tripAgg, setTripAgg] = useState({})
+  const [budgetDest, setBudgetDest] = useState({})   // trip.id -> budget_total in destination_currency
 
   useEffect(() => {
     if (!session) { navigate('/login'); return }
@@ -148,26 +149,86 @@ export default function Dashboard({ session }) {
       // visible trips; RLS lets either partner see their trips' bookings.
       const tripIds = dedupedTrips.map(t => t.id)
       if (tripIds.length) {
+        const destCurById = Object.fromEntries(dedupedTrips.map(t => [t.id, t.destination_currency || null]))
         const { data: bookings } = await supabase
           .from('bookings')
-          .select('trip_id, status, price_amount, fx_rate_locked')
+          .select('trip_id, status, price_amount, price_currency, fx_rate_locked')
           .in('trip_id', tripIds)
+
+        // Every booking must be converted to its trip's destination_currency
+        // before summing — never mix raw amounts in different currencies.
         const agg = {}
+        const pending = {}  // destCur -> [{ trip_id, amount, priceCur }] needing a live rate
         for (const b of bookings ?? []) {
           if (b.status === 'draft') continue
           const a = agg[b.trip_id] || (agg[b.trip_id] = { reservationCount: 0, unpaidCount: 0, spent: 0 })
           a.reservationCount++
           if (b.status === 'booked_unpaid') a.unpaidCount++
-          // Anchor every booking to the trip's destination_currency via the
-          // locked rate (no live FX on the bar). Unlocked rows are assumed
-          // already in destination_currency.
-          a.spent += b.fx_rate_locked != null
-            ? Number(b.price_amount) * Number(b.fx_rate_locked)
-            : Number(b.price_amount)
+
+          const destCur = destCurById[b.trip_id]
+          if (b.fx_rate_locked != null) {
+            // Locked rate already converts price_currency -> destination_currency.
+            a.spent += Number(b.price_amount) * Number(b.fx_rate_locked)
+          } else if (!destCur || !b.price_currency || b.price_currency === destCur) {
+            // Already in destination currency (or no anchor) — add as-is.
+            a.spent += Number(b.price_amount)
+          } else {
+            // No locked rate + different currency: defer to a live conversion.
+            pending[destCur] = pending[destCur] || []
+            pending[destCur].push({ trip_id: b.trip_id, amount: Number(b.price_amount), priceCur: b.price_currency })
+          }
+        }
+
+        // budget_total is stored in budget_currency; the bar compares it against
+        // spent (in destination_currency), so convert it to destination too.
+        const budgetMap = {}
+        const budgetPending = {}  // destCur -> [{ trip_id, amount, budgetCur }]
+        for (const t of dedupedTrips) {
+          if (t.budget_total == null) { budgetMap[t.id] = null; continue }
+          const amt = Number(t.budget_total)
+          const dC = t.destination_currency
+          if (!dC || !t.budget_currency || t.budget_currency === dC) {
+            budgetMap[t.id] = amt
+          } else {
+            budgetPending[dC] = budgetPending[dC] || []
+            budgetPending[dC].push({ trip_id: t.id, amount: amt, budgetCur: t.budget_currency })
+          }
+        }
+
+        // One live FX fetch per distinct destination currency needed (for either
+        // booking spend or budget conversion). /api/fx-rates?from=D returns
+        // rates[C] = units of C per 1 D, so converting an amount in currency X
+        // into D divides by rates[X].
+        const neededDest = [...new Set([...Object.keys(pending), ...Object.keys(budgetPending)])]
+        if (neededDest.length) {
+          const entries = await Promise.all(neededDest.map(async (d) => {
+            try {
+              const r = await fetch(`https://roamie-61ib.onrender.com/api/fx-rates?from=${d}`)
+              const j = await r.json()
+              return [d, j?.rates || null]
+            } catch { return [d, null] }
+          }))
+          const ratesByDest = Object.fromEntries(entries)
+          for (const d of Object.keys(pending)) {
+            const rates = ratesByDest[d]
+            for (const it of pending[d]) {
+              const rate = rates?.[it.priceCur]
+              agg[it.trip_id].spent += rate ? it.amount / rate : it.amount
+            }
+          }
+          for (const d of Object.keys(budgetPending)) {
+            const rates = ratesByDest[d]
+            for (const it of budgetPending[d]) {
+              const rate = rates?.[it.budgetCur]
+              budgetMap[it.trip_id] = rate ? it.amount / rate : it.amount
+            }
+          }
         }
         setTripAgg(agg)
+        setBudgetDest(budgetMap)
       } else {
         setTripAgg({})
+        setBudgetDest({})
       }
 
       if (profile?.couple_id) {
@@ -342,7 +403,11 @@ export default function Dashboard({ session }) {
               {trips.map((trip, i) => {
                 const agg = tripAgg[trip.id] || {}
                 const spent = Math.round(agg.spent || 0)
-                const budget = trip.budget_total != null ? Number(trip.budget_total) : null
+                // Budget converted to destination_currency (see fetchData); falls
+                // back to the raw value until that resolves.
+                const budget = budgetDest[trip.id] != null
+                  ? budgetDest[trip.id]
+                  : (trip.budget_total != null ? Number(trip.budget_total) : null)
                 const pct = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0
                 const sym = CURR_SYMBOLS[trip.destination_currency] || trip.destination_currency || ''
                 const pill = statusPill(agg)

@@ -55,8 +55,8 @@ export default function TripDetail({ session }) {
   const [trip, setTrip] = useState(undefined)   // undefined = loading, null = not found
   const [bookings, setBookings] = useState([])
   const [nameById, setNameById] = useState({})
-  const [homeCurrency, setHomeCurrency] = useState(null)
-  const [fxRates, setFxRates] = useState(null)   // { [currency]: units per 1 home }
+  const [homeCurrency, setHomeCurrency] = useState(null)   // for the add-modal default
+  const [destRates, setDestRates] = useState(null)   // { [currency]: units per 1 destination_currency }
   const [partners, setPartners] = useState([])   // [{ id, display_name }] for "Paid by"
   const [showAdd, setShowAdd] = useState(false)
   const [showEditTrip, setShowEditTrip] = useState(false)
@@ -131,13 +131,15 @@ export default function TripDetail({ session }) {
 
       await loadBookings()
 
-      // Single FX call via our proxy (Frankfurter blocks direct browser CORS).
-      if (home) {
+      // FX rates anchored to the trip's destination currency, used to show the
+      // destination equivalent for bookings whose fx_rate_locked is null.
+      const destCur = tripData?.destination_currency
+      if (destCur) {
         try {
-          const r = await fetch(`https://roamie-61ib.onrender.com/api/fx-rates?from=${home}`)
+          const r = await fetch(`https://roamie-61ib.onrender.com/api/fx-rates?from=${destCur}`)
           const j = await r.json()
-          if (!cancelled && j?.rates) setFxRates({ [home]: 1, ...j.rates })
-        } catch { /* bold-only fallback */ }
+          if (!cancelled && j?.rates) setDestRates({ [destCur]: 1, ...j.rates })
+        } catch { /* native-only fallback */ }
       }
     }
 
@@ -145,21 +147,26 @@ export default function TripDetail({ session }) {
     return () => { cancelled = true }
   }, [id, session])
 
-  // Bold figure, anchored to destination_currency (locked rate; matches Dashboard).
-  const destAmount = (b) => b.fx_rate_locked != null
-    ? Number(b.price_amount) * Number(b.fx_rate_locked)
-    : Number(b.price_amount)
+  const destCur = trip?.destination_currency
 
-  // Subtle figure: price_currency -> home_currency, live Frankfurter (cached).
-  const homeAmount = (b) => {
-    if (!homeCurrency || !fxRates) return null
-    if (b.price_currency === homeCurrency) return Number(b.price_amount)
-    const rate = fxRates[b.price_currency]
-    if (!rate) return null
-    return Number(b.price_amount) / rate
+  // Destination-currency equivalent of a booking's native charge (primary/bold):
+  // locked rate when set, else a live destination-anchored rate, else native.
+  const destEquivalent = (b) => {
+    if (b.fx_rate_locked != null) return Number(b.price_amount) * Number(b.fx_rate_locked)
+    if (!destCur || b.price_currency === destCur) return Number(b.price_amount)
+    const rate = destRates?.[b.price_currency]
+    return rate != null ? Number(b.price_amount) / rate : null
   }
 
-  const destSym = sym(trip?.destination_currency || trip?.budget_currency)
+  // Viewer's home-currency equivalent (subtle/secondary): convert the destination
+  // amount via destRates[home] (= home units per 1 destination). null when N/A.
+  const homeEquivalent = (b) => {
+    if (!homeCurrency || homeCurrency === destCur) return null
+    const d = destEquivalent(b)
+    if (d == null) return null
+    const rate = destRates?.[homeCurrency]
+    return rate != null ? d * rate : null
+  }
 
   if (trip === undefined) {
     return <Shell><div style={{ color: colors.textMuted, fontSize: '14px', textAlign: 'center', paddingTop: '80px' }}>Loading…</div></Shell>
@@ -271,7 +278,10 @@ export default function TripDetail({ session }) {
           else if (b.deadline_date) subtitleBits.push(`by ${fmtDate(b.deadline_date)}`)
 
           const payer = b.payer_id ? nameById[b.payer_id] : null
-          const home = homeAmount(b)
+          const dEquiv = destEquivalent(b)
+          const hEquiv = homeEquivalent(b)
+          const boldCur = destCur || b.price_currency
+          const boldVal = dEquiv != null ? dEquiv : Number(b.price_amount)
 
           return (
             <div key={b.id} className="roamie-rise" style={{ position: 'relative', display: 'flex', gap: '14px', animationDelay: `${i * 70}ms` }}>
@@ -317,14 +327,14 @@ export default function TripDetail({ session }) {
                   </div>
                 </div>
 
-                {/* Right: amounts */}
+                {/* Right: destination equivalent (primary) + home equivalent (secondary) */}
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', flexShrink: 0 }}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', borderRadius: '100px', background: 'rgba(255,255,255,0.06)', padding: '4px 10px', fontSize: '13px', fontWeight: '600', color: colors.text, whiteSpace: 'nowrap' }}>
-                    {destSym}{Math.round(destAmount(b)).toLocaleString()}
+                    {sym(boldCur)}{Math.round(boldVal).toLocaleString()}
                   </span>
-                  {home != null && (
+                  {hEquiv != null && (
                     <span style={{ fontSize: '11px', color: colors.textMuted, whiteSpace: 'nowrap', paddingRight: '4px' }}>
-                      ≈ {sym(homeCurrency)}{Math.round(home).toLocaleString()}
+                      ≈ {sym(homeCurrency)}{Math.round(hEquiv).toLocaleString()}
                     </span>
                   )}
                 </div>
@@ -354,7 +364,8 @@ export default function TripDetail({ session }) {
         <AddReservationModal
           tripId={id}
           partners={partners}
-          defaultCurrency={trip.destination_currency || 'USD'}
+          defaultCurrency={homeCurrency || trip.destination_currency || 'USD'}
+          destinationCurrency={trip.destination_currency}
           onClose={() => setShowAdd(false)}
           onAdded={loadBookings}
         />

@@ -18,8 +18,21 @@ const STATUSES = [
   { value: 'settled', label: 'Settled' },
 ]
 
+// Resolve the locked FX rate: destination units per 1 price_currency.
+// Returns 1 when currencies match, a live rate via the proxy, or null on failure.
+async function lockedRateFor(priceCur, destCur) {
+  if (!destCur) return null
+  if (priceCur === destCur) return 1
+  try {
+    const r = await fetch(`https://roamie-61ib.onrender.com/api/fx-rates?from=${priceCur}`)
+    const j = await r.json()
+    const rate = j?.rates?.[destCur]
+    return rate != null ? Number(rate) : null
+  } catch { return null }
+}
+
 // `booking` present => edit mode (prefill + UPDATE); absent => add mode (INSERT).
-export default function AddReservationModal({ tripId, partners, defaultCurrency, booking, onClose, onAdded }) {
+export default function AddReservationModal({ tripId, partners, defaultCurrency, destinationCurrency, booking, onClose, onAdded }) {
   const editing = !!booking
   const [vendor, setVendor] = useState(booking?.vendor_name || booking?.title || '')
   const [category, setCategory] = useState(booking?.category || 'flight')
@@ -39,6 +52,19 @@ export default function AddReservationModal({ tripId, partners, defaultCurrency,
     if (!valid || saving) return
     setSaving(true); setError('')
     try {
+      // Lock the FX rate (price_currency -> destination_currency) at save: always
+      // on insert; on edit only when the currency changed or it was never locked.
+      // Preserve the prior lock otherwise. fx_rate_locked & fx_locked_at move
+      // together (both set or both null) per the schema CHECK.
+      let fx = editing
+        ? { fx_rate_locked: booking.fx_rate_locked ?? null, fx_locked_at: booking.fx_locked_at ?? null }
+        : { fx_rate_locked: null, fx_locked_at: null }
+      const needsLock = !editing || currency !== booking.price_currency || booking.fx_rate_locked == null
+      if (needsLock) {
+        const rate = await lockedRateFor(currency, destinationCurrency)
+        if (rate != null) fx = { fx_rate_locked: rate, fx_locked_at: new Date().toISOString() }
+      }
+
       // title is NOT NULL in the schema; mirror the vendor input into both.
       const payload = {
         title: vendor.trim(),
@@ -51,6 +77,7 @@ export default function AddReservationModal({ tripId, partners, defaultCurrency,
         nights: category === 'hotel' && nights !== '' ? Number(nights) : null,
         confirmation_code: code.trim() || null,
         deadline_date: deadline || null,
+        ...fx,
       }
       const { error: err } = editing
         ? await supabase.from('bookings').update(payload).eq('id', booking.id)

@@ -60,8 +60,8 @@ export default function ReservationDetail({ session }) {
   const [booking, setBooking] = useState(undefined)  // undefined = loading, null = not found
   const [trip, setTrip] = useState(null)
   const [payerName, setPayerName] = useState(null)
-  const [homeCurrency, setHomeCurrency] = useState(null)
-  const [fxRates, setFxRates] = useState(null)
+  const [homeCurrency, setHomeCurrency] = useState(null)   // for the edit-modal default
+  const [destRates, setDestRates] = useState(null)   // { [currency]: units per 1 destination_currency }
   const [partners, setPartners] = useState([])
   const [showEdit, setShowEdit] = useState(false)
 
@@ -104,12 +104,15 @@ export default function ReservationDetail({ session }) {
 
       await loadBooking()
 
-      if (home) {
+      // FX anchored to the trip's destination currency, for the destination
+      // equivalent of a booking whose fx_rate_locked is null.
+      const destCur = tripData?.destination_currency
+      if (destCur) {
         try {
-          const r = await fetch(`https://roamie-61ib.onrender.com/api/fx-rates?from=${home}`)
+          const r = await fetch(`https://roamie-61ib.onrender.com/api/fx-rates?from=${destCur}`)
           const j = await r.json()
-          if (!cancelled && j?.rates) setFxRates({ [home]: 1, ...j.rates })
-        } catch { /* bold-only fallback */ }
+          if (!cancelled && j?.rates) setDestRates({ [destCur]: 1, ...j.rates })
+        } catch { /* native-only fallback */ }
       }
     }
 
@@ -144,12 +147,20 @@ export default function ReservationDetail({ session }) {
         {booking && (() => {
           const cat = CATEGORY[booking.category] || CATEGORY.other
           const st = STATUS[booking.status] || STATUS.draft
-          const destCur = trip?.destination_currency || booking.price_currency
-          const destAmt = booking.fx_rate_locked != null ? Number(booking.price_amount) * Number(booking.fx_rate_locked) : Number(booking.price_amount)
-          let homeAmt = null
-          if (homeCurrency && fxRates) {
-            if (booking.price_currency === homeCurrency) homeAmt = Number(booking.price_amount)
-            else if (fxRates[booking.price_currency]) homeAmt = Number(booking.price_amount) / fxRates[booking.price_currency]
+          const destCur = trip?.destination_currency || null
+          const native = Number(booking.price_amount)
+          const crossCurrency = destCur && booking.price_currency !== destCur
+          // Destination-currency equivalent: locked rate, else live, else null.
+          let destAmt = null
+          if (booking.fx_rate_locked != null) destAmt = native * Number(booking.fx_rate_locked)
+          else if (!destCur || booking.price_currency === destCur) destAmt = native
+          else if (destRates?.[booking.price_currency] != null) destAmt = native / destRates[booking.price_currency]
+          const showDest = crossCurrency && destAmt != null
+          // Rate used to convert native -> destination (dest units per 1 price_currency).
+          let usedRate = null, rateSource = null
+          if (crossCurrency) {
+            if (booking.fx_rate_locked != null) { usedRate = Number(booking.fx_rate_locked); rateSource = 'locked' }
+            else if (destRates?.[booking.price_currency] != null) { usedRate = 1 / destRates[booking.price_currency]; rateSource = 'live' }
           }
 
           const isHotel = booking.category === 'hotel'
@@ -202,10 +213,24 @@ export default function ReservationDetail({ session }) {
                 </DetailRow>
                 <DetailRow label="Amount">
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-                    <span style={{ fontSize: '17px', fontWeight: '600', color: colors.text }}>{sym(destCur)}{Math.round(destAmt).toLocaleString()}</span>
-                    {homeAmt != null && <span style={{ fontSize: '13px', fontWeight: '400', color: colors.textMuted }}>≈ {sym(homeCurrency)}{Math.round(homeAmt).toLocaleString()}</span>}
+                    <span style={{ fontSize: '17px', fontWeight: '600', color: colors.text }}>{sym(booking.price_currency)}{Math.round(native).toLocaleString()}</span>
+                    {showDest && <span style={{ fontSize: '13px', fontWeight: '400', color: colors.textMuted }}>≈ {sym(destCur)}{Math.round(destAmt).toLocaleString()}</span>}
                   </div>
                 </DetailRow>
+                {crossCurrency && (
+                  <DetailRow label="Exchange rate">
+                    {usedRate != null ? (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontFamily: 'monospace', fontSize: '13px' }}>1 {booking.price_currency} = {usedRate.toFixed(4)} {destCur}</span>
+                        <span style={{ fontSize: '11px', fontWeight: '600', color: rateSource === 'locked' ? colors.gold : colors.blue, background: rateSource === 'locked' ? colors.goldSoft : 'rgba(111,168,201,0.14)', borderRadius: '100px', padding: '2px 8px' }}>
+                          {rateSource === 'locked' ? 'locked' : 'live'}
+                        </span>
+                      </span>
+                    ) : (
+                      <span style={{ color: colors.textMuted }}>Unavailable</span>
+                    )}
+                  </DetailRow>
+                )}
                 <DetailRow label="Free cancellation" last>
                   <span style={{ color: booking.deadline_date ? colors.paid : colors.textMuted }}>
                     {booking.deadline_date ? `Until ${fmtDate(booking.deadline_date)}` : '—'}
@@ -225,7 +250,8 @@ export default function ReservationDetail({ session }) {
                 <AddReservationModal
                   tripId={tripId}
                   partners={partners}
-                  defaultCurrency={destCur}
+                  defaultCurrency={homeCurrency || destCur || 'USD'}
+                  destinationCurrency={destCur}
                   booking={booking}
                   onClose={() => setShowEdit(false)}
                   onAdded={loadBooking}
