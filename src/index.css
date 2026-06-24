@@ -161,8 +161,31 @@ button {
 }
 .roamie-sheet-up { animation: roamieSheetUp 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
+/* Screen-level entrance on navigation. Ends at transform:none so the settled
+   element never creates a containing block for fixed-position modals. */
+@keyframes roamieScreenForward {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: none; }
+}
+.roamie-screen-forward { animation: roamieScreenForward 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes roamieScreenBack {
+  from { opacity: 0; transform: translateX(-24px); }
+  to { opacity: 1; transform: none; }
+}
+.roamie-screen-back { animation: roamieScreenBack 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Skeleton shimmer */
+@keyframes roamieShimmer {
+  0% { opacity: 0.5; }
+  50% { opacity: 0.85; }
+  100% { opacity: 0.5; }
+}
+.roamie-skeleton { animation: roamieShimmer 1.4s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
-  .roamie-rise, .roamie-fill, .roamie-glow, .roamie-pulse-gold, .roamie-sheet-up {
+  .roamie-rise, .roamie-fill, .roamie-glow, .roamie-pulse-gold, .roamie-sheet-up,
+  .roamie-screen-forward, .roamie-screen-back, .roamie-skeleton {
     animation: none !important;
   }
 }

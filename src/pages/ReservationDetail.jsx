@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useNavigationType } from 'react-router-dom'
 import { Plane, BedDouble, Car, Ticket, Sparkles, ChevronLeft, Pencil } from 'lucide-react'
 import { supabase } from '../supabase'
 import AddReservationModal from '../components/AddReservationModal'
+
+const screenClass = (navType) => navType === 'POP' ? 'roamie-screen-back' : 'roamie-screen-forward'
+const Sk = ({ w = '100%', h = 14, r = 8, style }) => (
+  <div className="roamie-skeleton" style={{ width: w, height: h, borderRadius: r, background: '#1B1B1F', ...style }} />
+)
 
 const colors = {
   bg: '#000000',
@@ -56,6 +61,7 @@ function StatusPill({ st }) {
 export default function ReservationDetail({ session }) {
   const { tripId, bookingId } = useParams()
   const navigate = useNavigate()
+  const navType = useNavigationType()
 
   const [booking, setBooking] = useState(undefined)  // undefined = loading, null = not found
   const [trip, setTrip] = useState(null)
@@ -64,6 +70,7 @@ export default function ReservationDetail({ session }) {
   const [destRates, setDestRates] = useState(null)   // { [currency]: units per 1 destination_currency }
   const [partners, setPartners] = useState([])
   const [showEdit, setShowEdit] = useState(false)
+  const [ready, setReady] = useState(false)   // all initial data (incl. FX) loaded
 
   async function loadBooking() {
     const { data } = await supabase.from('bookings').select('*').eq('id', bookingId).single()
@@ -114,6 +121,8 @@ export default function ReservationDetail({ session }) {
           if (!cancelled && j?.rates) setDestRates({ [destCur]: 1, ...j.rates })
         } catch { /* native-only fallback */ }
       }
+
+      if (!cancelled) setReady(true)
     }
 
     load()
@@ -121,6 +130,8 @@ export default function ReservationDetail({ session }) {
   }, [tripId, bookingId, session])
 
   const back = () => navigate(`/trip/${tripId}`)
+
+  if (!ready) return <ReservationSkeleton navType={navType} />
 
   return (
     <div style={{ minHeight: '100vh', background: colors.bg, maxWidth: '430px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
@@ -138,8 +149,6 @@ export default function ReservationDetail({ session }) {
       </header>
 
       <div style={{ flex: 1, padding: '8px 16px calc(40px + env(safe-area-inset-bottom))' }}>
-        {booking === undefined && <Skeleton />}
-
         {booking === null && (
           <div style={{ color: colors.textMuted, fontSize: '14px', textAlign: 'center', paddingTop: '60px' }}>Reservation not found.</div>
         )}
@@ -274,23 +283,31 @@ function DetailRow({ label, children, last }) {
   )
 }
 
-function Skeleton() {
+// Full-screen placeholder matching the header + detail-card layout.
+function ReservationSkeleton({ navType }) {
   return (
-    <div style={{ marginTop: '12px' }}>
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
-        <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: colors.card }} />
-        <div style={{ flex: 1 }}>
-          <div style={{ height: '22px', width: '60%', borderRadius: '6px', background: colors.card, marginBottom: '8px' }} />
-          <div style={{ height: '12px', width: '35%', borderRadius: '6px', background: colors.card }} />
-        </div>
-      </div>
-      <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '16px', padding: '4px 16px' }}>
-        {[...Array(6)].map((_, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderBottom: i < 5 ? `1px solid ${colors.border}` : 'none' }}>
-            <div style={{ height: '12px', width: '30%', borderRadius: '6px', background: 'rgba(255,255,255,0.06)' }} />
-            <div style={{ height: '12px', width: '25%', borderRadius: '6px', background: 'rgba(255,255,255,0.06)' }} />
+    <div className={screenClass(navType)} style={{ minHeight: '100vh', background: colors.bg, maxWidth: '430px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '56px 16px 8px' }}>
+        <Sk w={40} h={40} r={20} />
+        <Sk w={120} h={13} />
+        <Sk w={40} h={40} r={20} />
+      </header>
+      <div style={{ flex: 1, padding: '8px 16px' }}>
+        <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
+          <Sk w={64} h={64} r={16} />
+          <div style={{ flex: 1 }}>
+            <Sk w="60%" h={22} style={{ marginBottom: '8px' }} />
+            <Sk w="35%" h={12} />
           </div>
-        ))}
+        </div>
+        <div style={{ background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '16px', padding: '4px 16px' }}>
+          {[...Array(6)].map((_, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0', borderBottom: i < 5 ? `1px solid ${colors.border}` : 'none' }}>
+              <Sk w="30%" h={12} />
+              <Sk w="25%" h={12} />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

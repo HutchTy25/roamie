@@ -1,8 +1,33 @@
 import { useEffect, useState } from 'react'
 import { Plus, Clock, ChevronLeft, Camera, User } from 'lucide-react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useNavigate, useLocation, useNavigationType } from 'react-router-dom'
 import { supabase } from '../supabase'
 import CreateTripModal from '../components/CreateTripModal'
+
+// Screen entrance: slide from the right on forward nav (PUSH/REPLACE), from the
+// left on browser back/forward (POP). Ends at transform:none (see index.css).
+const screenClass = (navType) => navType === 'POP' ? 'roamie-screen-back' : 'roamie-screen-forward'
+
+// Shimmering skeleton block.
+const Sk = ({ w = '100%', h = 14, r = 8, style }) => (
+  <div className="roamie-skeleton" style={{ width: w, height: h, borderRadius: r, background: '#1B1B1F', ...style }} />
+)
+
+// Trip-card placeholder matching the real card's footprint.
+const TripCardSkeleton = () => (
+  <div style={{ borderRadius: '24px', border: '1px solid rgba(255,255,255,0.08)', background: '#121214', overflow: 'hidden' }}>
+    <Sk w="100%" h={176} r={0} />
+    <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+      <Sk w="60%" h={20} />
+      <Sk w="40%" h={12} />
+      <Sk w="100%" h={8} r={100} />
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+        <Sk w={56} h={24} r={100} />
+        <Sk w={80} h={12} />
+      </div>
+    </div>
+  </div>
+)
 
 const cleanDestName = (name) => name?.replace(/^[A-Z]{2,3} /, '') ?? name
 
@@ -79,6 +104,7 @@ function Pill({ label, tone, style }) {
 export default function Dashboard({ session }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const navType = useNavigationType()
   const [proToast, setProToast] = useState(false)
   const [trips, setTrips] = useState([])
   const [loading, setLoading] = useState(true)
@@ -311,7 +337,7 @@ export default function Dashboard({ session }) {
   )
 
   return (
-    <div style={{
+    <div className={screenClass(navType)} style={{
       minHeight: '100vh',
       background: colors.bg,
       display: 'flex',
@@ -356,9 +382,9 @@ export default function Dashboard({ session }) {
             padding: '64px 20px 12px',
           }}>
             <div style={{ minWidth: 0 }}>
-              <p style={{ fontSize: '13px', fontWeight: '500', color: colors.textSoft, margin: 0 }}>
-                {togetherLabel}
-              </p>
+              {loading
+                ? <Sk w={150} h={13} style={{ margin: '2px 0 4px' }} />
+                : <p style={{ fontSize: '13px', fontWeight: '500', color: colors.textSoft, margin: 0 }}>{togetherLabel}</p>}
               <h1 style={{ fontFamily: serif, fontSize: '32px', fontWeight: '600', lineHeight: 1, letterSpacing: '-0.01em', color: colors.text, margin: '6px 0 0' }}>
                 Your trips
               </h1>
@@ -376,17 +402,20 @@ export default function Dashboard({ session }) {
                 aria-label="Open profile"
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', background: colors.card, border: `1px solid ${colors.border}`, cursor: 'pointer', padding: 0, overflow: 'hidden' }}
               >
-                {myAvatar
-                  ? <img src={myAvatar} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <User size={18} color={colors.text} />}
+                {loading
+                  ? <div className="roamie-skeleton" style={{ width: '100%', height: '100%', background: '#1B1B1F' }} />
+                  : myAvatar
+                    ? <img src={myAvatar} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <User size={18} color={colors.text} />}
               </button>
             </div>
           </header>
 
           <div style={{ position: 'relative', zIndex: 10, flex: 1, padding: '8px 16px 0' }}>
             {loading && (
-              <div style={{ textAlign: 'center', padding: '40px', color: colors.textMuted, fontSize: '14px' }}>
-                Loading…
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <TripCardSkeleton />
+                <TripCardSkeleton />
               </div>
             )}
 

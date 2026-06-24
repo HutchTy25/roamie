@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useNavigationType } from 'react-router-dom'
 import { Plane, BedDouble, Car, Ticket, Sparkles, Plus, ChevronLeft, Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '../supabase'
 import AddReservationModal from '../components/AddReservationModal'
 import CreateTripModal from '../components/CreateTripModal'
+
+const screenClass = (navType) => navType === 'POP' ? 'roamie-screen-back' : 'roamie-screen-forward'
+const Sk = ({ w = '100%', h = 14, r = 8, style }) => (
+  <div className="roamie-skeleton" style={{ width: w, height: h, borderRadius: r, background: '#1B1B1F', ...style }} />
+)
 
 const colors = {
   bg: '#000000',
@@ -51,6 +56,7 @@ const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'sho
 export default function TripDetail({ session }) {
   const { id } = useParams()
   const navigate = useNavigate()
+  const navType = useNavigationType()
 
   const [trip, setTrip] = useState(undefined)   // undefined = loading, null = not found
   const [bookings, setBookings] = useState([])
@@ -60,7 +66,7 @@ export default function TripDetail({ session }) {
   const [partners, setPartners] = useState([])   // [{ id, display_name }] for "Paid by"
   const [showAdd, setShowAdd] = useState(false)
   const [showEditTrip, setShowEditTrip] = useState(false)
-  const [bookingsReady, setBookingsReady] = useState(false)
+  const [ready, setReady] = useState(false)   // all initial data (incl. FX) loaded
   const [editing, setEditing] = useState(false)
 
   // Bookings (+ owner/payer names). Standalone so it can refresh after an add.
@@ -78,7 +84,6 @@ export default function TripDetail({ session }) {
     } else {
       setNameById({})
     }
-    setBookingsReady(true)
   }
 
   // Refetch just the trip header (after an edit).
@@ -141,6 +146,8 @@ export default function TripDetail({ session }) {
           if (!cancelled && j?.rates) setDestRates({ [destCur]: 1, ...j.rates })
         } catch { /* native-only fallback */ }
       }
+
+      if (!cancelled) setReady(true)
     }
 
     load()
@@ -168,8 +175,8 @@ export default function TripDetail({ session }) {
     return rate != null ? d * rate : null
   }
 
-  if (trip === undefined) {
-    return <Shell><div style={{ color: colors.textMuted, fontSize: '14px', textAlign: 'center', paddingTop: '80px' }}>Loading…</div></Shell>
+  if (!ready) {
+    return <TripDetailSkeleton navType={navType} />
   }
   if (trip === null) {
     return (
@@ -242,20 +249,8 @@ export default function TripDetail({ session }) {
           </div>
         </div>
 
-        {/* Loading skeleton */}
-        {!bookingsReady && (
-          <div>
-            {[...Array(3)].map((_, i) => (
-              <div key={i} style={{ display: 'flex', gap: '14px', marginBottom: '16px' }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: colors.card, flexShrink: 0 }} />
-                <div style={{ flex: 1, height: '78px', borderRadius: '16px', background: colors.card, border: `1px solid ${colors.border}` }} />
-              </div>
-            ))}
-          </div>
-        )}
-
         {/* Empty state */}
-        {bookingsReady && bookings.length === 0 && (
+        {bookings.length === 0 && (
           <div style={{ margin: '24px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', textAlign: 'center' }}>
             <p style={{ fontSize: '15px', fontWeight: '500', color: colors.text, margin: 0 }}>No reservations yet</p>
             <p style={{ fontSize: '13px', color: colors.textMuted, margin: 0 }}>Add hotels, flights and activities to build out this trip.</p>
@@ -344,7 +339,7 @@ export default function TripDetail({ session }) {
         })}
 
         {/* Inline add-reservation button */}
-        {bookingsReady && !editing && (
+        {!editing && (
           <button
             onClick={() => setShowAdd(true)}
             style={{
@@ -400,5 +395,40 @@ function BackBtn({ onClick }) {
     >
       <ChevronLeft size={20} />
     </button>
+  )
+}
+
+// Full-screen placeholder matching the hero + itinerary layout.
+function TripDetailSkeleton({ navType }) {
+  return (
+    <div className={screenClass(navType)} style={{ minHeight: '100vh', background: colors.bg, maxWidth: '430px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ position: 'relative', height: '224px', flexShrink: 0 }}>
+        <Sk w="100%" h={224} r={0} />
+        <div style={{ position: 'absolute', top: '56px', left: '16px', right: '16px', display: 'flex', justifyContent: 'space-between' }}>
+          <Sk w={40} h={40} r={20} />
+          <Sk w={72} h={36} r={100} />
+        </div>
+        <div style={{ position: 'absolute', left: '20px', right: '20px', bottom: '16px' }}>
+          <Sk w="70%" h={26} style={{ marginBottom: '8px' }} />
+          <Sk w="50%" h={13} />
+        </div>
+      </div>
+      <div style={{ padding: '20px 16px' }}>
+        <Sk w={90} h={13} style={{ marginBottom: '20px' }} />
+        {[0, 1, 2].map(i => (
+          <div key={i} style={{ display: 'flex', gap: '14px', marginBottom: '16px' }}>
+            <Sk w={28} h={28} r={14} />
+            <div style={{ flex: 1, display: 'flex', gap: '12px', alignItems: 'center', background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '16px', padding: '12px' }}>
+              <Sk w={52} h={52} r={12} />
+              <div style={{ flex: 1 }}>
+                <Sk w="60%" h={15} style={{ marginBottom: '8px' }} />
+                <Sk w="40%" h={12} />
+              </div>
+              <Sk w={64} h={26} r={100} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
