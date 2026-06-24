@@ -52,17 +52,26 @@ export default function AddReservationModal({ tripId, partners, defaultCurrency,
     if (!valid || saving) return
     setSaving(true); setError('')
     try {
-      // Lock the FX rate (price_currency -> destination_currency) at save: always
-      // on insert; on edit only when the currency changed or it was never locked.
-      // Preserve the prior lock otherwise. fx_rate_locked & fx_locked_at move
-      // together (both set or both null) per the schema CHECK.
-      let fx = editing
-        ? { fx_rate_locked: booking.fx_rate_locked ?? null, fx_locked_at: booking.fx_locked_at ?? null }
-        : { fx_rate_locked: null, fx_locked_at: null }
-      const needsLock = !editing || currency !== booking.price_currency || booking.fx_rate_locked == null
-      if (needsLock) {
-        const rate = await lockedRateFor(currency, destinationCurrency)
-        if (rate != null) fx = { fx_rate_locked: rate, fx_locked_at: new Date().toISOString() }
+      // Lock the FX rate (price_currency -> destination_currency) only once money
+      // has actually moved — i.e. status is booked_paid or settled. Draft and
+      // reserved/unpaid bookings carry no locked rate. fx_rate_locked &
+      // fx_locked_at move together (both set or both null) per the schema CHECK.
+      const isPaid = status === 'booked_paid' || status === 'settled'
+      let fx = { fx_rate_locked: null, fx_locked_at: null }
+      if (isPaid) {
+        // Keep a prior lock unless it's missing or the currency changed, so an
+        // unrelated edit to an already-paid booking doesn't drift the rate.
+        if (editing && booking.fx_rate_locked != null && currency === booking.price_currency) {
+          fx = { fx_rate_locked: booking.fx_rate_locked, fx_locked_at: booking.fx_locked_at }
+        } else {
+          const rate = await lockedRateFor(currency, destinationCurrency)
+          if (rate != null) {
+            fx = { fx_rate_locked: rate, fx_locked_at: new Date().toISOString() }
+          } else if (editing) {
+            // Couldn't fetch a rate — preserve any prior lock rather than wiping it.
+            fx = { fx_rate_locked: booking.fx_rate_locked ?? null, fx_locked_at: booking.fx_locked_at ?? null }
+          }
+        }
       }
 
       // title is NOT NULL in the schema; mirror the vendor input into both.
