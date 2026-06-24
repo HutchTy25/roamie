@@ -129,7 +129,7 @@ export default function ReservationDetail({ session }) {
     return () => { cancelled = true }
   }, [tripId, bookingId, session])
 
-  const back = () => navigate(`/trip/${tripId}`)
+  const back = () => navigate(-1)
 
   if (!ready) return <ReservationSkeleton navType={navType} />
 

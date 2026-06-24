@@ -447,7 +447,7 @@ export default function Dashboard({ session }) {
                 return (
                   <button
                     key={trip.id}
-                    onClick={() => navigate(`/trip/${trip.id}`)}
+                    onClick={() => navigate(`/trip/${trip.id}`, { state: { trip } })}
                     className="roamie-rise"
                     style={{
                       position: 'relative', overflow: 'hidden', textAlign: 'left',

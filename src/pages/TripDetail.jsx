@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate, useNavigationType } from 'react-router-dom'
+import { useParams, useNavigate, useNavigationType, useLocation } from 'react-router-dom'
 import { Plane, BedDouble, Car, Ticket, Sparkles, Plus, ChevronLeft, Pencil, Trash2 } from 'lucide-react'
 import { supabase } from '../supabase'
 import AddReservationModal from '../components/AddReservationModal'
@@ -57,8 +57,11 @@ export default function TripDetail({ session }) {
   const { id } = useParams()
   const navigate = useNavigate()
   const navType = useNavigationType()
+  const location = useLocation()
 
-  const [trip, setTrip] = useState(undefined)   // undefined = loading, null = not found
+  // Seed the trip from navigation state (passed by the dashboard) so the hero
+  // paints instantly; a fresh fetch still runs to confirm/update it.
+  const [trip, setTrip] = useState(location.state?.trip ?? undefined)   // undefined = loading, null = not found
   const [bookings, setBookings] = useState([])
   const [nameById, setNameById] = useState({})
   const [homeCurrency, setHomeCurrency] = useState(null)   // for the add-modal default
@@ -175,20 +178,22 @@ export default function TripDetail({ session }) {
     return rate != null ? d * rate : null
   }
 
-  if (!ready) {
-    return <TripDetailSkeleton navType={navType} />
+  // Only a true cold load (no trip from state and not yet fetched) shows the
+  // full-screen skeleton. With navigation state, the hero renders immediately.
+  if (trip === undefined) {
+    return <TripDetailSkeleton />
   }
   if (trip === null) {
     return (
       <Shell>
-        <BackBtn onClick={() => navigate('/dashboard')} />
+        <BackBtn onClick={() => navigate(-1)} />
         <div style={{ color: colors.textMuted, fontSize: '14px', textAlign: 'center', paddingTop: '60px' }}>Trip not found.</div>
       </Shell>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: colors.bg, position: 'relative', maxWidth: '430px', margin: '0 auto', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <div className={screenClass(navType)} style={{ minHeight: '100vh', background: colors.bg, position: 'relative', maxWidth: '430px', margin: '0 auto', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       {/* Atmospheric hero */}
       <div style={{ position: 'relative', height: '224px', width: '100%', flexShrink: 0, overflow: 'hidden' }}>
         <div style={{
@@ -203,7 +208,7 @@ export default function TripDetail({ session }) {
         {/* Top controls */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '56px 16px 0' }}>
           <button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate(-1)}
             aria-label="Back to trips"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', borderRadius: '50%', border: `1px solid ${colors.border}`, background: 'rgba(0,0,0,0.4)', color: colors.text, cursor: 'pointer', backdropFilter: 'blur(8px)' }}
           >
@@ -249,8 +254,28 @@ export default function TripDetail({ session }) {
           </div>
         </div>
 
+        {/* Timeline skeleton — only the bookings are still loading; the hero is
+            already populated from navigation state. */}
+        {!ready && (
+          <div>
+            {[0, 1, 2].map(i => (
+              <div key={i} style={{ display: 'flex', gap: '14px', marginBottom: '16px' }}>
+                <Sk w={28} h={28} r={14} />
+                <div style={{ flex: 1, display: 'flex', gap: '12px', alignItems: 'center', background: colors.card, border: `1px solid ${colors.border}`, borderRadius: '16px', padding: '12px' }}>
+                  <Sk w={52} h={52} r={12} />
+                  <div style={{ flex: 1 }}>
+                    <Sk w="60%" h={15} style={{ marginBottom: '8px' }} />
+                    <Sk w="40%" h={12} />
+                  </div>
+                  <Sk w={64} h={26} r={100} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Empty state */}
-        {bookings.length === 0 && (
+        {ready && bookings.length === 0 && (
           <div style={{ margin: '24px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', textAlign: 'center' }}>
             <p style={{ fontSize: '15px', fontWeight: '500', color: colors.text, margin: 0 }}>No reservations yet</p>
             <p style={{ fontSize: '13px', color: colors.textMuted, margin: 0 }}>Add hotels, flights and activities to build out this trip.</p>
@@ -258,7 +283,7 @@ export default function TripDetail({ session }) {
         )}
 
         {/* Reservation timeline */}
-        {bookings.map((b, i) => {
+        {ready && bookings.map((b, i) => {
           const cat = CATEGORY[b.category] || CATEGORY.other
           const st = STATUS[b.status] || STATUS.draft
           const last = i === bookings.length - 1
@@ -339,7 +364,7 @@ export default function TripDetail({ session }) {
         })}
 
         {/* Inline add-reservation button */}
-        {!editing && (
+        {ready && !editing && (
           <button
             onClick={() => setShowAdd(true)}
             style={{
@@ -398,10 +423,11 @@ function BackBtn({ onClick }) {
   )
 }
 
-// Full-screen placeholder matching the hero + itinerary layout.
-function TripDetailSkeleton({ navType }) {
+// Full-screen placeholder (cold load only — no transform/slide; the populated
+// content root owns the screen transition).
+function TripDetailSkeleton() {
   return (
-    <div className={screenClass(navType)} style={{ minHeight: '100vh', background: colors.bg, maxWidth: '430px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', background: colors.bg, maxWidth: '430px', margin: '0 auto', display: 'flex', flexDirection: 'column' }}>
       <div style={{ position: 'relative', height: '224px', flexShrink: 0 }}>
         <Sk w="100%" h={224} r={0} />
         <div style={{ position: 'absolute', top: '56px', left: '16px', right: '16px', display: 'flex', justifyContent: 'space-between' }}>
