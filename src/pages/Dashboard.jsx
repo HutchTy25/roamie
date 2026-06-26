@@ -101,26 +101,35 @@ function Pill({ label, tone, style }) {
   )
 }
 
+// In-memory cache of the last dashboard render, so navigating back to the
+// dashboard shows trips instantly. Keyed by userId to avoid cross-account leak.
+let dashCache = null  // { userId, trips, tripAgg, budgetDest, partnerProfile, myProfile }
+
 export default function Dashboard({ session }) {
   const navigate = useNavigate()
   const location = useLocation()
   const navType = useNavigationType()
+
+  // Last-rendered dashboard data for THIS user, so returning shows trips
+  // instantly while a background refresh runs (no skeleton on return).
+  const cached = dashCache && dashCache.userId === session?.user?.id ? dashCache : null
+
   const [proToast, setProToast] = useState(false)
-  const [trips, setTrips] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [partnerProfile, setPartnerProfile] = useState(null)
-  const [coupleLoading, setCoupleLoading] = useState(true)
+  const [trips, setTrips] = useState(cached?.trips ?? [])
+  const [loading, setLoading] = useState(!cached)
+  const [partnerProfile, setPartnerProfile] = useState(cached?.partnerProfile ?? null)
+  const [coupleLoading, setCoupleLoading] = useState(!cached)
   const [activeTab, setActiveTab] = useState('home')
-  const [customAvatar, setCustomAvatar] = useState(null)
+  const [customAvatar, setCustomAvatar] = useState(cached?.myProfile?.avatar_url ?? null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
-  const [myProfile, setMyProfile] = useState(null)
+  const [myProfile, setMyProfile] = useState(cached?.myProfile ?? null)
   const [showAddTrip, setShowAddTrip] = useState(false)
   const [showFeedback, setShowFeedback] = useState(false)
   const [feedbackBug, setFeedbackBug] = useState('')
   const [feedbackFeature, setFeedbackFeature] = useState('')
   const [feedbackSent, setFeedbackSent] = useState(false)
-  const [tripAgg, setTripAgg] = useState({})
-  const [budgetDest, setBudgetDest] = useState({})   // trip.id -> budget_total in destination_currency
+  const [tripAgg, setTripAgg] = useState(cached?.tripAgg ?? {})
+  const [budgetDest, setBudgetDest] = useState(cached?.budgetDest ?? {})   // trip.id -> budget_total in destination_currency
 
   useEffect(() => {
     if (!session) { navigate('/login'); return }
@@ -136,6 +145,13 @@ export default function Dashboard({ session }) {
       window.removeEventListener('focus', handleFocus)
     }
   }, [session])
+
+  // Keep the module cache in sync with the latest settled data for this user.
+  useEffect(() => {
+    if (!loading && session?.user?.id) {
+      dashCache = { userId: session.user.id, trips, tripAgg, budgetDest, partnerProfile, myProfile }
+    }
+  }, [loading, trips, tripAgg, budgetDest, partnerProfile, myProfile, session])
 
   useEffect(() => {
     if (location.state?.proUpgrade) {
@@ -221,6 +237,14 @@ export default function Dashboard({ session }) {
           }
         }
 
+        // First paint: locked + same-currency results are ready now. Drop the
+        // skeleton — reservation counts and status pills are already final in
+        // this pass, so nothing flickers. The (possibly slow / cold-start) FX
+        // conversion below only refines cross-currency spend/budget, in place.
+        setTripAgg({ ...agg })
+        setBudgetDest({ ...budgetMap })
+        setLoading(false)
+
         // One live FX fetch per distinct destination currency needed (for either
         // booking spend or budget conversion). /api/fx-rates?from=D returns
         // rates[C] = units of C per 1 D, so converting an amount in currency X
@@ -249,12 +273,13 @@ export default function Dashboard({ session }) {
               budgetMap[it.trip_id] = rate ? it.amount / rate : it.amount
             }
           }
+          setTripAgg({ ...agg })
+          setBudgetDest({ ...budgetMap })
         }
-        setTripAgg(agg)
-        setBudgetDest(budgetMap)
       } else {
         setTripAgg({})
         setBudgetDest({})
+        setLoading(false)
       }
 
       if (profile?.couple_id) {
