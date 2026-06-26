@@ -49,6 +49,19 @@ const STATUS = {
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x }
 
+// Resolve the locked FX rate: destination units per 1 price_currency.
+// 1 when currencies match, a live rate via the proxy, or null on failure.
+async function lockedRateFor(priceCur, destCur) {
+  if (!destCur) return null
+  if (priceCur === destCur) return 1
+  try {
+    const r = await fetch(`https://roamie-61ib.onrender.com/api/fx-rates?from=${priceCur}`)
+    const j = await r.json()
+    const rate = j?.rates?.[destCur]
+    return rate != null ? Number(rate) : null
+  } catch { return null }
+}
+
 function StatusPill({ st }) {
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '500', color: st.color, background: st.bg, borderRadius: '100px', padding: '4px 11px' }}>
@@ -72,6 +85,7 @@ export default function ReservationDetail({ session }) {
   const [partners, setPartners] = useState([])
   const [showEdit, setShowEdit] = useState(false)
   const [ready, setReady] = useState(false)   // all initial data (incl. FX) loaded
+  const [settleState, setSettleState] = useState('idle')   // idle | pulsing | done
 
   async function loadBooking() {
     const { data } = await supabase.from('bookings').select('*').eq('id', bookingId).single()
@@ -133,6 +147,33 @@ export default function ReservationDetail({ session }) {
   // Back: use history when present, else fall back in-app on a deep link/fresh load.
   const back = () => (location.key === 'default' ? navigate('/dashboard') : navigate(-1))
 
+  // Mark settled: write status, pulse gold -> green, then go back so the
+  // timeline card + trip status reflect it. Delete (on the timeline) is the undo.
+  async function settle() {
+    if (!booking || settleState !== 'idle') return
+    setSettleState('pulsing')
+
+    // Settling means money has moved — lock the FX rate now, unless one already
+    // exists (don't drift it). Both fx fields move together per the schema CHECK.
+    const update = { status: 'settled' }
+    if (booking.fx_rate_locked == null) {
+      const rate = await lockedRateFor(booking.price_currency, trip?.destination_currency)
+      if (rate != null) {
+        update.fx_rate_locked = rate
+        update.fx_locked_at = new Date().toISOString()
+      }
+    }
+
+    const { error } = await supabase.from('bookings').update(update).eq('id', booking.id)
+    if (error) {
+      console.error('Settle error:', error)
+      setSettleState('idle')
+      return
+    }
+    setSettleState('done')
+    setTimeout(() => back(), 260)
+  }
+
   if (!ready) return <ReservationSkeleton navType={navType} />
 
   return (
@@ -157,7 +198,9 @@ export default function ReservationDetail({ session }) {
 
         {booking && (() => {
           const cat = CATEGORY[booking.category] || CATEGORY.other
-          const st = STATUS[booking.status] || STATUS.draft
+          // Reflect the settle optimistically in the pill while the button animates.
+          const shownStatus = settleState === 'done' ? 'settled' : booking.status
+          const st = STATUS[shownStatus] || STATUS.draft
           const destCur = trip?.destination_currency || null
           const native = Number(booking.price_amount)
           const crossCurrency = destCur && booking.price_currency !== destCur
@@ -249,10 +292,28 @@ export default function ReservationDetail({ session }) {
                 </DetailRow>
               </div>
 
-              {/* Primary action */}
+              {/* Mark as settled — hidden once already settled; delete (timeline) is the undo */}
+              {booking.status !== 'settled' && (
+                <button
+                  onClick={settle}
+                  disabled={settleState !== 'idle'}
+                  className={settleState === 'pulsing' ? 'roamie-pulse-gold' : undefined}
+                  style={{
+                    width: '100%', marginTop: '24px', padding: '16px', border: 'none', borderRadius: '16px',
+                    fontSize: '15px', fontWeight: '600', cursor: settleState === 'idle' ? 'pointer' : 'default',
+                    transition: 'background 0.22s ease, color 0.22s ease',
+                    background: settleState === 'done' ? colors.paid : settleState === 'pulsing' ? colors.gold : colors.goldSoft,
+                    color: settleState === 'done' ? '#06210F' : settleState === 'pulsing' ? '#1A1A1A' : colors.gold,
+                  }}
+                >
+                  {settleState === 'done' ? 'Settled ✓' : 'Mark as settled'}
+                </button>
+              )}
+
+              {/* Edit */}
               <button
                 onClick={() => setShowEdit(true)}
-                style={{ width: '100%', marginTop: '24px', padding: '16px', background: colors.text, border: 'none', borderRadius: '16px', color: colors.bg, fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+                style={{ width: '100%', marginTop: '12px', padding: '16px', background: colors.text, border: 'none', borderRadius: '16px', color: colors.bg, fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
               >
                 Edit reservation
               </button>
