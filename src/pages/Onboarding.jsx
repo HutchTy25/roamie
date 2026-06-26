@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useNavigationType } from 'react-router-dom'
 import { supabase } from '../supabase'
 
@@ -80,9 +80,17 @@ export default function Onboarding({ session, onComplete }) {
   const [homeCity, setHomeCity] = useState('')
   const [homeCurrency, setHomeCurrency] = useState('USD')
 
+  // Onboarding writes to the signed-in user's profile, so it requires a session.
+  // Reaching it logged out (or after the session lapses) redirects to login —
+  // matching the guard Dashboard/TripDetail use.
+  useEffect(() => {
+    if (!session) navigate('/login')
+  }, [session, navigate])
+
   const go = (next) => { setDir(next > step ? 1 : -1); setStep(next) }
 
   async function finish() {
+    if (!session?.user?.id) { navigate('/login'); return }
     setSaving(true)
     setError('')
     try {
