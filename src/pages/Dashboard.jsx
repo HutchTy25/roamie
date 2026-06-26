@@ -3,6 +3,7 @@ import { Plus, Clock, ChevronLeft, Camera, User } from 'lucide-react'
 import { useNavigate, useLocation, useNavigationType } from 'react-router-dom'
 import { supabase } from '../supabase'
 import CreateTripModal from '../components/CreateTripModal'
+import PartnerNudgeCard from '../components/PartnerNudgeCard'
 
 // Screen entrance: slide from the right on forward nav (PUSH/REPLACE), from the
 // left on browser back/forward (POP). Ends at transform:none (see index.css).
@@ -131,6 +132,7 @@ export default function Dashboard({ session }) {
   const [tripAgg, setTripAgg] = useState(cached?.tripAgg ?? {})
   const [budgetDest, setBudgetDest] = useState(cached?.budgetDest ?? {})   // trip.id -> budget_total in destination_currency
   const [statsReady, setStatsReady] = useState(!!cached)   // budget figures final (post-FX); cache is already final
+  const [nudgeDismissed, setNudgeDismissed] = useState(() => localStorage.getItem('roamie_partner_nudge_dismissed') === 'true')
 
   useEffect(() => {
     if (!session) { navigate('/login'); return }
@@ -604,7 +606,9 @@ export default function Dashboard({ session }) {
               })}
             </div>
 
-            {!coupleLoading && !partnerProfile && (
+            {/* No partner: a simple prompt before any trips exist; the richer,
+                dismissible nudge once they have a trip to share. */}
+            {!coupleLoading && !partnerProfile && trips.length === 0 && (
               <button
                 onClick={() => navigate('/connect')}
                 style={{
@@ -616,6 +620,12 @@ export default function Dashboard({ session }) {
               >
                 Connect your partner
               </button>
+            )}
+            {!loading && !coupleLoading && !partnerProfile && trips.length > 0 && !nudgeDismissed && (
+              <PartnerNudgeCard
+                onInvite={() => navigate('/connect')}
+                onDismiss={() => { localStorage.setItem('roamie_partner_nudge_dismissed', 'true'); setNudgeDismissed(true) }}
+              />
             )}
           </div>
         </>
