@@ -1,357 +1,186 @@
 import { useNavigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { supabase } from '../supabase'
-import posthog from 'posthog-js'
+import { Layers, Coins, CalendarClock } from 'lucide-react'
 
-export default function Home({ session }) {
-  const navigate = useNavigate()
-  const [visible, setVisible] = useState(false)
-  const [tripCount, setTripCount] = useState(0)
+const C = {
+  bg: '#000000',
+  card: '#121214',
+  gold: '#C9A05C',
+  text: '#F2F1ED',
+  muted: '#5E6066',
+  border: 'rgba(255,255,255,0.1)',
+}
+const serif = "'Playfair Display', Georgia, serif"
 
-  useEffect(() => {
-    fetch('https://roamie-61ib.onrender.com/api/trip-count')
-      .then(res => res.json())
-      .then(data => setTripCount(data.count))
-      .catch(() => {
-        const count = parseInt(localStorage.getItem('roamie_trip_count') || '0')
-        setTripCount(count)
-      })
-  }, [])
+// Masks tuned to the dashboard screenshot to erase the ".176" budget decimals.
+const dashboardPatches = [
+  { top: '46.3%', right: '8.0%', width: '6.4%', height: '2.3%' },  // card 1
+  { top: '89.5%', right: '8.0%', width: '6.4%', height: '2.3%' },  // card 2
+]
 
-  useEffect(() => {
-    setTimeout(() => setVisible(true), 100)
-  }, [])
+const FEATURES = [
+  { icon: Layers, title: 'Every reservation in one place', line: 'Hotels, flights, cars and activities on one shared timeline.' },
+  { icon: Coins, title: 'Both your currencies', line: 'Every amount shown at home and at the destination, automatically.' },
+  { icon: CalendarClock, title: 'Never miss a deadline', line: 'Free-cancellation dates and unpaid balances, tracked for both of you.' },
+]
 
+function GoldButton({ children, onClick, style }) {
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#1A1B26',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '2rem 1.5rem',
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
-      <style>{`
-        @keyframes fadeUp { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes twinkle { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
-        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
-        .start-btn:hover { opacity: 0.92; transform: scale(1.02); }
-        .start-btn:active { transform: scale(0.98); }
-        .feature-pill { transition: all 0.2s; }
-        .feature-pill:hover { border-color: rgba(124,106,239,0.5) !important; background: rgba(124,106,239,0.1) !important; }
-      `}</style>
+    <button
+      onClick={onClick}
+      className="lp-gold"
+      style={{
+        border: 'none', borderRadius: '100px', background: C.gold, color: '#000',
+        fontWeight: 600, cursor: 'pointer', ...style,
+      }}
+    >
+      {children}
+    </button>
+  )
+}
 
-      {/* Stars */}
-      {[...Array(25)].map((_, i) => (
-        <div key={i} style={{
-          position: 'absolute',
-          width: i % 4 === 0 ? '2px' : '1px',
-          height: i % 4 === 0 ? '2px' : '1px',
-          background: '#fff',
-          borderRadius: '50%',
-          top: `${Math.random() * 100}%`,
-          left: `${Math.random() * 100}%`,
-          opacity: 0.3,
-          animation: `twinkle ${3 + Math.random() * 3}s ease-in-out infinite ${Math.random() * 2}s`,
-        }} />
-      ))}
-
-      {/* Ambient glow */}
-      <div style={{
-        position: 'absolute',
-        top: '-20%',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '600px',
-        height: '500px',
-        background: 'radial-gradient(ellipse, rgba(124,106,239,0.12) 0%, transparent 70%)',
-        pointerEvents: 'none',
-      }} />
-
-      {/* User bar */}
-      {session ? (
-        <div style={{
-          position: 'fixed',
-          top: '1rem',
-          right: '1rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          zIndex: 100,
-          background: 'rgba(30,32,48,0.8)',
-          backdropFilter: 'blur(12px)',
-          borderRadius: '100px',
-          padding: '4px 12px 4px 4px',
-          border: '1px solid rgba(124,106,239,0.2)',
-        }}>
-          <img
-            src={session.user.user_metadata?.avatar_url}
-            style={{ width: '26px', height: '26px', borderRadius: '50%' }}
-            alt="avatar"
+// iPhone-framed product screenshot. `stagger` controls the desktop offset.
+function MarketingPhone({ src, alt, patches = [], stagger, eager }) {
+  return (
+    <div
+      className={`lp-phone ${stagger === 'down' ? 'lp-phone-down' : 'lp-phone-up'}`}
+      style={{
+        position: 'relative', flexShrink: 0, width: '230px',
+        borderRadius: '2.4rem', border: `1px solid ${C.border}`, background: '#0a0a0b',
+        padding: '6px', boxShadow: '0 40px 90px -30px rgba(0,0,0,0.95)',
+        scrollSnapAlign: 'center',
+      }}
+    >
+      <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '2rem' }}>
+        <img
+          src={src}
+          alt={alt}
+          draggable={false}
+          loading={eager ? 'eager' : 'lazy'}
+          decoding="async"
+          style={{ display: 'block', width: '100%', height: 'auto', userSelect: 'none' }}
+        />
+        {patches.map((p, i) => (
+          <span
+            key={i}
+            aria-hidden
+            style={{ position: 'absolute', background: '#111114', top: p.top, left: p.left, right: p.right, width: p.width, height: p.height }}
           />
-          <button
-            onClick={() => navigate('/dashboard')}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#7C6AEF',
-              fontSize: '12px',
-              cursor: 'pointer',
-              padding: 0,
-            }}
-          >
-            Dashboard
-          </button>
-          <button
-            onClick={() => supabase.auth.signOut().then(() => localStorage.removeItem('roamie_paid'))}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#8B8FA3',
-              fontSize: '12px',
-              cursor: 'pointer',
-              padding: 0,
-            }}
-          >
-            Sign out
-          </button>
-        </div>
-      ) : (
-        <div style={{
-          position: 'fixed',
-          top: '1rem',
-          right: '1rem',
-          zIndex: 100,
-        }}>
-          <button
-            onClick={() => navigate('/login')}
-            style={{
-              background: 'rgba(30,32,48,0.8)',
-              backdropFilter: 'blur(12px)',
-              border: '1px solid rgba(124,106,239,0.2)',
-              borderRadius: '100px',
-              padding: '8px 16px',
-              color: '#8B8FA3',
-              fontSize: '13px',
-              cursor: 'pointer',
-            }}
-          >
-            Sign in
-          </button>
-        </div>
-      )}
-
-      {/* Badge */}
-      <div style={{
-        opacity: visible ? 1 : 0,
-        animation: visible ? 'fadeUp 0.6s ease forwards' : 'none',
-        marginBottom: '1.5rem',
-        marginTop: '2.5rem',
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '8px',
-        background: 'rgba(244,114,182,0.1)',
-        border: '1px solid rgba(244,114,182,0.25)',
-        borderRadius: '100px',
-        padding: '8px 16px',
-      }}>
-        <div style={{ 
-          width: '8px', 
-          height: '8px', 
-          borderRadius: '50%', 
-          background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
-          animation: 'twinkle 2s infinite' 
-        }} />
-        <span style={{ fontSize: '12px', color: '#F472B6', letterSpacing: '0.05em', fontWeight: '500' }}>
-          Built for long distance couples
-        </span>
-      </div>
-
-      {/* Main headline */}
-      <div style={{
-        opacity: visible ? 1 : 0,
-        animation: visible ? 'fadeUp 0.6s ease 0.1s forwards' : 'none',
-        textAlign: 'center',
-        marginBottom: '1.25rem',
-        maxWidth: '520px',
-      }}>
-        <h1 style={{
-          fontFamily: "'Geist', sans-serif",
-          fontSize: 'clamp(2.4rem, 8vw, 3.8rem)',
-          fontWeight: '600',
-          lineHeight: '1.1',
-          margin: 0,
-          color: '#E8E8ED',
-        }}>
-          Stop arguing<br />about where<br />
-          <span style={{ 
-            background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-          }}>to go next.</span>
-        </h1>
-      </div>
-
-      {/* Subheading */}
-      <div style={{
-        opacity: visible ? 1 : 0,
-        animation: visible ? 'fadeUp 0.6s ease 0.2s forwards' : 'none',
-        textAlign: 'center',
-        marginBottom: '2rem',
-        maxWidth: '380px',
-      }}>
-        <p style={{
-          fontSize: '16px',
-          color: '#8B8FA3',
-          lineHeight: '1.7',
-          margin: 0,
-        }}>
-          Put in both your budgets, your cities, your vibe — Roamie finds trips that actually work for both of you.
-        </p>
-      </div>
-
-      {/* Feature pills */}
-      <div style={{
-        opacity: visible ? 1 : 0,
-        animation: visible ? 'fadeUp 0.6s ease 0.3s forwards' : 'none',
-        display: 'flex',
-        gap: '8px',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        marginBottom: '2.5rem',
-      }}>
-        {[
-          { icon: '💸', text: 'Two budgets, one plan' },
-          { icon: '🌍', text: '30+ currencies' },
-          { icon: '✈️', text: 'Flights from both cities' },
-        ].map(p => (
-          <div key={p.text} className="feature-pill" style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: 'rgba(30,32,48,0.6)',
-            border: '1px solid rgba(124,106,239,0.2)',
-            borderRadius: '100px',
-            padding: '8px 14px',
-            fontSize: '13px',
-            color: '#8B8FA3',
-            backdropFilter: 'blur(8px)',
-          }}>
-            <span style={{ fontSize: '14px' }}>{p.icon}</span>
-            {p.text}
-          </div>
         ))}
       </div>
+    </div>
+  )
+}
 
-      {/* FaceTime line */}
-      <div style={{
-        opacity: visible ? 1 : 0,
-        animation: visible ? 'fadeUp 0.6s ease 0.35s forwards' : 'none',
-        fontSize: '13px',
-        color: '#6B6F85',
-        marginBottom: '1rem',
-        textAlign: 'center',
-      }}>
-        Fill it out together on your next FaceTime
-      </div>
+export default function Home() {
+  const navigate = useNavigate()
+  const login = () => navigate('/login')
 
-      {/* CTA Button */}
-      <div style={{
-        opacity: visible ? 1 : 0,
-        animation: visible ? 'fadeUp 0.6s ease 0.4s forwards' : 'none',
-        width: '100%',
-        maxWidth: '320px',
-        marginBottom: '1rem',
-      }}>
-        <button
-          className="start-btn"
-          onClick={() => navigate('/dashboard')}
-          style={{
-            width: '100%',
-            padding: '18px',
-            background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
-            color: '#fff',
-            fontSize: '16px',
-            fontWeight: '600',
-            borderRadius: '100px',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            boxShadow: '0 0 40px rgba(124,106,239,0.4)',
-          }}
-        >
-          Plan our next trip
-        </button>
-      </div>
+  return (
+    <main style={{ minHeight: '100vh', background: C.bg, color: C.text }}>
+      <style>{`
+        .lp-gold { transition: opacity 0.2s ease; }
+        .lp-gold:hover { opacity: 0.9; }
+        .lp-signin { transition: color 0.2s ease; }
+        .lp-signin:hover { color: ${C.text}; }
 
-      {/* Trust line */}
-      <div style={{
-        opacity: visible ? 1 : 0,
-        animation: visible ? 'fadeUp 0.6s ease 0.5s forwards' : 'none',
-        fontSize: '12px',
-        color: '#6B6F85',
-        marginBottom: '1rem',
-      }}>
-        Free to use · No sign up required · Takes 2 minutes
-      </div>
+        .lp-phones {
+          display: flex; gap: 20px; overflow-x: auto; padding: 0 4px 24px;
+          scroll-snap-type: x mandatory; scrollbar-width: none;
+        }
+        .lp-phones::-webkit-scrollbar { display: none; }
 
-      {/* Trip counter */}
-      <div style={{
-        opacity: visible ? 1 : 0,
-        animation: visible ? 'fadeUp 0.6s ease 0.6s forwards' : 'none',
-        fontSize: '13px',
-        background: 'linear-gradient(135deg, #F472B6, #22D3EE)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        marginBottom: '2rem',
-        fontWeight: '500',
-        textAlign: 'center',
-      }}>
-        {tripCount > 0 && `${tripCount} trips planned by couples worldwide`}
-      </div>
+        .lp-features { display: grid; gap: 48px; }
 
-      {/* Social proof */}
-      <div style={{
-        opacity: visible ? 1 : 0,
-        animation: visible ? 'fadeUp 0.6s ease 0.7s forwards' : 'none',
-        maxWidth: '360px',
-        background: 'rgba(30,32,48,0.6)',
-        border: '1px solid rgba(124,106,239,0.15)',
-        borderRadius: '20px',
-        padding: '1.25rem',
-        marginBottom: '2rem',
-        backdropFilter: 'blur(20px)',
-      }}>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-          <div style={{
-            width: '36px', 
-            height: '36px', 
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center',
-            fontSize: '14px', 
-            flexShrink: 0,
-            color: '#fff',
-            fontWeight: '600',
-          }}>R</div>
-          <div>
-            <div style={{ fontSize: '13px', color: '#E8E8ED', lineHeight: '1.6', marginBottom: '8px' }}>
-              {"\"Having both people input their stuff upfront could definitely cut through decision paralysis. Interface feels pretty clean for a V1\""}
-            </div>
-            <div style={{ fontSize: '11px', color: '#6B6F85' }}>r/SaaS · real user review</div>
+        @media (min-width: 640px) {
+          .lp-features { grid-template-columns: repeat(3, 1fr); gap: 32px; }
+          .lp-footer { flex-direction: row !important; }
+        }
+        @media (min-width: 1024px) {
+          .lp-phones { justify-content: center; overflow-x: visible; }
+          .lp-phone-down { transform: translateY(24px); }
+          .lp-phone-up { transform: translateY(-8px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .lp-phone-down, .lp-phone-up { transition: none; }
+        }
+      `}</style>
+
+      {/* ===== Nav ===== */}
+      <nav style={{ position: 'sticky', top: 0, zIndex: 50, background: C.bg, borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ maxWidth: '1152px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '20px' }}>
+          <span style={{ fontFamily: serif, fontSize: '24px', fontWeight: 600, letterSpacing: '-0.01em', color: C.text }}>Roamie</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button onClick={login} className="lp-signin" style={{ background: 'none', border: 'none', borderRadius: '100px', padding: '8px 16px', fontSize: '14px', fontWeight: 500, color: C.muted, cursor: 'pointer' }}>
+              Sign in
+            </button>
+            <GoldButton onClick={login} style={{ padding: '8px 16px', fontSize: '14px' }}>Get started</GoldButton>
           </div>
         </div>
-      </div>
+      </nav>
 
-      <div style={{ textAlign: 'center', padding: '24px 16px 32px', display: 'flex', gap: '20px', justifyContent: 'center' }}>
-        <a href="/privacy" style={{ fontSize: '12px', color: '#6B6F85', textDecoration: 'none' }}>Privacy Policy</a>
-        <a href="/terms" style={{ fontSize: '12px', color: '#6B6F85', textDecoration: 'none' }}>Terms of Service</a>
-      </div>
-    </div>
+      {/* ===== Hero ===== */}
+      <section style={{ position: 'relative', overflow: 'hidden', padding: '40px 20px 16px' }}>
+        {/* ambient gold glow */}
+        <div aria-hidden style={{ pointerEvents: 'none', position: 'absolute', top: '-96px', left: '50%', transform: 'translateX(-50%)', height: '288px', width: '120%', borderRadius: '9999px', background: 'rgba(201,160,92,0.10)', filter: 'blur(64px)' }} />
+
+        <div style={{ position: 'relative', maxWidth: '768px', margin: '0 auto', textAlign: 'center' }}>
+          <h1 style={{ fontFamily: serif, fontSize: 'clamp(2.75rem, 8vw, 4.5rem)', fontWeight: 600, lineHeight: 1.05, letterSpacing: '-0.02em', color: C.text, margin: 0 }}>
+            Your trips, finally organized.
+          </h1>
+          <p style={{ maxWidth: '576px', margin: '24px auto 0', fontSize: 'clamp(1rem, 2.5vw, 1.125rem)', lineHeight: 1.6, color: C.muted }}>
+            One shared space for every reservation, deadline, and payment — in both your currencies.
+          </p>
+          <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'center' }}>
+            <GoldButton onClick={login} style={{ padding: '14px 28px', fontSize: '16px' }}>Get started free</GoldButton>
+          </div>
+        </div>
+
+        {/* product screenshots in iPhone frames */}
+        <div style={{ position: 'relative', maxWidth: '1152px', margin: '56px auto 0' }}>
+          <div className="lp-phones">
+            <MarketingPhone src="/screens/dashboard.jpeg" alt="Roamie shared trips dashboard showing two trips with budgets" patches={dashboardPatches} stagger="down" eager />
+            <MarketingPhone src="/screens/timeline-albania.jpeg" alt="Roamie trip itinerary with a reservation timeline" stagger="up" />
+            <MarketingPhone src="/screens/detail.jpeg" alt="Roamie reservation detail with status, dates and amount" stagger="down" />
+            <MarketingPhone src="/screens/timeline-manchester.jpeg" alt="Roamie Manchester trip itinerary with currency conversion" stagger="up" />
+          </div>
+        </div>
+      </section>
+
+      {/* ===== Features ===== */}
+      <section style={{ maxWidth: '1024px', margin: '0 auto', padding: '80px 20px' }}>
+        <div className="lp-features">
+          {FEATURES.map((f) => (
+            <div key={f.title} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '16px' }}>
+              <span style={{ display: 'flex', height: '44px', width: '44px', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', border: `1px solid ${C.border}`, background: C.card }}>
+                <f.icon size={20} color={C.gold} strokeWidth={1.75} />
+              </span>
+              <h3 style={{ fontFamily: serif, fontSize: '20px', fontWeight: 600, color: C.text, margin: 0 }}>{f.title}</h3>
+              <p style={{ fontSize: '14px', lineHeight: 1.6, color: C.muted, margin: 0 }}>{f.line}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== Closing CTA ===== */}
+      <section style={{ maxWidth: '768px', margin: '0 auto', padding: '0 20px 112px', textAlign: 'center' }}>
+        <h2 style={{ fontFamily: serif, fontSize: 'clamp(2rem, 6vw, 3rem)', fontWeight: 600, letterSpacing: '-0.02em', color: C.text, margin: 0 }}>
+          Plan it together.
+        </h2>
+        <p style={{ maxWidth: '448px', margin: '20px auto 0', fontSize: '16px', lineHeight: 1.6, color: C.muted }}>
+          For couples and solo travelers who want every trip in one calm, shared place.
+        </p>
+        <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'center' }}>
+          <GoldButton onClick={login} style={{ padding: '14px 28px', fontSize: '16px' }}>Get started free</GoldButton>
+        </div>
+      </section>
+
+      {/* ===== Footer ===== */}
+      <footer style={{ borderTop: `1px solid ${C.border}` }}>
+        <div className="lp-footer" style={{ maxWidth: '1152px', margin: '0 auto', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'space-between', gap: '12px', padding: '32px 20px' }}>
+          <span style={{ fontFamily: serif, fontSize: '18px', fontWeight: 600, color: C.text }}>Roamie</span>
+          <p style={{ fontSize: '12px', color: C.muted, margin: 0 }}>© {new Date().getFullYear()} Roamie. Made for two.</p>
+        </div>
+      </footer>
+    </main>
   )
 }
