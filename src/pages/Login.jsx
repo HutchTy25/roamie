@@ -9,10 +9,12 @@ export default function Login() {
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
   const [otp, setOtp] = useState('')
+  const [checking, setChecking] = useState(true)   // gate render until the session check resolves
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate('/')
+      if (session) navigate('/dashboard')   // already signed in → straight to the app
+      else setChecking(false)               // no session → show the login form
     })
   }, [])
 
@@ -61,6 +63,12 @@ async function verifyOtp() {
       navigate('/dashboard')
     }
     setLoading(false)
+  }
+
+  // Hold a plain black screen until the session check resolves, so the form
+  // never flashes before a redirect.
+  if (checking) {
+    return <div style={{ minHeight: '100vh', background: '#000000' }} />
   }
 
   return (

@@ -111,7 +111,7 @@ export default function App() {
       )}
       <Suspense fallback={null}>
         <Routes>
-      <Route path="/" element={<Home session={session} />} />
+      <Route path="/" element={session ? <Navigate to="/dashboard" replace /> : <Home session={session} />} />
       <Route path="/success" element={<Success />} />
       <Route path="/login" element={<Login />} />
       <Route path="/dashboard" element={needsOnboarding ? <Navigate to="/onboarding" replace /> : <Dashboard session={session} />} />
