@@ -130,6 +130,7 @@ export default function Dashboard({ session }) {
   const [feedbackSent, setFeedbackSent] = useState(false)
   const [tripAgg, setTripAgg] = useState(cached?.tripAgg ?? {})
   const [budgetDest, setBudgetDest] = useState(cached?.budgetDest ?? {})   // trip.id -> budget_total in destination_currency
+  const [statsReady, setStatsReady] = useState(!!cached)   // budget figures final (post-FX); cache is already final
 
   useEffect(() => {
     if (!session) { navigate('/login'); return }
@@ -146,12 +147,13 @@ export default function Dashboard({ session }) {
     }
   }, [session])
 
-  // Keep the module cache in sync with the latest settled data for this user.
+  // Keep the module cache in sync — only once stats are final (post-FX), so a
+  // return never restores a provisional budget figure.
   useEffect(() => {
-    if (!loading && session?.user?.id) {
+    if (!loading && statsReady && session?.user?.id) {
       dashCache = { userId: session.user.id, trips, tripAgg, budgetDest, partnerProfile, myProfile }
     }
-  }, [loading, trips, tripAgg, budgetDest, partnerProfile, myProfile, session])
+  }, [loading, statsReady, trips, tripAgg, budgetDest, partnerProfile, myProfile, session])
 
   useEffect(() => {
     if (location.state?.proUpgrade) {
@@ -162,6 +164,10 @@ export default function Dashboard({ session }) {
   }, [])
 
   async function fetchData() {
+    // Cold load (skeleton showing) vs. a background refresh (cache already on
+    // screen). On a refresh we skip the provisional first paint so the budget
+    // bar never flickers down-then-up.
+    const initialLoad = loading
     try {
       const { data: profile } = await supabase
         .from('profiles').select('*').eq('id', session.user.id).single()
@@ -237,13 +243,16 @@ export default function Dashboard({ session }) {
           }
         }
 
-        // First paint: locked + same-currency results are ready now. Drop the
-        // skeleton — reservation counts and status pills are already final in
-        // this pass, so nothing flickers. The (possibly slow / cold-start) FX
-        // conversion below only refines cross-currency spend/budget, in place.
-        setTripAgg({ ...agg })
-        setBudgetDest({ ...budgetMap })
-        setLoading(false)
+        // Cold load only: paint counts + status pills now (final in this pass)
+        // and drop the skeleton. The budget bar stays a shimmer (statsReady is
+        // still false) until the FX conversion below lands, so it never jumps
+        // from a provisional figure. On a refresh we skip this so the on-screen
+        // bar isn't briefly overwritten with provisional values.
+        if (initialLoad) {
+          setTripAgg({ ...agg })
+          setBudgetDest({ ...budgetMap })
+          setLoading(false)
+        }
 
         // One live FX fetch per distinct destination currency needed (for either
         // booking spend or budget conversion). /api/fx-rates?from=D returns
@@ -273,12 +282,17 @@ export default function Dashboard({ session }) {
               budgetMap[it.trip_id] = rate ? it.amount / rate : it.amount
             }
           }
-          setTripAgg({ ...agg })
-          setBudgetDest({ ...budgetMap })
         }
+
+        // Final, settled figures (single write — no down-then-up).
+        setTripAgg({ ...agg })
+        setBudgetDest({ ...budgetMap })
+        setStatsReady(true)
+        setLoading(false)
       } else {
         setTripAgg({})
         setBudgetDest({})
+        setStatsReady(true)
         setLoading(false)
       }
 
@@ -548,19 +562,26 @@ export default function Dashboard({ session }) {
                         )}
                       </div>
 
-                      {/* Budget bar */}
+                      {/* Budget bar — shimmer (space reserved) until the FX-final
+                          figures land, so it appears once instead of jumping. */}
                       {budget > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
                             <span style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '0.06em', color: colors.textMuted }}>
                               {partnerProfile ? 'Shared budget' : 'Budget'}
                             </span>
-                            <span style={{ fontSize: '12px', fontWeight: '500', color: colors.text }}>
-                              {sym}{spent.toLocaleString()} <span style={{ color: colors.textMuted }}>/ {sym}{budget.toLocaleString()}</span>
-                            </span>
+                            {statsReady ? (
+                              <span style={{ fontSize: '12px', fontWeight: '500', color: colors.text }}>
+                                {sym}{spent.toLocaleString()} <span style={{ color: colors.textMuted }}>/ {sym}{budget.toLocaleString()}</span>
+                              </span>
+                            ) : (
+                              <Sk w={84} h={12} />
+                            )}
                           </div>
                           <div style={{ height: '8px', width: '100%', borderRadius: '100px', background: 'rgba(255,255,255,0.07)', overflow: 'hidden' }}>
-                            <div className="roamie-fill" style={{ width: `${pct}%`, height: '100%', borderRadius: '100px', background: pct >= 100 ? '#E5675F' : colors.gold }} />
+                            {statsReady && (
+                              <div className="roamie-fill" style={{ width: `${pct}%`, height: '100%', borderRadius: '100px', background: pct >= 100 ? '#E5675F' : colors.gold }} />
+                            )}
                           </div>
                         </div>
                       )}
