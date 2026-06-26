@@ -60,6 +60,13 @@ const CURR_SYMBOLS = {
 }
 
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'
+
+// Money: round to 2 decimals max, show cents only when non-whole.
+// 3026.00 -> "3,026"  |  3026.50 -> "3,026.50"  |  3026.176 -> "3,026.18"
+const fmtMoney = (n) => {
+  const v = Math.round(Number(n) * 100) / 100
+  return v.toLocaleString('en-US', { minimumFractionDigits: v % 1 === 0 ? 0 : 2, maximumFractionDigits: 2 })
+}
 const daysUntil = (d) => d ? Math.ceil((new Date(d) - new Date()) / 86400000) : null
 const formatCountdown = (days) => {
   if (days == null || days < 0) return null
@@ -472,7 +479,7 @@ export default function Dashboard({ session }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {trips.map((trip, i) => {
                 const agg = tripAgg[trip.id] || {}
-                const spent = Math.round(agg.spent || 0)
+                const spent = agg.spent || 0
                 // Budget converted to destination_currency (see fetchData); falls
                 // back to the raw value until that resolves.
                 const budget = budgetDest[trip.id] != null
@@ -574,7 +581,7 @@ export default function Dashboard({ session }) {
                             </span>
                             {statsReady ? (
                               <span style={{ fontSize: '12px', fontWeight: '500', color: colors.text }}>
-                                {sym}{spent.toLocaleString()} <span style={{ color: colors.textMuted }}>/ {sym}{budget.toLocaleString()}</span>
+                                {sym}{fmtMoney(spent)} <span style={{ color: colors.textMuted }}>/ {sym}{fmtMoney(budget)}</span>
                               </span>
                             ) : (
                               <Sk w={84} h={12} />
