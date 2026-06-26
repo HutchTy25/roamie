@@ -11,12 +11,6 @@ const C = {
 }
 const serif = "'Playfair Display', Georgia, serif"
 
-// Masks tuned to the dashboard screenshot to erase the ".176" budget decimals.
-const dashboardPatches = [
-  { top: '46.3%', right: '8.0%', width: '6.4%', height: '2.3%' },  // card 1
-  { top: '89.5%', right: '8.0%', width: '6.4%', height: '2.3%' },  // card 2
-]
-
 const FEATURES = [
   { icon: Layers, title: 'Every reservation in one place', line: 'Hotels, flights, cars and activities on one shared timeline.' },
   { icon: Coins, title: 'Both your currencies', line: 'Every amount shown at home and at the destination, automatically.' },
@@ -39,7 +33,7 @@ function GoldButton({ children, onClick, style }) {
 }
 
 // iPhone-framed product screenshot. `stagger` controls the desktop offset.
-function MarketingPhone({ src, alt, patches = [], stagger, eager }) {
+function MarketingPhone({ src, alt, stagger, eager }) {
   return (
     <div
       className={`lp-phone ${stagger === 'down' ? 'lp-phone-down' : 'lp-phone-up'}`}
@@ -59,13 +53,6 @@ function MarketingPhone({ src, alt, patches = [], stagger, eager }) {
           decoding="async"
           style={{ display: 'block', width: '100%', height: 'auto', userSelect: 'none' }}
         />
-        {patches.map((p, i) => (
-          <span
-            key={i}
-            aria-hidden
-            style={{ position: 'absolute', background: '#111114', top: p.top, left: p.left, right: p.right, width: p.width, height: p.height }}
-          />
-        ))}
       </div>
     </div>
   )
@@ -138,10 +125,10 @@ export default function Home() {
         {/* product screenshots in iPhone frames */}
         <div style={{ position: 'relative', maxWidth: '1152px', margin: '56px auto 0' }}>
           <div className="lp-phones">
-            <MarketingPhone src="/screens/dashboard.jpeg" alt="Roamie shared trips dashboard showing two trips with budgets" patches={dashboardPatches} stagger="down" eager />
-            <MarketingPhone src="/screens/timeline-albania.jpeg" alt="Roamie trip itinerary with a reservation timeline" stagger="up" />
-            <MarketingPhone src="/screens/detail.jpeg" alt="Roamie reservation detail with status, dates and amount" stagger="down" />
-            <MarketingPhone src="/screens/timeline-manchester.jpeg" alt="Roamie Manchester trip itinerary with currency conversion" stagger="up" />
+            <MarketingPhone src="/screens/dashboard.webp" alt="Roamie shared trips dashboard showing two trips with budgets" stagger="down" eager />
+            <MarketingPhone src="/screens/timeline-albania.webp" alt="Roamie trip itinerary with a reservation timeline" stagger="up" />
+            <MarketingPhone src="/screens/detail.webp" alt="Roamie reservation detail with status, dates and amount" stagger="down" />
+            <MarketingPhone src="/screens/timeline-manchester.webp" alt="Roamie Manchester trip itinerary with currency conversion" stagger="up" />
           </div>
         </div>
       </section>
