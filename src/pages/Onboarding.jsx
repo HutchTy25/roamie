@@ -95,10 +95,20 @@ export default function Onboarding({ session, onComplete }) {
           home_currency: homeCurrency || null,
         })
         .eq('id', session.user.id)
-      if (err) throw err
+      if (err) {
+        // Full Supabase error object (message / details / hint / code).
+        console.error('[Onboarding] profiles UPDATE failed:', err, {
+          code: err.code, message: err.message, details: err.details, hint: err.hint,
+          userId: session?.user?.id,
+        })
+        throw err
+      }
       await onComplete()
       navigate('/dashboard')
-    } catch {
+    } catch (e) {
+      // Catches the Supabase error above, or a JS error (e.g. missing session,
+      // onComplete/navigate throwing) — log before the user-facing message.
+      console.error('[Onboarding] finish() failed:', e, '| had session.user.id:', !!session?.user?.id)
       setError('Something went wrong. Try again.')
       setSaving(false)
     }
