@@ -2,6 +2,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
+const C = {
+  bg: '#000000', card: '#121214', gold: '#C9A05C', blue: '#6FA8C9',
+  paid: '#6FBF8E', text: '#F2F1ED', muted: '#5E6066', border: 'rgba(255,255,255,0.1)',
+}
+const serif = "'Playfair Display', Georgia, serif"
+
 export default function Connect({ session }) {
   const navigate = useNavigate()
   const [inviteCode, setInviteCode] = useState('')
@@ -14,18 +20,18 @@ export default function Connect({ session }) {
 
   useEffect(() => {
     if (!session) { navigate('/login'); return }
-    
+
     const params = new URLSearchParams(window.location.search)
     const code = params.get('code')
     if (code) {
-      const extractedCode = code.includes('roamie-') 
-        ? code.split('roamie-')[1] 
+      const extractedCode = code.includes('roamie-')
+        ? code.split('roamie-')[1]
           ? 'roamie-' + code.split('roamie-')[1].split('?')[0].split(' ')[0]
-          : code 
+          : code
         : code
       setInputCode(extractedCode)
     }
-    
+
     checkCoupleStatus()
   }, [session])
 
@@ -90,7 +96,7 @@ export default function Connect({ session }) {
     if (!inputCode.trim()) return
     setLoading(true)
     setError('')
-    
+
     let code = inputCode.trim()
     if (code.includes('?code=')) {
       code = code.split('?code=')[1]
@@ -114,7 +120,7 @@ export default function Connect({ session }) {
       } else {
         setError(data.error || 'Invalid invite code')
       }
-    } catch (e) {
+    } catch {
       setError('Something went wrong')
     } finally {
       setLoading(false)
@@ -159,7 +165,7 @@ export default function Connect({ session }) {
   if (coupled) return (
     <div style={{
       minHeight: '100vh',
-      background: '#1A1B26',
+      background: C.bg,
       display: 'flex',
       flexDirection: 'column',
       alignItems: 'center',
@@ -169,103 +175,46 @@ export default function Connect({ session }) {
       position: 'relative',
       overflow: 'hidden',
     }}>
-      <style>{`
-        @keyframes twinkle { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
-        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
-        @keyframes pulseRing { 0%,100%{box-shadow:0 0 0 0 rgba(34,211,238,0.4)} 50%{box-shadow:0 0 0 15px rgba(34,211,238,0)} }
-      `}</style>
-
-      {/* Stars */}
-      {[...Array(15)].map((_, i) => (
-        <div key={i} style={{
-          position: 'absolute',
-          width: '1px',
-          height: '1px',
-          background: '#fff',
-          borderRadius: '50%',
-          top: `${Math.random() * 100}%`,
-          left: `${Math.random() * 100}%`,
-          opacity: 0.3,
-          animation: `twinkle ${3 + Math.random() * 2}s ease-in-out infinite`,
-        }} />
-      ))}
-
       {/* Connection visual */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '8px',
-        marginBottom: '1.5rem',
-        animation: 'float 4s ease-in-out infinite',
-      }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem' }}>
         <div style={{
-          width: '56px',
-          height: '56px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #22D3EE, #7C6AEF)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '24px',
-          fontWeight: '600',
-          color: '#fff',
-          boxShadow: '0 0 30px rgba(34,211,238,0.5)',
-          animation: 'pulseRing 2s ease-in-out infinite',
+          width: '56px', height: '56px', borderRadius: '50%', background: C.gold,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '24px', fontWeight: '600', color: '#000',
         }}>
           {session?.user?.user_metadata?.full_name?.[0] || 'Y'}
         </div>
         <svg width="32" height="24" viewBox="0 0 32 24" fill="none">
-          <path d="M4 12H28" stroke="url(#lineGrad)" strokeWidth="2" strokeDasharray="4 4"/>
-          <circle cx="16" cy="12" r="4" fill="#22D3EE"/>
-          <defs>
-            <linearGradient id="lineGrad" x1="4" y1="12" x2="28" y2="12">
-              <stop stopColor="#22D3EE"/>
-              <stop offset="1" stopColor="#F472B6"/>
-            </linearGradient>
-          </defs>
+          <path d="M4 12H28" stroke={C.gold} strokeWidth="2" strokeDasharray="4 4"/>
+          <circle cx="16" cy="12" r="4" fill={C.gold}/>
         </svg>
         <div style={{
-          width: '56px',
-          height: '56px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '24px',
-          fontWeight: '600',
-          color: '#fff',
-          boxShadow: '0 0 30px rgba(244,114,182,0.5)',
-          animation: 'pulseRing 2s ease-in-out infinite 0.5s',
+          width: '56px', height: '56px', borderRadius: '50%', background: C.blue,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: '24px', fontWeight: '600', color: '#000',
         }}>
           {partnerName[0] || 'P'}
         </div>
       </div>
 
-      <div style={{ 
-        fontFamily: "'Geist', sans-serif", 
-        fontSize: '1.8rem', 
-        fontWeight: '600',
-        marginBottom: '0.5rem',
-        color: '#E8E8ED',
-      }}>
+      <div style={{ fontFamily: serif, fontSize: '1.8rem', fontWeight: '600', marginBottom: '0.5rem', color: C.text }}>
         {"You're connected"}
       </div>
-      <div style={{ fontSize: '15px', color: '#8B8FA3', marginBottom: '2rem' }}>
-        You and <span style={{ color: '#22D3EE', fontWeight: '500' }}>{partnerName}</span> are synced on Roamie
+      <div style={{ fontSize: '15px', color: C.muted, marginBottom: '2rem' }}>
+        You and <span style={{ color: C.gold, fontWeight: '500' }}>{partnerName}</span> are synced on Roamie
       </div>
       <button
         onClick={() => navigate('/dashboard')}
         style={{
-          background: 'linear-gradient(135deg, #22D3EE, #7C6AEF)',
+          background: C.gold,
           border: 'none',
           borderRadius: '100px',
           padding: '16px 36px',
-          color: '#fff',
+          color: '#000',
           fontSize: '15px',
           fontWeight: '600',
           cursor: 'pointer',
-          boxShadow: '0 0 30px rgba(34,211,238,0.4)',
+          boxShadow: '0 8px 28px -10px rgba(201,160,92,0.7)',
           marginBottom: '1rem',
         }}
       >
@@ -276,10 +225,10 @@ export default function Connect({ session }) {
         disabled={loading}
         style={{
           background: 'none',
-          border: '1px solid rgba(255,255,255,0.1)',
+          border: `1px solid ${C.border}`,
           borderRadius: '100px',
           padding: '12px 24px',
-          color: '#8B8FA3',
+          color: C.muted,
           fontSize: '13px',
           cursor: 'pointer',
         }}
@@ -293,40 +242,21 @@ export default function Connect({ session }) {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#1A1B26',
+      background: C.bg,
       padding: '2rem 1.5rem',
       maxWidth: '480px',
       margin: '0 auto',
       position: 'relative',
     }}>
-      <style>{`
-        @keyframes twinkle { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
-      `}</style>
-
-      {/* Stars */}
-      {[...Array(12)].map((_, i) => (
-        <div key={i} style={{
-          position: 'fixed',
-          width: '1px',
-          height: '1px',
-          background: '#fff',
-          borderRadius: '50%',
-          top: `${Math.random() * 100}%`,
-          left: `${Math.random() * 100}%`,
-          opacity: 0.3,
-          animation: `twinkle ${3 + Math.random() * 2}s ease-in-out infinite`,
-        }} />
-      ))}
-
       <button
         onClick={() => navigate('/dashboard')}
-        style={{ 
-          background: 'none', 
-          border: 'none', 
-          color: '#8B8FA3', 
-          fontSize: '13px', 
-          cursor: 'pointer', 
-          marginBottom: '2rem', 
+        style={{
+          background: 'none',
+          border: 'none',
+          color: C.muted,
+          fontSize: '13px',
+          cursor: 'pointer',
+          marginBottom: '2rem',
           padding: 0,
           display: 'flex',
           alignItems: 'center',
@@ -339,49 +269,32 @@ export default function Connect({ session }) {
         back
       </button>
 
-      <div style={{ 
-        fontFamily: "'Geist', sans-serif", 
-        fontSize: '1.8rem', 
-        fontWeight: '600',
-        marginBottom: '0.5rem',
-        color: '#E8E8ED',
-      }}>
+      <div style={{ fontFamily: serif, fontSize: '1.8rem', fontWeight: '600', marginBottom: '0.5rem', color: C.text }}>
         Connect with your partner
       </div>
-      <div style={{ 
-        fontSize: '14px', 
-        color: '#8B8FA3', 
-        marginBottom: '2.5rem', 
-        lineHeight: '1.6' 
-      }}>
+      <div style={{ fontSize: '14px', color: C.muted, marginBottom: '2.5rem', lineHeight: '1.6' }}>
         Link your accounts so you can plan trips together, share favorites, and track booking progress.
       </div>
 
       {/* Generate invite card */}
       <div style={{
-        background: 'rgba(30,32,48,0.6)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(124,106,239,0.2)',
+        background: C.card,
+        border: `1px solid ${C.border}`,
         borderRadius: '20px',
         padding: '1.5rem',
         marginBottom: '1rem',
       }}>
-        <div style={{ 
-          fontSize: '11px', 
-          letterSpacing: '0.12em', 
-          textTransform: 'uppercase', 
-          color: '#7C6AEF', 
-          marginBottom: '0.75rem', 
-          fontWeight: '600' 
+        <div style={{
+          fontSize: '11px',
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: C.gold,
+          marginBottom: '0.75rem',
+          fontWeight: '600'
         }}>
           Step 1 — Send your invite
         </div>
-        <div style={{ 
-          fontSize: '14px', 
-          color: '#8B8FA3', 
-          marginBottom: '1rem', 
-          lineHeight: '1.6' 
-        }}>
+        <div style={{ fontSize: '14px', color: C.muted, marginBottom: '1rem', lineHeight: '1.6' }}>
           {"Generate a link and send it to your partner. They click it and you're connected."}
         </div>
 
@@ -392,14 +305,14 @@ export default function Connect({ session }) {
             style={{
               width: '100%',
               padding: '14px',
-              background: 'linear-gradient(135deg, #7C6AEF, #F472B6)',
+              background: C.gold,
               border: 'none',
               borderRadius: '100px',
-              color: '#fff',
+              color: '#000',
               fontSize: '14px',
               fontWeight: '600',
               cursor: loading ? 'wait' : 'pointer',
-              boxShadow: '0 0 24px rgba(124,106,239,0.4)',
+              boxShadow: '0 8px 28px -10px rgba(201,160,92,0.7)',
             }}
           >
             {loading ? 'Generating...' : 'Generate invite link'}
@@ -407,14 +320,14 @@ export default function Connect({ session }) {
         ) : (
           <div>
             <div style={{
-              background: 'rgba(124,106,239,0.1)',
+              background: 'rgba(201,160,92,0.10)',
               borderRadius: '12px',
               padding: '12px 14px',
               fontSize: '13px',
-              color: '#8B8FA3',
+              color: C.muted,
               marginBottom: '10px',
               wordBreak: 'break-all',
-              border: '1px solid rgba(124,106,239,0.2)',
+              border: `1px solid ${C.border}`,
             }}>
               roamietravel.app/connect?code={inviteCode}
             </div>
@@ -423,10 +336,10 @@ export default function Connect({ session }) {
               style={{
                 width: '100%',
                 padding: '12px',
-                background: copyDone ? 'rgba(34,211,238,0.1)' : 'rgba(124,106,239,0.15)',
-                border: `1px solid ${copyDone ? 'rgba(34,211,238,0.3)' : 'rgba(124,106,239,0.3)'}`,
+                background: copyDone ? 'rgba(111,191,142,0.12)' : 'rgba(201,160,92,0.15)',
+                border: `1px solid ${copyDone ? 'rgba(111,191,142,0.3)' : 'rgba(201,160,92,0.3)'}`,
                 borderRadius: '100px',
-                color: copyDone ? '#22D3EE' : '#7C6AEF',
+                color: copyDone ? C.paid : C.gold,
                 fontSize: '13px',
                 fontWeight: '500',
                 cursor: 'pointer',
@@ -451,28 +364,22 @@ export default function Connect({ session }) {
 
       {/* Accept invite card */}
       <div style={{
-        background: 'rgba(30,32,48,0.6)',
-        backdropFilter: 'blur(20px)',
-        border: '1px solid rgba(244,114,182,0.2)',
+        background: C.card,
+        border: `1px solid ${C.border}`,
         borderRadius: '20px',
         padding: '1.5rem',
       }}>
-        <div style={{ 
-          fontSize: '11px', 
-          letterSpacing: '0.12em', 
-          textTransform: 'uppercase', 
-          color: '#F472B6', 
-          marginBottom: '0.75rem', 
-          fontWeight: '600' 
+        <div style={{
+          fontSize: '11px',
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          color: C.blue,
+          marginBottom: '0.75rem',
+          fontWeight: '600'
         }}>
           Step 2 — Got a link from your partner?
         </div>
-        <div style={{ 
-          fontSize: '14px', 
-          color: '#8B8FA3', 
-          marginBottom: '1rem', 
-          lineHeight: '1.6' 
-        }}>
+        <div style={{ fontSize: '14px', color: C.muted, marginBottom: '1rem', lineHeight: '1.6' }}>
           Paste their invite code below to connect.
         </div>
         <input
@@ -480,25 +387,25 @@ export default function Connect({ session }) {
           placeholder="roamie-xxxxxx"
           value={inputCode}
           onChange={e => setInputCode(e.target.value)}
-          style={{ 
+          style={{
             width: '100%',
             marginBottom: '10px',
             padding: '14px 18px',
-            background: 'rgba(30,32,48,0.8)',
-            border: '1px solid rgba(244,114,182,0.2)',
+            background: C.bg,
+            border: `1px solid ${C.border}`,
             borderRadius: '100px',
-            color: '#E8E8ED',
+            color: C.text,
             fontSize: '14px',
             outline: 'none',
           }}
         />
         {error && (
-          <div style={{ 
-            fontSize: '13px', 
-            color: '#FF6B6B', 
+          <div style={{
+            fontSize: '13px',
+            color: '#E5675F',
             marginBottom: '10px',
             padding: '8px 12px',
-            background: 'rgba(255,107,107,0.1)',
+            background: 'rgba(229,103,95,0.1)',
             borderRadius: '8px',
           }}>
             {error}
@@ -510,10 +417,10 @@ export default function Connect({ session }) {
           style={{
             width: '100%',
             padding: '14px',
-            background: 'rgba(244,114,182,0.15)',
-            border: '1px solid rgba(244,114,182,0.3)',
+            background: 'rgba(111,168,201,0.15)',
+            border: '1px solid rgba(111,168,201,0.3)',
             borderRadius: '100px',
-            color: '#F472B6',
+            color: C.blue,
             fontSize: '14px',
             fontWeight: '600',
             cursor: loading ? 'wait' : 'pointer',

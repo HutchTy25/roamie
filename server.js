@@ -13,31 +13,6 @@ const proAccessCache = new Map()
 const PHOTO_CACHE_TTL = 30 * 24 * 60 * 60 * 1000
 const photoCache = new Map()
 
-function sanitizeInput(str, maxLen = 100) {
-  if (typeof str !== 'string') return ''
-  return str
-    .slice(0, maxLen)
-    .replace(/[`<>]/g, '')
-    .replace(/ignore\s+(previous|all|prior)\s+(instructions?|prompts?|context|rules?)/gi, '')
-    .replace(/disregard\s+(previous|all|prior|the\s+above)\s+(instructions?|prompts?|context)/gi, '')
-    .replace(/system\s*prompt/gi, '')
-    .replace(/\[INST]|\[\/INST]/g, '')
-    .replace(/<\|im_start\|>|<\|im_end\|>/g, '')
-    .trim()
-}
-
-function sanitizeMessageContent(str) {
-  if (typeof str !== 'string') return ''
-  return str
-    .replace(/ignore\s+(previous|all|prior)\s+(instructions?|prompts?|context|rules?)/gi, '')
-    .replace(/disregard\s+(previous|all|prior|the\s+above)\s+(instructions?|prompts?|context)/gi, '')
-    .replace(/system\s*prompt/gi, '')
-    .replace(/\[INST]|\[\/INST]/g, '')
-    .replace(/<\|im_start\|>|<\|im_end\|>/g, '')
-    .replace(/`{3,}/g, '')
-    .trim()
-}
-
 const app = express()
 app.use(cors({
   origin: [
@@ -95,27 +70,6 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
 })
 
 app.use(express.json())
-async function requireAppSecret(req, res, next) {
-  // Path 1: valid app secret header
-  if (req.headers['x-roamie-secret'] === process.env.ROAMIE_SECRET) return next()
-
-  // Path 2: valid Supabase JWT
-  const authHeader = req.headers['authorization']
-  if (authHeader?.startsWith('Bearer ')) {
-    try {
-      const { data: { user } } = await supabase.auth.getUser(authHeader.slice(7))
-      if (user) return next()
-    } catch (e) {
-      console.error('[requireAppSecret] getUser error:', e.message)
-    }
-  }
-
-  // Path 3: allow requests from our frontend origin (logged-out users)
-  const origin = req.headers['origin']
-  if (origin === 'https://roamietravel.app') return next()
-
-  return res.status(403).json({ error: 'Forbidden' })
-}
 
 async function requireAuth(req, res, next) {
   const authHeader = req.headers['authorization']
@@ -241,7 +195,6 @@ app.use('/api/verify-subscription', makeLimit(5))
 app.use('/api/create-invite',       makeLimit(10))
 app.use('/api/accept-invite',       makeLimit(10))
 app.use('/api/disconnect',          makeLimit(10))
-app.use('/api/waitlist',            makeLimit(5))
 app.use('/api/photo',               makeLimit(120))
 
 
@@ -290,149 +243,6 @@ async function getExchangeRates(baseCurrency) {
     return cached?.rates || FALLBACK_RATES
   }
 }
-
-
-
-let globalTripCount = 0
-
-
-async function checkProAccess(userId, supabase) {
-  if (!userId) return { allowed: true }
-
-  const cached = proAccessCache.get(userId)
-  if (cached && Date.now() - cached.timestamp < 60000) return cached.result
-
-  function cache(result) {
-    proAccessCache.set(userId, { result, timestamp: Date.now() })
-    return result
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('couple_id, search_count, is_pro')
-    .eq('id', userId)
-    .single()
-
-  if (!profile) return cache({ allowed: true })
-
-  if (profile.is_pro) return cache({ allowed: true, reason: 'pro' })
-
-  if (profile.couple_id) {
-    const { data: couple } = await supabase
-      .from('couples')
-      .select('is_pro')
-      .eq('id', profile.couple_id)
-      .single()
-    if (couple?.is_pro) return cache({ allowed: true, reason: 'pro' })
-  }
-
-  const searchCount = profile.search_count || 0
-  if (searchCount >= 3) return cache({ allowed: false, reason: 'limit_reached' })
-
-  await supabase.from('profiles').update({ search_count: searchCount + 1 }).eq('id', userId)
-  return cache({ allowed: true, reason: 'trial' })
-}
-
-app.post('/api/waitlist', [
-  body('email').isEmail().normalizeEmail().trim(),
-], async (req, res) => {
-  const errors = validationResult(req)
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ error: 'Invalid email' })
-  }
-
-  try {
-    const { email } = req.body
-    const { Resend } = await import('resend')
-    const resend = new Resend(process.env.RESEND_API_KEY)
-
-    await resend.emails.send({
-      from: 'Roamie <noreply@roamietravel.app>',
-      to: ['hutchiesonty25@gmail.com'],
-      subject: `New beta signup: ${email}`,
-      html: `<p>New Roamie beta signup: <strong>${email}</strong></p>`
-    })
-
-    res.json({ success: true })
-  } catch (err) {
-    console.error('Resend error:', err)
-    res.status(500).json({ error: err.message })
-  }
-})
-app.post('/api/create-checkout', [
-  body('plan').isIn(['monthly', 'founding']).optional(),
-  body('priceId').isString().trim().optional(),
-  body('mode').isIn(['payment', 'subscription']),
-  body('userId').isString().trim().optional(),
-], async (req, res) => {
-  const errors = validationResult(req)
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ error: 'Invalid request' })
-  }
-  console.log('ENV check:', { monthly: process.env.STRIPE_PRICE_MONTHLY, founding: process.env.STRIPE_PRICE_FOUNDING })
-  console.log('Checkout body:', req.body)
-
-  try {
-    const { plan, priceId: rawPriceId, mode, userId } = req.body
-
-    let resolvedPriceId = rawPriceId
-    if (plan === 'monthly') resolvedPriceId = process.env.STRIPE_PRICE_MONTHLY
-    else if (plan === 'founding') resolvedPriceId = process.env.STRIPE_PRICE_FOUNDING
-
-    if (!resolvedPriceId) return res.status(400).json({ error: 'Invalid plan or missing priceId' })
-    console.log('Resolved price ID:', resolvedPriceId)
-
-    let customerId
-    if (userId) {
-      const existing = await stripe.customers.search({
-        query: `metadata['userId']:'${userId}'`,
-        limit: 1,
-      })
-      const existingCustomer = existing.data[0]
-      if (existingCustomer) {
-        customerId = existingCustomer.id
-      } else {
-        const customer = await stripe.customers.create({ metadata: { userId } })
-        customerId = customer.id
-      }
-    }
-
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [{ price: resolvedPriceId, quantity: 1 }],
-      mode,
-      ...(customerId ? { customer: customerId } : {}),
-      success_url: 'https://roamietravel.app/success?session_id={CHECKOUT_SESSION_ID}',
-      cancel_url: 'https://roamietravel.app/results?cancelled=true',
-      metadata: { userId: userId || '' },
-    })
-    res.json({ url: session.url })
-  } catch (err) {
-    console.error('Stripe error:', err)
-    res.status(500).json({ error: err.message })
-  }
-})
-app.post('/api/verify-payment', [
-  body('sessionId').isString().trim().notEmpty(),
-], async (req, res) => {
-  const errors = validationResult(req)
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ error: 'Invalid request' })
-  }
-
-  try {
-    const { sessionId } = req.body
-    const session = await stripe.checkout.sessions.retrieve(sessionId)
-    if (session.payment_status === 'paid' || session.status === 'complete') {
-      res.json({ success: true, customerId: session.customer })
-    } else {
-      res.json({ success: false })
-    }
-  } catch (err) {
-    console.error('Verify error:', err)
-    res.status(500).json({ error: err.message })
-  }
-})
 
 app.post('/api/verify-subscription', [
   body('sessionId').isString().trim().notEmpty(),
@@ -600,10 +410,6 @@ app.post('/api/disconnect', requireAuth, async (req, res) => {
     console.error('Disconnect error:', err)
     res.status(500).json({ error: err.message })
   }
-})
-
-app.get('/api/trip-count', (req, res) => {
-  res.json({ count: globalTripCount })
 })
 
 // FX proxy: browsers can't call Frankfurter directly (CORS). Thin passthrough to

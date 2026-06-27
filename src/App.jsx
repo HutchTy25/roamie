@@ -75,8 +75,8 @@ export default function App() {
           left: '50%',
           transform: 'translateX(-50%)',
           zIndex: 9999,
-          background: '#1E2030',
-          border: '1px solid rgba(124,106,239,0.4)',
+          background: '#121214',
+          border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: '16px',
           padding: '12px 16px',
           display: 'flex',
@@ -85,15 +85,15 @@ export default function App() {
           boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
           whiteSpace: 'nowrap',
         }}>
-          <span style={{ fontSize: '13px', color: '#E8E8ED' }}>New version available</span>
+          <span style={{ fontSize: '13px', color: '#F2F1ED' }}>New version available</span>
           <button
             onClick={() => { setShowUpdate(false); updateServiceWorker(true) }}
             style={{
-              background: 'linear-gradient(135deg, #22D3EE, #7C6AEF)',
+              background: '#C9A05C',
               border: 'none',
               borderRadius: '100px',
               padding: '7px 16px',
-              color: '#fff',
+              color: '#000',
               fontSize: '12px',
               fontWeight: '600',
               cursor: 'pointer',
@@ -103,7 +103,7 @@ export default function App() {
           </button>
           <button
             onClick={() => setShowUpdate(false)}
-            style={{ background: 'none', border: 'none', color: '#8B8FA3', fontSize: '18px', cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
+            style={{ background: 'none', border: 'none', color: '#5E6066', fontSize: '18px', cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
           >
             ×
           </button>

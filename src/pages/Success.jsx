@@ -7,11 +7,6 @@ export default function Success() {
   const [searchParams] = useSearchParams()
   const sessionId = searchParams.get('session_id')
 
-  useEffect(() => {
-    if (!sessionId) { navigate('/'); return }
-    verifyPayment()
-  }, [])
-
   async function verifyPayment() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -41,10 +36,15 @@ export default function Success() {
       } else {
         navigate('/')
       }
-    } catch (e) {
+    } catch {
       navigate('/')
     }
   }
+
+  useEffect(() => {
+    if (!sessionId) { navigate('/'); return }
+    verifyPayment()
+  }, [])
 
   return (
     <div style={{

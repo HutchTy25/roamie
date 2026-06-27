@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
+const C = { bg: '#000000', card: '#121214', gold: '#C9A05C', text: '#F2F1ED', muted: '#5E6066' }
+const serif = "'Playfair Display', Georgia, serif"
+
 export default function Login() {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
@@ -79,80 +82,27 @@ async function verifyOtp() {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '2rem 1.5rem',
-      background: '#1A1B26',
+      background: C.bg,
       position: 'relative',
       overflow: 'hidden',
     }}>
-      <style>{`
-        @keyframes twinkle { 0%,100%{opacity:0.3} 50%{opacity:0.8} }
-        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
-        @keyframes pulseGlow { 0%,100%{box-shadow:0 0 20px rgba(124,106,239,0.3)} 50%{box-shadow:0 0 40px rgba(124,106,239,0.5)} }
-      `}</style>
-
-      {/* Stars */}
-      {[...Array(20)].map((_, i) => (
-        <div key={i} style={{
-          position: 'absolute',
-          width: i % 3 === 0 ? '2px' : '1px',
-          height: i % 3 === 0 ? '2px' : '1px',
-          background: '#fff',
-          borderRadius: '50%',
-          top: `${Math.random() * 100}%`,
-          left: `${Math.random() * 100}%`,
-          opacity: 0.3,
-          animation: `twinkle ${3 + Math.random() * 2}s ease-in-out infinite ${Math.random() * 2}s`,
-        }} />
-      ))}
-
-      {/* Ambient glow */}
-      <div style={{
-        position: 'absolute',
-        top: '-30%',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '600px',
-        height: '500px',
-        background: 'radial-gradient(ellipse, rgba(124,106,239,0.15) 0%, transparent 70%)',
-        pointerEvents: 'none',
+      {/* ambient gold glow */}
+      <div aria-hidden style={{
+        position: 'absolute', top: '-20%', left: '50%', transform: 'translateX(-50%)',
+        width: '600px', height: '420px', pointerEvents: 'none',
+        background: 'radial-gradient(ellipse, rgba(201,160,92,0.10) 0%, transparent 70%)',
+        filter: 'blur(40px)',
       }} />
 
-      {/* Logo */}
-      <div style={{
-        fontSize: '2.5rem',
-        marginBottom: '1rem',
-        animation: 'float 4s ease-in-out infinite',
-      }}>
-        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-          <circle cx="24" cy="24" r="20" fill="url(#logoGrad)" />
-          <path d="M16 24C16 20 20 16 24 16C28 16 32 20 32 24" stroke="#1A1B26" strokeWidth="2" strokeLinecap="round"/>
-          <circle cx="20" cy="22" r="2" fill="#1A1B26"/>
-          <circle cx="28" cy="22" r="2" fill="#1A1B26"/>
-          <defs>
-            <linearGradient id="logoGrad" x1="4" y1="4" x2="44" y2="44">
-              <stop stopColor="#F472B6"/>
-              <stop offset="1" stopColor="#7C6AEF"/>
-            </linearGradient>
-          </defs>
-        </svg>
+      {/* Wordmark */}
+      <div style={{ fontFamily: serif, fontSize: '28px', fontWeight: 600, letterSpacing: '-0.01em', color: C.text, marginBottom: '1.75rem' }}>
+        Roamie
       </div>
 
-      <div style={{ 
-        fontFamily: "'Geist', sans-serif", 
-        fontSize: '1.8rem', 
-        fontWeight: '600',
-        marginBottom: '0.5rem',
-        color: '#E8E8ED',
-      }}>
+      <div style={{ fontFamily: serif, fontSize: '1.9rem', fontWeight: '600', marginBottom: '0.5rem', color: C.text, textAlign: 'center' }}>
         Welcome to Roamie
       </div>
-      <div style={{ 
-        fontSize: '15px', 
-        color: '#8B8FA3', 
-        marginBottom: '2.5rem', 
-        maxWidth: '300px', 
-        lineHeight: '1.6',
-        textAlign: 'center',
-      }}>
+      <div style={{ fontSize: '15px', color: C.muted, marginBottom: '2.5rem', maxWidth: '300px', lineHeight: '1.6', textAlign: 'center' }}>
         Sign in to save your trips and sync with your partner
       </div>
 
@@ -174,7 +124,7 @@ async function verifyOtp() {
           cursor: loading ? 'wait' : 'pointer',
           opacity: loading ? 0.7 : 1,
           transition: 'all 0.2s',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
           marginBottom: '1.5rem',
           width: '100%',
           maxWidth: '320px',
@@ -194,27 +144,27 @@ async function verifyOtp() {
         maxWidth: '320px',
         marginBottom: '1.5rem',
       }}>
-        <div style={{ flex: 1, height: '1px', background: 'rgba(124,106,239,0.2)' }} />
-        <div style={{ fontSize: '12px', color: '#8B8FA3' }}>or</div>
-        <div style={{ flex: 1, height: '1px', background: 'rgba(124,106,239,0.2)' }} />
+        <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
+        <div style={{ fontSize: '12px', color: C.muted }}>or</div>
+        <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.1)' }} />
       </div>
 
       {/* Magic Link */}
       {sent ? (
         <div style={{ width: '100%', maxWidth: '320px' }}>
           <div style={{
-            background: 'rgba(124,106,239,0.1)',
-            border: '1px solid rgba(124,106,239,0.3)',
+            background: 'rgba(201,160,92,0.10)',
+            border: '1px solid rgba(201,160,92,0.3)',
             borderRadius: '16px',
             padding: '1.5rem',
             marginBottom: '1rem',
             textAlign: 'center',
           }}>
-            <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '6px', color: '#E8E8ED' }}>
+            <div style={{ fontSize: '1.1rem', fontWeight: '600', marginBottom: '6px', color: C.text }}>
               Check your email
             </div>
-            <div style={{ fontSize: '13px', color: '#8B8FA3', lineHeight: '1.6' }}>
-              We sent a 6-digit code to <strong style={{ color: '#F472B6' }}>{email}</strong>
+            <div style={{ fontSize: '13px', color: C.muted, lineHeight: '1.6' }}>
+              We sent a 6-digit code to <strong style={{ color: C.gold }}>{email}</strong>
             </div>
           </div>
           <input
@@ -227,11 +177,11 @@ async function verifyOtp() {
             style={{
               width: '100%',
               padding: '14px 18px',
-              background: 'rgba(30,32,48,0.8)',
-              border: '1px solid rgba(124,106,239,0.2)',
+              background: C.card,
+              border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '100px',
               fontSize: '22px',
-              color: '#E8E8ED',
+              color: C.text,
               marginBottom: '12px',
               outline: 'none',
               textAlign: 'center',
@@ -244,27 +194,27 @@ async function verifyOtp() {
             style={{
               width: '100%',
               padding: '14px',
-              background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
+              background: C.gold,
               border: 'none',
               borderRadius: '100px',
               fontSize: '15px',
               fontWeight: '600',
-              color: '#fff',
+              color: '#000',
               cursor: loading ? 'wait' : 'pointer',
               opacity: otp.length !== 6 ? 0.4 : 1,
-              boxShadow: '0 0 30px rgba(124,106,239,0.4)',
+              boxShadow: '0 8px 28px -10px rgba(201,160,92,0.7)',
             }}
           >
             {loading ? 'Verifying...' : 'Verify code'}
           </button>
           <button
             onClick={() => { setSent(false); setOtp('') }}
-            style={{ background: 'none', border: 'none', color: '#8B8FA3', fontSize: '13px', cursor: 'pointer', marginTop: '1rem', display: 'block', width: '100%' }}
+            style={{ background: 'none', border: 'none', color: C.muted, fontSize: '13px', cursor: 'pointer', marginTop: '1rem', display: 'block', width: '100%' }}
           >
             Use a different email
           </button>
         </div>
-        
+
       ) : (
         <div style={{ width: '100%', maxWidth: '320px' }}>
           <input
@@ -276,14 +226,13 @@ async function verifyOtp() {
             style={{
               width: '100%',
               padding: '14px 18px',
-              background: 'rgba(30,32,48,0.8)',
-              border: '1px solid rgba(124,106,239,0.2)',
+              background: C.card,
+              border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '100px',
               fontSize: '15px',
-              color: '#E8E8ED',
+              color: C.text,
               marginBottom: '12px',
               outline: 'none',
-              backdropFilter: 'blur(10px)',
             }}
           />
           <button
@@ -292,15 +241,15 @@ async function verifyOtp() {
             style={{
               width: '100%',
               padding: '14px',
-              background: 'linear-gradient(135deg, #F472B6, #7C6AEF)',
+              background: C.gold,
               border: 'none',
               borderRadius: '100px',
               fontSize: '15px',
               fontWeight: '600',
-              color: '#fff',
+              color: '#000',
               cursor: loading ? 'wait' : 'pointer',
               opacity: !email.includes('@') ? 0.4 : 1,
-              boxShadow: '0 0 30px rgba(124,106,239,0.4)',
+              boxShadow: '0 8px 28px -10px rgba(201,160,92,0.7)',
               transition: 'all 0.2s',
             }}
           >
@@ -313,11 +262,11 @@ async function verifyOtp() {
         <div style={{
           marginTop: '1rem',
           padding: '12px 20px',
-          background: 'rgba(255,107,107,0.1)',
-          border: '1px solid rgba(255,107,107,0.3)',
+          background: 'rgba(229,103,95,0.1)',
+          border: '1px solid rgba(229,103,95,0.3)',
           borderRadius: '100px',
           fontSize: '13px',
-          color: '#FF6B6B',
+          color: '#E5675F',
         }}>
           {error}
         </div>
@@ -329,7 +278,7 @@ async function verifyOtp() {
           marginTop: '2rem',
           background: 'none',
           border: 'none',
-          color: '#8B8FA3',
+          color: C.muted,
           fontSize: '13px',
           cursor: 'pointer',
         }}
