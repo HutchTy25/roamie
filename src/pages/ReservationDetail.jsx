@@ -228,7 +228,7 @@ export default function ReservationDetail({ session }) {
               <cat.Icon size={14} color={colors.textSoft} /> {cat.label}
             </span>
           )])
-          const payerLabel = (booking.status === 'booked_paid' || booking.status === 'settled') ? 'Paid by' : 'Added by'
+          const payerLabel = (shownStatus === 'booked_paid' || shownStatus === 'settled') ? 'Paid by' : 'Added by'
           midRows.push([payerLabel, payerName || '—'])
           if (isHotel && booking.nights) midRows.push(['Nights', `${booking.nights} night${booking.nights !== 1 ? 's' : ''}`])
           if (isHotel && booking.deadline_date) {
