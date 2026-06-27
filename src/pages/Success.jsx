@@ -52,19 +52,19 @@ export default function Success() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: '#1A1B26',
+      background: '#000000',
     }}>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
         <div style={{
           width: '48px',
           height: '48px',
           borderRadius: '50%',
-          border: '3px solid rgba(124,106,239,0.2)',
-          borderTopColor: '#7C6AEF',
+          border: '3px solid rgba(255,255,255,0.1)',
+          borderTopColor: '#C9A05C',
           animation: 'spin 1s linear infinite',
         }} />
         <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-        <div style={{ color: '#8B8FA3' }}>Verifying payment...</div>
+        <div style={{ color: '#5E6066' }}>Verifying payment...</div>
       </div>
     </div>
   )
