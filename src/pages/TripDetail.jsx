@@ -347,7 +347,7 @@ export default function TripDetail({ session }) {
                       {b.status !== 'draft' && <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: st.color }} />}
                       {st.label}
                     </span>
-                    {payer && <span style={{ fontSize: '11px', color: colors.textMuted }}>{payer} paid</span>}
+                    {payer && <span style={{ fontSize: '11px', color: colors.textMuted }}>{(b.status === 'booked_paid' || b.status === 'settled') ? 'Paid by' : 'Added by'} {payer}</span>}
                   </div>
                 </div>
 
